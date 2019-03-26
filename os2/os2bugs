@@ -1,0 +1,19 @@
+	Bugs and Limitations
+	5/8/95
+
+1. Some of the makefile targets are not yet working.  Those known to
+   work include all, uninstall, check, ksh, config.h, makefile,
+   debugtools (only check-fd and check-sigs.), clean, & distclean.
+
+2. You cannot start a full screen session from the windowed ksh command line.
+
+3. Some 'nmake check' tests require a local /tmp, /bin, /dev, and /etc  
+   directory. The bin directory needs a copy of cp, and ksh 
+   (called sh). The /etc directory needs a copy of termcap and passwd 
+   (or any file with these names). 
+
+4. Job control is not working and may never work in os/2 (no sigstp,
+   sigcont, etc).
+
+5. There is some sort of ending status problem associated with opening
+   and using a new file descriptor ('exec 5>', for example).

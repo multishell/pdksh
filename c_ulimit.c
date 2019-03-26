@@ -16,23 +16,21 @@
 	that was originally under case SYSULIMIT in source file "xec.c".
 */
 
-#if !defined(lint) && !defined(no_RCSids)
-static char *RCSid = "$Id: c_ulimit.c,v 1.3 1994/05/31 13:34:34 michael Exp $";
-#endif
-
 #include "sh.h"
-#ifdef HAVE_SETRLIMIT
-# include <sys/time.h>
+#include "ksh_time.h"
+#ifdef HAVE_SYS_RESOURCE_H
 # include <sys/resource.h>
-#endif /* HAVE_SETRLIMIT */
+#endif /* HAVE_SYS_RESOURCE_H */
 #ifdef HAVE_ULIMIT_H
 # include <ulimit.h>
 #else /* HAVE_ULIMIT_H */
 # ifdef HAVE_ULIMIT
-extern	long ulimit ARGS((int, ...));
+extern	long ulimit();
 # endif /* HAVE_ULIMIT */
 #endif /* HAVE_ULIMIT_H */
 
+#define SOFT	0x1
+#define HARD	0x2
 
 int
 c_ulimit(wp)
@@ -104,10 +102,8 @@ c_ulimit(wp)
 		{ (char *) 0 }
 	    };
 	static char	options[3 + NELEM(limits)];
-	register int	c;
-	long		UNINITIALIZED(val);
-	enum { SOFT = 0x1, HARD = 0x2 }
-			how = SOFT | HARD;
+	rlim_t		UNINITIALIZED(val);
+	int		how = SOFT | HARD;
 	struct limits	*l;
 	int		set, all = 0;
 	int		optc, what;
@@ -127,41 +123,49 @@ c_ulimit(wp)
 	what = 'f';
 	while ((optc = ksh_getopt(wp, &builtin_opt, options)) != EOF)
 		switch (optc) {
-		case 'H':
+		  case 'H':
 			how = HARD;
 			break;
-		case 'S':
+		  case 'S':
 			how = SOFT;
 			break;
-		case 'a':
+		  case 'a':
 			all = 1;
 			break;
-		default:
+		  case '?':
+			return 1;
+		  default:
 			what = optc;
 		}
 
 	for (l = limits; l->name && l->option != what; l++)
 		;
-	if (!l->name)
-		errorf("ulimit: internal error (%c)\n", what);
+	if (!l->name) {
+		internal_errorf(0, "ulimit: %c", what);
+		return 1;
+	}
 
 	wp += builtin_opt.optind;
 	set = *wp ? 1 : 0;
 	if (set) {
 		char *p = *wp;
 
-		if (all || wp[1])
-			errorf("ulimit: too many arguments\n");
-		val = 0;
-		while ((c = *p++) >= '0' && c <= '9')
-		{
-			val = (val * 10) + (long)(c - '0');
-			if (val < 0)
-				break;
+		if (all || wp[1]) {
+			bi_errorf("too many arguments");
+			return 1;
 		}
-		if (c)
-			errorf("ulimit: bad number\n");
-		val *= l->factor;
+#ifdef RLIM_INFINITY
+		if (strcmp(p, "unlimited") == 0)
+			val = RLIM_INFINITY;
+		else
+#endif /* RLIM_INFINITY */
+		{
+			long rval;
+
+			if (!evaluate(p, &rval, TRUE))
+				return 1;
+			val = rval * l->factor;
+		}
 	}
 	if (all) {
 		for (l = limits; l->name; l++) {
@@ -184,12 +188,12 @@ c_ulimit(wp)
 			shprintf("%-20s ", l->name);
 #ifdef RLIM_INFINITY
 			if (val == RLIM_INFINITY)
-				shprintf("unlimited\n";);
+				shprintf("unlimited\n");
 			else
 #endif /* RLIM_INFINITY */
 			{
 				val /= l->factor;
-				shellf("%ld\n", val);
+				shprintf("%ld\n", (long) val);
 			}
 		}
 		return 0;
@@ -202,8 +206,10 @@ c_ulimit(wp)
 				limit.rlim_cur = val;
 			if (how & HARD)
 				limit.rlim_max = val;
-			if (setrlimit(l->scmd, &limit) < 0)
-				errorf("ulimit: bad limit\n");
+			if (setrlimit(l->scmd, &limit) < 0) {
+				bi_errorf("bad limit: %s", strerror(errno));
+				return 1;
+			}
 		} else {
 			if (how & SOFT)
 				val = limit.rlim_cur;
@@ -215,10 +221,13 @@ c_ulimit(wp)
 #ifdef HAVE_ULIMIT
 	{
 		if (set) {
-			if (l->scmd == -1)
-				errorf("ulimit: can't change limit\n");
-			else if (ulimit(l->scmd, val) < 0)
-				errorf("ulimit: bad limit\n");
+			if (l->scmd == -1) {
+				bi_errorf("can't change limit");
+				return 1;
+			} else if (ulimit(l->scmd, val) < 0) {
+				bi_errorf("bad limit: %s", strerror(errno));
+				return 1;
+			}
 		} else
 			val = ulimit(l->gcmd);
 	}
@@ -228,12 +237,12 @@ c_ulimit(wp)
 	if (!set) {
 #ifdef RLIM_INFINITY
 		if (val == RLIM_INFINITY)
-			shprintf("unlimited\n";);
+			shprintf("unlimited\n");
 		else
 #endif /* RLIM_INFINITY */
 		{
 			val /= l->factor;
-			shellf("%ld\n", val);
+			shprintf("%ld\n", (long) val);
 		}
 	}
 	return 0;

@@ -13,7 +13,7 @@
 					: ((shf)->wnleft--, *(shf)->wp++ = (c)))
 #define shf_eof(shf)		((shf)->flags & SHF_EOF)
 #define shf_error(shf)		((shf)->flags & SHF_ERROR)
-#define shf_errno(shf)		((shf)->errno)
+#define shf_errno(shf)		((shf)->errno_)
 #define shf_clearerr(shf)	((shf)->flags &= ~(SHF_EOF | SHF_ERROR))
 
 /* Flags passed to shf_*open() */
@@ -27,7 +27,7 @@
 #define SHF_MAPHI	0x0020		/* make fd > FDBASE (and close orig)
 					 * (shf_open() only) */
 #define SHF_DYNAMIC	0x0040		/* string: increase buffer as needed */
-#define SHF_INTERRUPT	0x0080		/* call intrcheck() if interrupted */
+#define SHF_INTERRUPT	0x0080		/* EINTR in read/write causes error */
 /* Flags used internally */
 #define SHF_STRING	0x0100		/* a string, not a file */
 #define SHF_ALLOCS	0x0200		/* shf and shf->buf were alloc()ed */
@@ -48,7 +48,7 @@ struct shf {
 	int wnleft;		/* write: how much space left in buffer */
 	unsigned char *buf;	/* buffer */
 	int fd;			/* file descriptor */
-	int errno;		/* saved value of errno after error */
+	int errno_;		/* saved value of errno after error */
 	int bsize;		/* actual size of buf */
 	Area *areap;		/* area shf/buf were allocated in */
 };
@@ -65,13 +65,16 @@ int	    shf_fdclose	ARGS((struct shf *shf));
 char	   *shf_sclose	ARGS((struct shf *shf));
 int	    shf_finish	ARGS((struct shf *shf));
 int	    shf_flush	ARGS((struct shf *shf));
+int	    shf_seek	ARGS((struct shf *shf, off_t where, int from));
 int	    shf_read	ARGS((char *buf, int bsize, struct shf *shf));
-char	   *shf_gets	ARGS((char *buf, int bsize, struct shf *shf));
+char	   *shf_getse	ARGS((char *buf, int bsize, struct shf *shf));
 int	    shf_getchar	ARGS((struct shf *shf));
 int	    shf_ungetc	ARGS((int c, struct shf *shf));
 int	    shf_putchar	ARGS((int c, struct shf *shf));
+int	    shf_puts	ARGS((char *s, struct shf *shf));
 int	    shf_write	ARGS((char *buf, int nbytes, struct shf *shf));
 int	    shf_fprintf ARGS((struct shf *shf, const char *fmt, ...));
 int	    shf_snprintf ARGS((char *buf, int bsize, char *fmt, ...));
+char	    *shf_smprintf ARGS((char *fmt, ...));
 /* stdarg/varargs may not have been included yet.. */
 int	    shf_vfprintf ARGS((/*struct shf *, char *fmt, va_list args*/));

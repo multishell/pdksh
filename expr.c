@@ -1,10 +1,20 @@
 /*
  * Korn expression evaluation
  */
-
-#if !defined(lint) && !defined(no_RCSids)
-static char *RCSid = "$Id: expr.c,v 1.3 1994/05/31 13:34:34 michael Exp $";
-#endif
+/*
+ * todo: better error handling: if in builtin, should be builtin error, etc.
+ * todo: add ++ --
+ * todo: recursive variable expansion (y=1;x=y; let x)
+    how to deal with allowing:
+	i=0
+	set -A x 'x[1]' 'x[2]' 'x[3]' 99
+	let z=x[i+=1]
+	echo $z
+	99
+    and disallowing:
+	x='y[x]'
+	let z=x
+ */
 
 #include "sh.h"
 #include <ctype.h>
@@ -31,7 +41,7 @@ enum token {
 	/* unary that are not also binaries */
 	O_BNOT, O_LNOT,
 	/* misc */
-	OPAREN, CPAREN, CTERN,
+	OPEN_PAREN, CLOSE_PAREN, CTERN,
 	/* things that don't appear in the opinfo[] table */
 	VAR, LIT, END, BAD
     };
@@ -120,7 +130,7 @@ enum error_type { ET_UNEXPECTED, ET_BADLIT, ET_BADVAR, ET_STR };
 static Expr_state *es;
 
 static void        evalerr  ARGS((enum error_type type, char *str))
-							GCC_FA_NORETURN;
+						GCC_FUNC_ATTR(noreturn);
 static struct tbl *evalexpr ARGS((enum prec prec));
 static void        token    ARGS((void));
 static struct tbl *tempvar  ARGS((void));
@@ -129,25 +139,30 @@ static struct tbl *intvar   ARGS((struct tbl *vp));
 /*
  * parse and evalute expression
  */
-long
-evaluate(expr)
+int
+evaluate(expr, rval, error_ok)
 	const char *expr;
+	long *rval;
+	int error_ok;
 {
 	struct tbl v;
+	int ret;
 
 	v.flag = DEFINED|INTEGER;
 	v.type = 0;
-	v_evaluate(&v, expr);
-	return v.val.i;
+	ret = v_evaluate(&v, expr, error_ok);
+	*rval = v.val.i;
+	return ret;
 }
 
 /*
  * parse and evalute expression, storing result in vp.
  */
-void
-v_evaluate(vp, expr)
+int
+v_evaluate(vp, expr, error_ok)
 	struct tbl *vp;
 	const char *expr;
+	volatile int error_ok;
 {
 	struct tbl *v;
 	Expr_state curstate;
@@ -163,11 +178,22 @@ v_evaluate(vp, expr)
 	if ((i = setjmp(e->jbuf))) {
 		quitenv();
 		es = curstate.prev;
+		if (i == LAEXPR) {
+			if (error_ok)
+				return 0;
+			errorf((char *) 0);
+		}
 		unwind(i);
 		/*NOTREACHED*/
 	}
 
 	token();
+#if 1 /* ifdef-out to disallow empty expressions to be treated as 0 */
+	if (es->tok == END) {
+		es->tok = LIT;
+		es->val = tempvar();
+	}
+#endif /* 0 */
 	v = intvar(evalexpr(MAX_PREC));
 
 	if (es->tok != END)
@@ -180,6 +206,8 @@ v_evaluate(vp, expr)
 
 	es = curstate.prev;
 	quitenv();
+
+	return 1;
 }
 
 static void
@@ -210,23 +238,24 @@ evalerr(type, str)
 		default:
 			s = opinfo[(int)es->tok].name;
 		}
-		errorf("%s: unexpected `%s'\n", es->expression, s);
+		warningf(TRUE, "%s: unexpected `%s'", es->expression, s);
 		break;
 
 	case ET_BADLIT:
-		errorf("%s: bad number `%s'\n", es->expression, str);
+		warningf(TRUE, "%s: bad number `%s'", es->expression, str);
 		break;
 
 	case ET_BADVAR:
-		errorf("%s: value of variable `%s' not a number\n",
+		warningf(TRUE, "%s: value of variable `%s' not a number",
 			es->expression, str);
 		break;
 
 	default: /* keep gcc happy */
 	case ET_STR:
-		errorf("%s: %s\n", es->expression, str);
+		warningf(TRUE, "%s: %s", es->expression, str);
 		break;
 	}
+	unwind(LAEXPR);
 }
 
 static struct tbl *
@@ -251,10 +280,10 @@ evalexpr(prec)
 			else if (op == O_MINUS)
 				vl->val.i = -vl->val.i;
 			/* op == O_PLUS is a no-op */
-		} else if (op == OPAREN) {
+		} else if (op == OPEN_PAREN) {
 			token();
 			vl = evalexpr(MAX_PREC);
-			if (es->tok != CPAREN)
+			if (es->tok != CLOSE_PAREN)
 				evalerr(ET_STR, "missing )");
 			token();
 		} else if (op == VAR || op == LIT) {
@@ -276,13 +305,13 @@ evalexpr(prec)
 			if (vasn->name[0] == '\0')
 				evalerr(ET_STR, "assignment to non-lvalue");
 			else if (vasn->flag & RDONLY)
-				evalerr(ET_STR, "cannot set readonly");
+				evalerr(ET_STR,
+					"assignment to read only variable");
 			vr = intvar(evalexpr(P_ASSIGN));
 		} else if (op != O_TERN && op != O_LAND && op != O_LOR)
 			vr = intvar(evalexpr(((int) prec) - 1));
-		if (op != O_TERN && vr->val.i == 0
-		    && (op == O_DIV || op == O_MOD || op == O_DIVASN
-			|| op == O_MODASN))
+		if ((op == O_DIV || op == O_MOD || op == O_DIVASN
+		     || op == O_MODASN) && vr->val.i == 0)
 		{
 			if (es->noassign)
 				vr->val.i = 1;

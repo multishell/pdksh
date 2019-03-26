@@ -107,27 +107,38 @@ tty_init(init_ttystate)
 		tty_fd = -1;
 	}
 	tty_devtty = 1;
+
+	/* SCO can't job control on /dev/tty, so don't try... */
+#if !defined(__SCO__)
 	if ((tfd = open("/dev/tty", O_RDWR, 0)) < 0) {
 /* X11R5 xterm on mips doesn't set controlling tty properly - temporary hack */
-#if !defined(__mips) || !(defined(_SYSTYPE_BSD43) || defined(__SYSTYPE_BSD43))
+# if !defined(__mips) || !(defined(_SYSTYPE_BSD43) || defined(__SYSTYPE_BSD43))
 		tty_devtty = 0;
-#endif
+		warningf(FALSE, "No controlling tty (open /dev/tty: %s)",
+			strerror(errno));
+# endif /* __mips  */
+	}
+#else /* !__SCO__ */
+	tfd = -1;
+#endif /* __SCO__ */
+
+	if (tfd < 0) {
 		do_close = 0;
 		if (isatty(0))
 			tfd = 0;
 		else if (isatty(2))
 			tfd = 2;
-		else
+		else {
+			warningf(FALSE, "Can't find tty file descriptor");
 			return;
+		}
 	}
-	if ((tty_fd = fcntl(tfd, F_DUPFD, FDBASE)) < 0) {
-		shellf("j_ttyinit: dup of tty fd failed: %s\n",
+	if ((tty_fd = ksh_dupbase(tfd, FDBASE)) < 0) {
+		warningf(FALSE, "j_ttyinit: dup of tty fd failed: %s",
 			strerror(errno));
-		shf_flush(shl_out);
 	} else if (fd_clexec(tty_fd) < 0) {
-		shellf("j_ttyinit: can't set close-on-exec flag: %s\n",
+		warningf(FALSE, "j_ttyinit: can't set close-on-exec flag: %s",
 			strerror(errno));
-		shf_flush(shl_out);
 		close(tty_fd);
 		tty_fd = -1;
 	} else if (init_ttystate)

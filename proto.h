@@ -15,6 +15,7 @@ int 	c_hash		ARGS((char **wp));
 int 	c_cd		ARGS((char **wp));
 int 	c_print		ARGS((char **wp));
 int 	c_whence	ARGS((char **wp));
+int 	c_command	ARGS((char **wp));
 int 	c_typeset	ARGS((char **wp));
 int 	c_alias		ARGS((char **wp));
 int 	c_unalias	ARGS((char **wp));
@@ -59,7 +60,7 @@ bool_t 	x_mode		ARGS((bool_t onoff));
 int 	promptlen	ARGS((char *cp));
 void	set_editmode	ARGS((char *ed));
 /* emacs.c: most prototypes in edit.h */
-void 	x_bind		ARGS((char *a1, char *a2, int macro));
+int 	x_bind		ARGS((char *a1, char *a2, int macro, int list));
 /* eval.c */
 char *	substitute	ARGS((const char *cp, int f));
 char **	eval		ARGS((char **ap, int f));
@@ -74,42 +75,57 @@ int 	shcomexec	ARGS((char **wp));
 struct tbl * findfunc	ARGS((char *name, int h, int create));
 int 	define		ARGS((char *name, struct op *t));
 void 	builtin		ARGS((char *name, int (*func)()));
-struct tbl *	findcom	ARGS((char *name, int insert, int autoload,
-			      int justsearch));
+struct tbl *	findcom	ARGS((char *name, int flags));
 void 	flushcom	ARGS((int all));
 char *	search		ARGS((char *name, char *path, int mode));
 /* expr.c */
-long 	evaluate	ARGS((const char *expr));
-void	v_evaluate	ARGS((struct tbl *vp, const char *expr));
+int 	evaluate	ARGS((const char *expr, long *rval, int error_ok));
+int	v_evaluate	ARGS((struct tbl *vp, const char *expr, volatile int error_ok));
 /* history.c */
-int 	c_fc	 	ARGS((register char **wp));
-void 	histbackup	ARGS((void));
-void	sethistsize	ARGS((int n));
-void	sethistfile	ARGS((char *name));
 void	init_histvec	ARGS((void));
-#ifdef EASY_HISTORY
-void 	histsave	ARGS((char *cmd));
-void 	histappend	ARGS((char *cmd, int nl_seperate));
-#else
-void	histsave	ARGS((int lno, char *cmd, int dowrite));
-#endif
-char **	histget	 	ARGS((char *str));
 void 	hist_init	ARGS((Source *s));
 void 	hist_finish	ARGS((void));
+void	histsave	ARGS((int lno, char *cmd, int dowrite));
+#ifdef HISTORY
+int 	c_fc	 	ARGS((register char **wp));
+void	sethistsize	ARGS((int n));
+void	sethistfile	ARGS((char *name));
+# ifdef EASY_HISTORY
+void 	histappend	ARGS((char *cmd, int nl_seperate));
+# endif
 char **	histpos	 	ARGS((void));
 int 	histN	 	ARGS((void));
 int 	histnum	 	ARGS((int n));
-int	findhist	ARGS((int start, int fwd, char *str));
+int	findhist	ARGS((int start, int fwd, char *str, int anchored));
+#endif /* HISTORY */
 /* io.c */
-void 	errorf		ARGS((const char *fmt, ...)) GCC_FA_NORETURN;
-void 	shellf		ARGS((const char *fmt, ...));
-void 	shprintf	ARGS((const char *fmt, ...));
+void 	errorf		ARGS((const char *fmt, ...))
+				GCC_FUNC_ATTR2(noreturn, format(printf, 1, 2));
+void 	warningf	ARGS((int fileline, const char *fmt, ...))
+				GCC_FUNC_ATTR(format(printf, 2, 3));
+void 	bi_errorf	ARGS((const char *fmt, ...))
+				GCC_FUNC_ATTR(format(printf, 1, 2));
+void 	internal_errorf	ARGS((int jump, const char *fmt, ...))
+				GCC_FUNC_ATTR(format(printf, 2, 3));
+void	error_prefix	ARGS((int fileline));
+void 	shellf		ARGS((const char *fmt, ...))
+				GCC_FUNC_ATTR(format(printf, 1, 2));
+void 	shprintf	ARGS((const char *fmt, ...))
+				GCC_FUNC_ATTR(format(printf, 1, 2));
 int	can_seek	ARGS((int fd));
 void	initio		ARGS((void));
+int	ksh_dup2	ARGS((int ofd, int nfd, int errok));
 int 	savefd		ARGS((int fd));
 void 	restfd		ARGS((int fd, int ofd));
 void 	openpipe	ARGS((int *pv));
 void 	closepipe	ARGS((int *pv));
+int	check_fd	ARGS((char *name, int mode, char **emsgp));
+void	coproc_init	ARGS((void));
+void	coproc_read_close ARGS((int fd));
+void	coproc_readw_close ARGS((int fd));
+void	coproc_write_close ARGS((int fd));
+int	get_coproc_fd	ARGS((int mode, char **emsgp));
+void	cleanup_coproc	ARGS((int reuse));
 struct temp *maketemp	ARGS((Area *ap));
 /* jobs.c */
 void 	j_init		ARGS((int mflagset));
@@ -118,19 +134,20 @@ void 	j_change	ARGS((void));
 int 	exchild		ARGS((struct op *t, int flags, int close_fd));
 void 	startlast	ARGS((void));
 int 	waitlast	ARGS((void));
-int 	waitfor		ARGS((char *cp));
+int 	waitfor		ARGS((char *cp, int *sigp));
 int 	j_kill		ARGS((char *cp, int sig));
 int 	j_resume	ARGS((char *cp, int bg));
-void 	j_jobs		ARGS((char *cp, int slp, int nflag));
+int 	j_jobs		ARGS((char *cp, int slp, int nflag));
 void 	j_notify	ARGS((void));
 pid_t	j_async		ARGS((void));
-int 	j_stopped	ARGS((void));
+int 	j_stopped_running	ARGS((void));
 /* lex.c */
 int 	yylex		ARGS((int cf));
-void 	yyerror		ARGS((const char *fmt, ...)) GCC_FA_NORETURN;
-Source * pushs		ARGS((int type));
-void	set_prompt	ARGS((int to));
-void 	pprompt		ARGS((char *cp));
+void 	yyerror		ARGS((const char *fmt, ...))
+				GCC_FUNC_ATTR2(noreturn, format(printf, 1, 2));
+Source * pushs		ARGS((int type, Area *areap));
+void	set_prompt	ARGS((int to, Source *s));
+void 	pprompt		ARGS((char *cp, int ntruncate));
 /* mail.c */
 void 	mcheck		ARGS((void));
 void 	mbset		ARGS((char *p));
@@ -141,10 +158,12 @@ int 	main		ARGS((int argc, char **argv, char **envp));
 int 	include		ARGS((char *name, int argc, char **argv));
 int 	command		ARGS((char *comm));
 int 	shell		ARGS((Source *volatile s, int volatile exit_atend));
-void 	unwind		ARGS((int i)) GCC_FA_NORETURN;
+void 	unwind		ARGS((int i)) GCC_FUNC_ATTR(noreturn);
 void 	newenv		ARGS((int type));
 void 	quitenv		ARGS((void));
-void 	aerror		ARGS((Area *ap, const char *msg)) GCC_FA_NORETURN;
+void	cleanup_parents_env ARGS((void));
+void 	aerror		ARGS((Area *ap, const char *msg))
+				GCC_FUNC_ATTR(noreturn);
 /* misc.c */
 void 	setctypes	ARGS((const char *s, int t));
 void 	initctypes	ARGS((void));
@@ -154,29 +173,38 @@ char *	strnsave	ARGS((const char *s, int n, Area *ap));
 int	option		ARGS((const char *n));
 char *	getoptions	ARGS((void));
 void	change_flag	ARGS((enum sh_flag f, int what, int newval));
-int	parse_args	ARGS((char **argv, int what, char **cargp,
-				int *setargsp));
-int 	getn		ARGS((char *as));
-int 	getn_		ARGS((char *as, char *who));
+int	parse_args	ARGS((char **argv, int what, int *setargsp));
+int 	getn		ARGS((char *as, int *ai));
+int 	bi_getn		ARGS((char *as, int *ai));
 char *	strerror	ARGS((int i));
-int 	gmatch		ARGS((char *s, char *p));
+int 	gmatch		ARGS((char *s, char *p, int isfile));
 void 	qsortp		ARGS((void **base, size_t n, int (*f)()));
 int 	xstrcmp		ARGS((void *p1, void *p2));
 void	ksh_getopt_reset ARGS((Getopt *go, int));
 int	ksh_getopt	ARGS((char **argv, Getopt *go, char *options));
 void	print_value_quoted ARGS((char *s));
+void	print_columns	ARGS((struct shf *shf, int n,
+			      char *(*func) ARGS((void *, int, char *, int)),
+			      void *arg, int max_width));
+int	strip_nuls	ARGS((char *buf, int nbytes));
+char	*str_zcpy	ARGS((char *dst, char *src, int dsize));
+int	blocking_read	ARGS((int fd, char *buf, int nbytes));
+int	reset_nonblock	ARGS((int fd));
+char	*ksh_get_wd	ARGS((char *buf, int bsize));
 /* path.c */
-int	make_path	ARGS((char *curpath, char *file, char **pathlist,
-				char *result, int len));
+int	make_path	ARGS((char *cwd, char *file, char **pathlist,
+				XString *xsp, int *phys_pathp));
 void	simplify_path	ARGS((char *path));
+char	*get_phys_path	ARGS((char *path));
+void	set_current_wd	ARGS((char *path));
 /* syn.c */
 void 	initkeywords	ARGS((void));
 struct op * compile	ARGS((Source *s));
 /* table.c */
-unsigned int 	hash	ARGS((char *n));
-void 	tinit		ARGS((struct table *tp, Area *ap));
-struct tbl *	tsearch	ARGS((struct table *tp, char *n, unsigned int h));
-struct tbl *	tenter	ARGS((struct table *tp, char *n, unsigned int h));
+unsigned int 	hash	ARGS((const char *n));
+void 	tinit		ARGS((struct table *tp, Area *ap, int tsize));
+struct tbl *	tsearch	ARGS((struct table *tp, const char *n, unsigned int h));
+struct tbl *	tenter	ARGS((struct table *tp, const char *n, unsigned int h));
 void 	tdelete		ARGS((struct tbl *p));
 void 	twalk		ARGS((struct table *tp));
 struct tbl *	tnext	ARGS((void));
@@ -188,17 +216,19 @@ void	alarm_init	ARGS((void));
 Trap *	gettrap		ARGS((char *name));
 RETSIGTYPE trapsig	ARGS((int i));
 void	intrcheck	ARGS((void));
+int	fatal_trap_check ARGS((void));
+int	trap_pending	ARGS((void));
 void 	runtraps	ARGS((int intr));
 void 	runtrap		ARGS((Trap *p));
 void 	cleartraps	ARGS((void));
 void 	restoresigs	ARGS((void));
 void	settrap		ARGS((Trap *p, char *s));
+int	block_pipe	ARGS((void));
+void	restore_pipe	ARGS((int restore_dfl));
 int	setsig		ARGS((Trap *p, RETSIGTYPE (*f)(), int flags));
 void	setexecsig	ARGS((Trap *p, int restore));
 /* tree.c */
-void 	ptree		ARGS((struct op *t, struct shf *f));
-void 	pioact		ARGS((struct shf *f, struct ioword *iop));
-int 	fptreef		ARGS((struct shf *f, char *fmt, ...));
+int 	fptreef		ARGS((struct shf *f, int indent, char *fmt, ...));
 char *	snptreef	ARGS((char *s, int n, char *fmt, ...));
 struct op *	tcopy	ARGS((struct op *t, Area *ap));
 char *	wdcopy		ARGS((const char *wp, Area *ap));
@@ -207,24 +237,24 @@ void 	tfree		ARGS((struct op *t, Area *ap));
 /* var.c */
 void 	newblock	ARGS((void));
 void 	popblock	ARGS((void));
-struct tbl *	global	ARGS((char *n));
-struct tbl *	local	ARGS((char *n));
+void	initvar		ARGS((void));
+struct tbl *	global	ARGS((const char *n));
+struct tbl *	local	ARGS((const char *n));
 char *	strval		ARGS((struct tbl *vp));
 long 	intval		ARGS((struct tbl *vp));
 void 	setstr		ARGS((struct tbl *vq, char *s));
 struct tbl *	strint	ARGS((struct tbl *vq, struct tbl *vp));
 void 	setint		ARGS((struct tbl *vq, long n));
 int	getint		ARGS((struct tbl *vp, long *nump));
-int 	import		ARGS((char *thing));
 struct tbl *	typeset	ARGS((char *var, int set, int clr, int field, int base));
-void 	unset		ARGS((struct tbl *vp));
-char 	*skip_varname	ARGS((char *s, int aok));
+void 	unset		ARGS((struct tbl *vp, int array_ref));
+char  * skip_varname	ARGS((const char *s, int aok));
 char	*skip_wdvarname ARGS((char *s, int aok));
 int	is_wdvarname	ARGS((char *s, int aok));
 int	is_wdvarassign	ARGS((char *s));
 char **	makenv		ARGS((void));
 int	array_ref_len	ARGS((const char *cp));
-char *  basename	ARGS((char *str));
+char *  arrayname	ARGS((char *str));
 void    set_array	ARGS((char *var, int reset, char **vals));
 /* version.c */
 /* vi.c: prototypes in edit.h */

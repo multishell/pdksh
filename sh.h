@@ -54,6 +54,7 @@ extern int chdir ARGS((const char *));
 extern int kill ARGS((pid_t, int));
 extern char *getcwd();	/* no ARGS here - differs on different machines */
 extern int geteuid ARGS((void));
+extern int readlink ARGS((const char *, char *, int));
 extern int getegid ARGS((void));
 extern int getpid ARGS((void));
 extern int getppid ARGS((void));
@@ -67,10 +68,10 @@ extern int setpgid ARGS((pid_t, pid_t));
 extern int getpgrp ARGS((pid_t));
 extern int setpgrp ARGS((pid_t, pid_t));
 # endif /* BSD_PGRP */
-# ifdef SVR3_PGRP
+# ifdef SYSV_PGRP
 extern int getpgrp ARGS((void));
 extern int setpgrp ARGS((void));
-# endif /* SVR3_PGRP */
+# endif /* SYSV_PGRP */
 #endif /* HAVE_UNISTD_H */
 
 #ifdef HAVE_STRING_H
@@ -122,14 +123,33 @@ extern int errno;
 #endif /* HAVE_FCNTL_H */
 #ifndef O_ACCMODE
 # define O_ACCMODE	(O_RDONLY|O_WRONLY|O_RDWR)
-#endif /* O_ACCMODE */
+#endif /* !O_ACCMODE */
 
 #ifndef F_OK 	/* access() arguments */
 # define F_OK 0
 # define X_OK 1
 # define W_OK 2
 # define R_OK 4
-#endif /* F_OK */
+#endif /* !F_OK */
+
+#ifndef SEEK_SET
+# ifdef L_SET
+#  define SEEK_SET L_SET
+#  define SEEK_CUR L_INCR
+#  define SEEK_END L_XTND
+# else /* L_SET */
+#  define SEEK_SET 0
+#  define SEEK_CUR 1
+#  define SEEK_END 2
+# endif /* L_SET */
+#endif /* !SEEK_SET */
+
+/* Some machines (eg, FreeBSD 1.1.5) define CLK_TCK in limits.h
+ * (ksh_limval.h assumes limits has been included, if available)
+ */
+#ifdef HAVE_LIMITS_H
+# include <limits.h>
+#endif /* HAVE_LIMITS_H */
 
 #include <signal.h>
 #ifdef	NSIG
@@ -138,7 +158,11 @@ extern int errno;
 # ifdef	_MINIX
 #  define SIGNALS	(_NSIG+1) /* _NSIG is # of signals used, excluding 0. */
 # else
-#  define SIGNALS	32
+#  ifdef _SIGMAX	/* QNX */
+#   define SIGNALS	_SIGMAX
+#  else /* _SIGMAX */
+#   define SIGNALS	32
+#  endif /* _SIGMAX */
 # endif	/* _MINIX */
 #endif	/* NSIG */
 #ifndef SIGCHLD
@@ -174,6 +198,37 @@ extern int errno;
 # define killpg(p, s)	kill(-(p), (s))
 #endif /* !HAVE_KILLPG */
 
+/* Special cases for execve(2) */
+#ifdef OS2
+# define ksh_execve(p, av, ev)	_execve(p, av, ev)
+#else /* OS2 */
+# if defined(OS_ISC) && defined(_POSIX_SOURCE)
+/* Kludge for ISC 3.2 (and other versions?) so programs will run correctly.  */
+#  define ksh_execve(p, av, ev) do { \
+					__setostype(0); \
+					execve(p, av, ev); \
+					__setostype(1); \
+				} while (0)
+# else /* OS_ISC && _POSIX */
+#  define ksh_execve(p, av, ev)	execve(p, av, ev)
+# endif /* OS_ISC && _POSIX */
+#endif /* OS2 */
+
+/* this is a hang-over from older versions of the os2 port */
+#define ksh_dupbase(fd, base) fcntl(fd, F_DUPFD, base)
+
+/* Find a 32 bit integer type (or die) - SIZEOF_* defined by autoconf
+ * (assumes 8 bit byte, but I'm not concerned) */
+#if SIZEOF_INT == 4
+# define INT32	int
+#else /* SIZEOF_INT */
+# if SIZEOF_LONG == 4
+#  define INT32	long
+# else /* SIZEOF_LONG */
+   #error cannot find 32 bit type...
+# endif /* SIZEOF_LONG */
+#endif /* SIZEOF_INT */
+
 /* end of common headers */
 
 /* Stop gcc and lint from complaining about possibly uninitialized variables */
@@ -194,12 +249,57 @@ extern int errno;
 
 #ifndef EXECSHELL
 /* shell to exec scripts (see also $SHELL initialization in main.c) */
-# define EXECSHELL	"/bin/sh"
+# ifdef OS2
+#  define EXECSHELL	"c:\\os2\\cmd.exe"
+#  define EXECSHELL_STR	"OS2_SHELL"
+# else /* OS2 */
+#  define EXECSHELL	"/bin/sh"
+#  define EXECSHELL_STR	"EXECSHELL"
+# endif /* OS2 */
 #endif
 
-#ifdef DUP2_BROKEN	/* Ultrix 2.x,4.2 gets dup2 wrong */
-# define dup2	dup2_fixup
-int dup2_fixup ARGS((int ofd, int nfd));
+/* ISABSPATH() means path is fully and completely specified,
+ * ISROOTEDPATH() means a .. as the first component is a no-op,
+ * ISRELPATH() means $PWD can be tacked on to get an absolute path.
+ *
+ * OS	Path		ISABSPATH	ISROOTEDPATH	ISRELPATH
+ * unix	/foo		yes		yes		no
+ * unix	foo		no		no		yes
+ * unix	../foo		no		no		yes
+ * os2	a:/foo		yes		yes		no
+ * os2	a:foo		no		no		no
+ * os2	/foo		no		yes		no
+ * os2	foo		no		no		yes
+ * os2	../foo		no		no		yes
+ */
+#ifdef OS2
+# define PATHSEP        ';'
+# define DIRSEP         '\\'
+# define DIRSEPSTR      "\\"
+# define ISDIRSEP(c)    ((c) == '\\' || (c) == '/')
+# define ISABSPATH(s)	(((s)[0] && (s)[1] == ':' && ISDIRSEP((s)[2])))
+# define ISROOTEDPATH(s) (ISDIRSEP((s)[0]) || ISABSPATH(s))
+# define ISRELPATH(s)	(!(s)[0] || ((s)[1] != ':' && !ISDIRSEP((s)[0])))
+# define FILECHCONV(c)	(isupper(c) ? tolower(c) : c)
+# define FILECMP(s1, s2) stricmp(s1, s2)
+# define FILENCMP(s1, s2, n) strnicmp(s1, s2, n)
+extern char *strchr_dirsep(char *path);
+extern char *strrchr_dirsep(char *path);
+# define chdir          _chdir2
+# define getcwd         _getcwd2
+#else
+# define PATHSEP        ':'
+# define DIRSEP         '/'
+# define DIRSEPSTR      "/"
+# define ISDIRSEP(c)    ((c) == '/')
+# define ISABSPATH(s)	ISDIRSEP((s)[0])
+# define ISROOTEDPATH(s) ISABSPATH(s)
+# define ISRELPATH(s)	(!ISABSPATH(s))
+# define FILECHCONV(c)	c
+# define FILECMP(s1, s2) strcmp(s1, s2)
+# define FILENCMP(s1, s2, n) strncmp(s1, s2, n)
+# define strchr_dirsep(p)   strchr(p, DIRSEP)
+# define strrchr_dirsep(p)  strrchr(p, DIRSEP)
 #endif
 
 typedef int bool_t;
@@ -216,16 +316,20 @@ typedef int bool_t;
 /* you're not going to run setuid shell scripts, are you? */
 #define	eaccess(path, mode)	access(path, mode)
 
-#define	MAGIC	(char)0x80	/* prefix for ~*?[ during expand */
+/* make MAGIC a char that might be printed to make bugs more obvious */
+#define	MAGIC	(char)(0x80+'!')/* prefix for *?[!{,} during expand */
 #define	NOT	'!'		/* might use ^ (ie, [!...] vs [^..]) */
 
 #define	LINE	1024		/* input line size */
 #define	PATH	1024		/* pathname size (todo: PATH_MAX/pathconf()) */
 #define ARRAYMAX 1023		/* max array index */
 
+EXTERN	char	*kshname;	/* $0 */
 EXTERN	pid_t	kshpid;		/* $$, shell pid */
 EXTERN	pid_t	procpid;	/* pid of executing process */
 EXTERN	int	exstat;		/* exit status */
+EXTERN	int	subst_exstat;	/* exit status of last $(..)/`..` */
+EXTERN	char	*safe_prompt;	/* safe prompt if PS1 substitution fails */
 
 
 /*
@@ -248,7 +352,7 @@ EXTERN	Area	aperm;		/* permanent object space */
 /*
  * parsing & execution environment
  */
-EXTERN	struct	env {
+EXTERN	struct env {
 	short	type;			/* enviroment type - see below */
 	short	flags;			/* EF_* */
 	Area	area;			/* temporary allocation area */
@@ -266,8 +370,7 @@ EXTERN	struct	env {
 #define	E_INCL	3		/* including a file via . # */
 #define	E_EXEC	4		/* executing command tree */
 #define	E_LOOP	5		/* executing for/while # */
-#define	E_TCOM	6		/* executing simple command */
-#define	E_ERRH	7		/* general error handler # */
+#define	E_ERRH	6		/* general error handler # */
 /* # indicates env has valid jbuf (see unwind()) */
 
 /* struct env.flag values */
@@ -289,6 +392,7 @@ EXTERN	struct	env {
 #define	LBREAK	6		/* break statement */
 #define	LCONTIN	7		/* continue statement */
 #define LSHELL	8		/* return to interactive shell() */
+#define LAEXPR	9		/* error in arithmetic expression */
 
 
 /* option processing */
@@ -305,48 +409,49 @@ struct option {
 extern struct option options[];
 
 /*
- * flags (the order of these enums MUST match the order in options[])
- *   (!) means not implemented
+ * flags (the order of these enums MUST match the order in misc.c(options[]))
  */
 enum sh_flag {
 	FEXPORT = 0,	/* -a: export all */
 #ifdef BRACEEXPAND
 	FBRACEEXPAND,	/* enable {} globing */
 #endif
-	FBGNICE,	/* bgnice (!) */
+	FBGNICE,	/* bgnice */
 	FCOMMAND,	/* -c: (invocation) execute specified command */
-#ifdef VI
-	FVITABCOMPLETE,	/* enable tab as file name completion char */
-#endif
 #ifdef EMACS
 	FEMACS,		/* emacs command editing */
 #endif
 	FERREXIT,	/* -e: quit on error */
 #ifdef EMACS
-	FGMACS,		/* gmacs command editing (!) */
+	FGMACS,		/* gmacs command editing */
 #endif
 	FIGNOREEOF,	/* eof does not exit */
 	FTALKING,	/* -i: interactive */
 	FKEYWORD,	/* -k: name=value anywere */
-	FMARKDIRS,	/* mark dirs with / in file name completion (!) */
+	FLOGIN,		/* -l: a login shell */
+	FMARKDIRS,	/* mark dirs with / in file name completion */
 	FMONITOR,	/* -m: job control monitoring */
 	FNOCLOBBER,	/* -C: don't overwrite existing files */
 	FNOEXEC,	/* -n: don't execute any commands */
 	FNOGLOB,	/* -f: don't do file globbing */
-	FNOLOG,		/* don't save functions in history (!) */
+	FNOHUP,		/* -H: don't kill running jobs when login shell exits */
+	FNOLOG,		/* don't save functions in history (ignored) */
 #ifdef	JOBS
 	FNOTIFY,	/* -b: asynchronous job completion notification */
 #endif
 	FNOUNSET,	/* -u: using an unset var is an error */
+	FPHYSICAL,	/* -o physical: don't do logical cd's/pwd's */
 	FPOSIX,		/* -o posix: be posixly correct */
 	FPRIVILEGED,	/* -p: use suid_profile */
-	FRESTRICTED,	/* -r: restricted shell (!) */
+	FRESTRICTED,	/* -r: restricted shell */
 	FSTDIN,		/* -s: (invocation) parse stdin */
 	FTRACKALL,	/* -h: create tracked aliases for all commands */
 	FVERBOSE,	/* -v: echo input */
 #ifdef VI
 	FVI,		/* vi command editing */
 	FVIRAW,		/* always read in raw mode (ignored) */
+	FVISHOW8,	/* display chars with 8th bit set as is (versus M-) */
+	FVITABCOMPLETE,	/* enable tab as file name completion char */
 #endif
 	FXTRACE,	/* -x: execution trace */
 	FNFLAGS /* (place holder: how many flags are there) */
@@ -356,12 +461,15 @@ enum sh_flag {
 
 EXTERN	char shell_flags [FNFLAGS];
 
-extern	char	null [];	/* null value for variable */
+EXTERN	char	null [] _I_("");	/* null value for variable */
+EXTERN	char	space [] _I_(" ");
+EXTERN	char	newline [] _I_("\n");
+EXTERN	char	slash [] _I_("/");
 
 typedef	RETSIGTYPE (*handler_t)();	/* signal handler */
 
 /* temp/here files. the file is removed when the struct is freed */
-struct	temp {
+struct temp {
 	struct temp	*next;
 	int		pid;		/* pid of process parsed here-doc */
 	char		*name;
@@ -403,6 +511,7 @@ typedef struct trap {
 #define TF_DFL_INTR	BIT(6)	/* when received, default action is LINTR */
 #define TF_TTY_INTR	BIT(7)	/* tty generated signal (see j_waitj) */
 #define TF_CHANGED	BIT(8)	/* used by runtrap() to detect trap changes */
+#define TF_FATAL	BIT(9)	/* causes termination if not trapped */
 
 /* values for setsig()/setexecsig() flags argument */
 #define SS_RESTORE_MASK	0x3	/* how to restore a signal before an exec() */
@@ -418,6 +527,7 @@ typedef struct trap {
 
 EXTERN	int volatile trap;	/* traps pending? */
 EXTERN	int volatile intrsig;	/* pending trap interrupts executing command */
+EXTERN	int volatile fatal_trap;/* received a fatal signal */
 extern	Trap	sigtraps[SIGNALS+1];
 
 
@@ -446,7 +556,8 @@ EXTERN int really_exit;
 #define	C_LEX1	0x04		/* \0 \t\n|&;<>() */
 #define	C_VAR1	0x08		/* *@#!$-? */
 #define	C_IFSWS	0x10		/* \t \n (IFS white space) */
-#define	C_SUBOP	0x40		/* "=-+?#%" */
+#define	C_SUBOP1 0x20		/* "=-+?" */
+#define	C_SUBOP2 0x40		/* "#%" */
 #define	C_IFS	0x80		/* $IFS */
 
 extern	char ctypes [];
@@ -462,13 +573,14 @@ EXTERN int ifs0 _I_(' ');	/* for "$*" */
 /* Argument parsing for built-in commands and getopts command */
 
 /* Values for Getopt.flags */
-#define GF_ERROR	0x01	/* call errorf() if there is an error */
-#define GF_PLUSOPT	0x02	/* allow +c as an option */
+#define GF_ERROR	BIT(0)	/* call errorf() if there is an error */
+#define GF_PLUSOPT	BIT(1)	/* allow +c as an option */
 
 /* Values for Getopt.info */
-#define GI_DONE		0x01	/* set when at end of options or option error */
-#define GI_PLUS		0x02	/* last option was +c */
-#define GI_MINUSMINUS	0x04	/* arguments were ended with -- */
+#define GI_NONAME	BIT(0)	/* don't print argv[0] in errors */
+#define GI_MINUS	BIT(1)	/* an option started with -... */
+#define GI_PLUS		BIT(2)	/* an option started with +... */
+#define GI_MINUSMINUS	BIT(3)	/* arguments were ended with -- */
 
 typedef struct {
 	int	optind;
@@ -482,15 +594,52 @@ typedef struct {
 EXTERN Getopt builtin_opt;	/* for shell builtin commands */
 
 
+/* This for co-processes */
+struct coproc {
+	int	read;		/* pipe from co-process's stdout */
+	int	readw;		/* other side of read (saved temporarily) */
+	int	write;		/* pipe to co-process's stdin */
+	void	*job;		/* 0 if no co-process, or co-process died */
+};
+EXTERN struct coproc coproc;
+
+extern char ksh_version[];
+
+/* name of called builtin function (used by error functions) */
+EXTERN char	*builtin_argv0;
+EXTERN int	builtin_flag;	/* flags of called builtin (SPEC_BI, etc.) */
+
+/* current working directory, and size of memory allocated for same */
+EXTERN char	*current_wd;
+EXTERN int	current_wd_size;
+
 #ifdef EDIT
+/* Minimium required space to work with on a line - if the prompt leaves less
+ * space than this on a line, the prompt is truncated.
+ */
+# define MIN_EDIT_SPACE	7
+/* Minimium allowed value for x_cols: 2 for prompt, 3 for " < " at end of line
+ */
+# define MIN_COLS	(2 + MIN_EDIT_SPACE + 3)
 EXTERN	int	x_cols _I_(80);	/* tty columns */
 #else
 # define x_cols 80		/* for pr_menu(exec.c) */
 #endif
 
+
+/* These to avoid bracket matching problems */
+#define OPAREN	'('
+#define CPAREN	')'
+#define OBRACK	'['
+#define CBRACK	']'
+#define OBRACE	'{'
+#define CBRACE	'}'
+
+
 #include "shf.h"
 #include "table.h"
 #include "tree.h"
+#include "expand.h"
 #include "lex.h"
 #include "proto.h"
 

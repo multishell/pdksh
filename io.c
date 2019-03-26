@@ -2,10 +2,7 @@
  * shell buffered IO and formatted output
  */
 
-#if !defined(lint) && !defined(no_RCSids)
-static char *RCSid = "$Id: io.c,v 1.2 1994/05/19 18:32:40 michael Exp michael $";
-#endif
-
+#include <ctype.h>
 #include "sh.h"
 #include "ksh_stat.h"
 
@@ -13,7 +10,8 @@ static char *RCSid = "$Id: io.c,v 1.2 1994/05/19 18:32:40 michael Exp michael $"
  * formatted output functions
  */
 
-/* shellf(...); unwind(LERROR) */
+
+/* A shell error occured (eg, syntax error, etc.) */
 void
 #ifdef HAVE_PROTOTYPES
 errorf(const char *fmt, ...)
@@ -27,14 +25,115 @@ errorf(fmt, va_alist)
 
 	shl_stdout_ok = 0;	/* debugging: note that stdout not valid */
 	exstat = 1;
-	SH_VA_START(va, fmt);
-	shf_vfprintf(shl_out, fmt, va);
-	va_end(va);
+	if (fmt) {
+		error_prefix(TRUE);
+		SH_VA_START(va, fmt);
+		shf_vfprintf(shl_out, fmt, va);
+		va_end(va);
+		shf_putchar('\n', shl_out);
+	}
 	shf_flush(shl_out);
 	unwind(LERROR);
 }
 
-/* printf to shl_out (stderr) */
+/* like errorf(), but no unwind is done */
+void
+#ifdef HAVE_PROTOTYPES
+warningf(int fileline, const char *fmt, ...)
+#else
+warningf(fileline, fmt, va_alist)
+	int fileline;
+	const char *fmt;
+	va_dcl
+#endif
+{
+	va_list va;
+
+	error_prefix(fileline);
+	SH_VA_START(va, fmt);
+	shf_vfprintf(shl_out, fmt, va);
+	va_end(va);
+	shf_putchar('\n', shl_out);
+	shf_flush(shl_out);
+}
+
+/* Used by built-in utilities to prefix shell and utility name to message
+ * (also unwinds environments for special builtins).
+ */
+void
+#ifdef HAVE_PROTOTYPES
+bi_errorf(const char *fmt, ...)
+#else
+bi_errorf(fmt, va_alist)
+	const char *fmt;
+	va_dcl
+#endif
+{
+	va_list va;
+
+	shl_stdout_ok = 0;	/* debugging: note that stdout not valid */
+	exstat = 1;
+	if (fmt) {
+		error_prefix(TRUE);
+		/* not set when main() calls parse_args() */
+		if (builtin_argv0)
+			shf_fprintf(shl_out, "%s: ", builtin_argv0);
+		SH_VA_START(va, fmt);
+		shf_vfprintf(shl_out, fmt, va);
+		va_end(va);
+		shf_putchar('\n', shl_out);
+	}
+	shf_flush(shl_out);
+	/* POSIX special builtins and ksh special builtins cause
+	 * non-interactive shells to exit.
+	 * XXX odd use of KEEPASN; also may not want LERROR here
+	 */
+	if ((builtin_flag & SPEC_BI)
+	    || (Flag(FPOSIX) && (builtin_flag & KEEPASN)))
+	{
+		builtin_argv0 = (char *) 0;
+		unwind(LERROR);
+	}
+}
+
+/* Called when something that shouldn't happen does */
+void
+#ifdef HAVE_PROTOTYPES
+internal_errorf(int jump, const char *fmt, ...)
+#else
+internal_errorf(jump, fmt, va_alist)
+	int jump;
+	const char *fmt;
+	va_dcl
+#endif
+{
+	va_list va;
+
+	error_prefix(TRUE);
+	shf_fprintf(shl_out, "internal error: ");
+	SH_VA_START(va, fmt);
+	shf_vfprintf(shl_out, fmt, va);
+	va_end(va);
+	shf_putchar('\n', shl_out);
+	shf_flush(shl_out);
+	if (jump)
+		unwind(LERROR);
+}
+
+/* used by error reporting functions to print "ksh: .kshrc[25]: " */
+void
+error_prefix(fileline)
+	int fileline;
+{
+	shf_fprintf(shl_out, "%s: ", kshname + (*kshname == '-'));
+	if (fileline && source && source->file != NULL) {
+		shf_fprintf(shl_out, "%s[%d]: ", source->file,
+			source->errline > 0 ? source->errline : source->line);
+		source->errline = 0;
+	}
+}
+
+/* printf to shl_out (stderr) with flush */
 void
 #ifdef HAVE_PROTOTYPES
 shellf(const char *fmt, ...)
@@ -49,6 +148,7 @@ shellf(fmt, va_alist)
 	SH_VA_START(va, fmt);
 	shf_vfprintf(shl_out, fmt, va);
 	va_end(va);
+	shf_flush(shl_out);
 }
 
 /* printf to shl_stdout (stdout) */
@@ -64,7 +164,7 @@ shprintf(fmt, va_alist)
 	va_list va;
 
 	if (!shl_stdout_ok)
-	    errorf("shprintf: shl_stdout not valid\n");
+		internal_errorf(1, "shl_stdout not valid");
 	SH_VA_START(va, fmt);
 	shf_vfprintf(shl_stdout, fmt, va);
 	va_end(va);
@@ -91,6 +191,27 @@ initio()
 	shf_fdopen(2, SHF_WR, shl_spare);	/* force buffer allocation */
 }
 
+/* A dup2() with error checking */
+int
+ksh_dup2(ofd, nfd, errok)
+	int ofd;
+	int nfd;
+	int errok;
+{
+	int ret = dup2(ofd, nfd);
+
+	if (ret < 0 && errno != EBADF && !errok)
+		errorf("too many files open in shell");
+
+#ifdef DUP2_BROKEN
+	/* Ultrix systems like to preserve the close-on-exec flag */
+	if (ret >= 0)
+		(void) fcntl(nfd, F_SETFD, 0);
+#endif /* DUP2_BROKEN */
+
+	return ret;
+}
+
 /*
  * move fd from user space (0<=fd<10) to shell space (fd>=10),
  * set close-on-exec flag.
@@ -102,12 +223,12 @@ savefd(fd)
 	int nfd;
 
 	if (fd < FDBASE) {
-		nfd = fcntl(fd, F_DUPFD, FDBASE);
+		nfd = ksh_dupbase(fd, FDBASE);
 		if (nfd < 0)
 			if (errno == EBADF)
 				return -1;
 			else
-				errorf("too many files open in shell\n");
+				errorf("too many files open in shell");
 		close(fd);
 	} else
 		nfd = fd;
@@ -124,7 +245,7 @@ restfd(fd, ofd)
 	if (ofd < 0)		/* original fd closed */
 		close(fd);
 	else {
-		dup2(ofd, fd);
+		ksh_dup2(ofd, fd, TRUE); /* XXX: what to do if this fails? */
 		close(ofd);
 	}
 }
@@ -134,7 +255,7 @@ openpipe(pv)
 	register int *pv;
 {
 	if (pipe(pv) < 0)
-		errorf("can't create pipe - try again\n");
+		errorf("can't create pipe - try again");
 	pv[0] = savefd(pv[0]);
 	pv[1] = savefd(pv[1]);
 }
@@ -145,6 +266,135 @@ closepipe(pv)
 {
 	close(pv[0]);
 	close(pv[1]);
+}
+
+/* Called by iosetup() (deals with 2>&4, etc.), c_read, c_print to turn
+ * a string (the X in 2>&X, read -uX, print -uX) into a file descriptor.
+ */
+int
+check_fd(name, mode, emsgp)
+	char *name;
+	int mode;
+	char **emsgp;
+{
+	int fd, fl;
+
+	if (isdigit(name[0]) && !name[1]) {
+		fd = name[0] - '0';
+		if ((fl = fcntl(fd = name[0] - '0', F_GETFL, 0)) < 0) {
+			if (emsgp)
+				*emsgp = "bad file descriptor";
+			return -1;
+		}
+		fl &= O_ACCMODE;
+		/* X_OK is a kludge to disable this check for dups (x<&1):
+		 * historical shells never did this check (XXX don't know what
+		 * posix has to say).
+		 */
+		if (!(mode & X_OK) && fl != O_RDWR
+		    && (((mode & R_OK) && fl != O_RDONLY)
+			|| ((mode & W_OK) && fl != O_WRONLY)))
+		{
+			if (emsgp)
+				*emsgp = (fl == O_WRONLY) ?
+						"fd not open for reading"
+					      : "fd not open for writing";
+			return -1;
+		}
+		return fd;
+	} else if (name[0] == 'p' && !name[1])
+		return get_coproc_fd(mode, emsgp);
+	if (emsgp)
+		*emsgp = "illegal file descriptor name";
+	return -1;
+}
+
+/* Called once from main */
+void
+coproc_init()
+{
+	coproc.read = coproc.readw = coproc.write = -1;
+}
+
+/* Called by c_read() when eof is read - close fd if it is the co-process fd */
+void
+coproc_read_close(fd)
+	int fd;
+{
+	if (coproc.read >= 0 && fd == coproc.read) {
+		close(coproc.read);
+		coproc.read = -1;
+		if (coproc.readw >= 0) {
+			close(coproc.readw);
+			coproc.readw = -1;
+		}
+	}
+}
+
+/* Called by c_read() and by iosetup() to close the other side of the
+ * read pipe, so reads will actually terminate.
+ */
+void
+coproc_readw_close(fd)
+	int fd;
+{
+	if (coproc.read >= 0 && fd == coproc.read && coproc.readw >= 0) {
+		close(coproc.readw);
+		coproc.readw = -1;
+	}
+}
+
+/* Called by c_print when a write to a fd fails with EPIPE and by iosetup
+ * when co-process input is dup'd
+ */
+void
+coproc_write_close(fd)
+	int fd;
+{
+	if (coproc.write >= 0 && fd == coproc.write) {
+		close(coproc.write);
+		coproc.write = -1;
+	}
+}
+
+/* Called to check for existance of/value of the co-process file descriptor.
+ * (Used by check_fd() and by c_read/c_print to deal with -p option).
+ */
+int
+get_coproc_fd(mode, emsgp)
+	int mode;
+	char **emsgp;
+{
+	int fd = (mode & R_OK) ? coproc.read : coproc.write;
+
+	if (fd >= 0)
+		return fd;
+	if (emsgp)
+		*emsgp = "no coprocess";
+	return -1;
+}
+
+/* called to close file descriptors related to the coprocess (if any) */
+void
+cleanup_coproc(reuse)
+	int reuse;
+{
+	coproc.job = (void *) 0;
+	/* This to allow co-processes to share output pipe */
+	if (!reuse || coproc.readw < 0 || coproc.read < 0) {
+		if (coproc.read >= 0) {
+			close(coproc.read);
+			coproc.read = -1;
+		}
+		if (coproc.readw >= 0) {
+			close(coproc.readw);
+			coproc.readw = -1;
+		}
+	}
+	if (coproc.write >= 0) {
+		close(coproc.write);
+		coproc.write = -1;
+	}
 }
 
 /*
@@ -165,10 +415,11 @@ maketemp(ap)
 	len = strlen(tmp) + 3 + 20 + 20 + 1;
 	tp = (struct temp *) alloc(sizeof(struct temp) + len, ap);
 	tp->name = path = (char *) &tp[1];
-	shf_snprintf(path, len, "%s/sh%05u%02u",
-		tmp, (unsigned) getpid(), inc++);
+	/* Note that temp files need to fit 8.3 DOS limits */
+	shf_snprintf(path, len, "%s/sh%05u.%03x",
+		tmp, (unsigned) procpid, inc++);
 	close(creat(path, 0600));	/* to get safe permissions */
 	tp->next = NULL;
-	tp->pid = getpid();
+	tp->pid = procpid;
 	return tp;
 }

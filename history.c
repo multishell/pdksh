@@ -4,9 +4,6 @@
  * only implements in-memory history.
  */
 
-#if !defined(lint) && !defined(no_RCSids)
-static char *RCSid = "$Id: history.c,v 1.5 1994/06/17 19:52:41 michael Exp michael $";
-#endif
 /*
  *	This file contains
  *	a)	the original in-memory history  mechanism
@@ -19,19 +16,24 @@ static char *RCSid = "$Id: history.c,v 1.5 1994/06/17 19:52:41 michael Exp micha
  */
 
 #include "sh.h"
+#include "ksh_stat.h"
 
-#ifdef EASY_HISTORY
+#ifdef HISTORY
+# ifdef EASY_HISTORY
 
-# ifndef HISTFILE
-#  define HISTFILE ".pdksh_hist"
-# endif
+#  ifndef HISTFILE
+#   ifdef OS2
+#    define HISTFILE "history.ksh"
+#   else /* OS2 */
+#    define HISTFILE ".pdksh_hist"
+#   endif /* OS2 */
+#  endif
 
-#else
+# else
 /*	Defines and includes for the complicated case */
 
-# include "ksh_stat.h"
-# include <sys/file.h>
-# include <sys/mman.h>
+#  include <sys/file.h>
+#  include <sys/mman.h>
 
 /*
  *	variables for handling the data file
@@ -47,247 +49,404 @@ static void histinsert ARGS((Source *, int, unsigned char *));
 static void writehistfile ARGS((int, char *));
 static int sprinkle ARGS((int));
 
-# ifdef MAP_FILE
-#  define MAP_FLAGS	(MAP_FILE|MAP_PRIVATE)
-# else
-#  define MAP_FLAGS	MAP_PRIVATE
-# endif
+#  ifdef MAP_FILE
+#   define MAP_FLAGS	(MAP_FILE|MAP_PRIVATE)
+#  else
+#   define MAP_FLAGS	MAP_PRIVATE
+#  endif
 
-#endif	/* of EASY_HISTORY */
+# endif	/* of EASY_HISTORY */
 
-static char    *histrpl ARGS((char *s, char *pat, char *rep, int global));
+static int	hist_execute ARGS((char *cmd));
+static int	hist_replace ARGS((char **hp, char *pat, char *rep,
+				   int global));
+static char   **hist_get ARGS((char *str, int approx));
+static char   **hist_get_newest ARGS((int print_err));
+static char   **hist_get_oldest ARGS((int print_err));
+static void	histbackup ARGS((void));
 
 static char   **current;	/* current postition in history[] */
 static int	curpos;		/* current index in history[] */
 static char    *hname;		/* current name of history file */
 static int	hstarted;	/* set after hist_init() called */
+static Source	*hist_source;	
 
 
 int
 c_fc(wp)
 	register char **wp;
 {
-	register char *id;
 	struct shf *shf;
-	FILE *f;
 	struct temp UNINITIALIZED(*tf);
-	register char **hp;
-	char **hbeg, **hend;
-	char *p, *cmd = NULL;
-	int lflag = 0, nflag = 0, sflag = 0, rflag = 0, gflag = 0;
-	int done = 0;
-	void histbackup();
+	char *p, *editor = (char *) 0;
+	int gflag = 0, lflag = 0, nflag = 0, sflag = 0, rflag = 0;
+	int optc;
+	char *first = (char *) 0, *last = (char *) 0;
+	char **hfirst, **hlast, **hp;
 
-	for (wp++; (id = *wp) != NULL && *id++ == '-' && !done; wp++)
-		while (*id && !done) {
-			switch (*id++) {
-			  case 'l':
-				lflag++;
-				break;
-			  case 'n':
-				nflag++;
-				break;
-			  case 'r':
-				rflag++;
-				break;
-			  case 'g':
-				gflag++;
-				break;
-			  case 'e':
-				if (++wp && (p = *wp)) {
-					if (p[0] == '-' && !p[1]) {
-						sflag++;
-					} else {
-						cmd = strnsave(p, strlen(p) + 4, ATEMP);
-						strcat(cmd, " $_");
-					}
-				} else
-					errorf("argument expected\n");
-				id = "";
-				break;
-			  default:
-				wp--;
-				done++;
-				break;
+	while ((optc = ksh_getopt(wp, &builtin_opt, "e:glnrs0,1,2,3,4,5,6,7,8,9,")) != EOF)
+		switch (optc) {
+		  case 'e':
+			p = builtin_opt.optarg;
+			if (strcmp(p, "-") == 0)
+				sflag++;
+			else {
+				editor = strnsave(p, strlen(p) + 4, ATEMP);
+				strcat(editor, " $_");
+			}
+			break;
+		  case 'g': /* non-at&t ksh */
+			gflag++;
+			break;
+		  case 'l':
+			lflag++;
+			break;
+		  case 'n':
+			nflag++;
+			break;
+		  case 'r':
+			rflag++;
+			break;
+		  case 's':	/* posix version of -e - */
+			sflag++;
+			break;
+		  /* kludge city - accept -num as -- -num (kind of) */
+		  case '0': case '1': case '2': case '3': case '4':
+		  case '5': case '6': case '7': case '8': case '9':
+			p = shf_smprintf("-%c%s",
+					optc, builtin_opt.optarg);
+			if (!first)
+				first = p;
+			else if (!last)
+				last = p;
+			else {
+				bi_errorf("too many arguments");
+				return 1;
+			}
+			break;
+		  case '?':
+			return 1;
+		}
+	wp += builtin_opt.optind;
+
+	/* Substitute and execute command */
+	if (sflag) {
+		char *pat = (char *) 0, *rep = (char *) 0;
+
+		if (editor || lflag || nflag || rflag) {
+			bi_errorf("can't use -e, -l, -n, -r with -s (-e -)");
+			return 1;
+		}
+
+		if (!first && (first = *wp)) {
+			wp++;
+			if (*first && (p = strchr(first + 1, '='))) {
+				pat = first;
+				*p++ = '\0';
+				rep = p;
+				first = *wp++;
 			}
 		}
-
-	if (sflag) {
-		char *pat = NULL, *rep = NULL;
-
-		hp = histptr - 1;
-		while ((id = *wp++) != NULL) {
-			/* todo: multiple substitutions */
-			if (*id && (p = strchr(id + 1, '=')) != NULL) {
-				pat = id;
-				rep = p;
-				*rep++ = '\0';
-			} else
-				hp = histget(id);
+		if (last || *wp) {
+			bi_errorf("too many arguments");
+			return 1;
 		}
-
-		if (hp == NULL || hp < history)
-			errorf("cannot find history\n");
-		if (pat == NULL)
-			strcpy(line, *hp);
-		else
-			histrpl(*hp, pat, rep, gflag);
-		histbackup();
-#ifdef EASY_HISTORY
-		histsave(line); 
-#else
-		histsave(source->line+1, line, 1);
-#endif
-		histpush--; 
-		line[0] = '\0';
-		return 0;
+		histbackup(); /* before hist_get_newest() */
+		hp = first ? hist_get(first, FALSE) : hist_get_newest(TRUE);
+		if (!hp)
+			return 1;
+		return hist_replace(hp, pat, rep, gflag);
 	}
 
-	if (*wp != NULL) {
-		hbeg = histget(*wp++); /* first */
-		if (*wp != NULL)
-			hend = histget(*wp++); /* last */
-		else if (lflag)
-			hend = (histptr - hbeg > 16) ? hbeg + 16 : histptr;
-		else
-			hend = hbeg;
+	if (editor && (lflag || nflag)) {
+		bi_errorf("can't use -l, -n with -e");
+		return 1;
+	}
+
+	if (!first && (first = *wp))
+		wp++;
+	if (!last && (last = *wp))
+		wp++;
+	if (*wp) {
+		bi_errorf("too many arguments");
+		return 1;
+	}
+	if (!lflag)
+		histbackup(); /* before hist_get_newest() */
+	if (!first) {
+		hfirst = lflag ? hist_get("-16", TRUE) : hist_get_newest(TRUE);
+		if (!hfirst)
+			return 1;
+		/* can't fail if hfirst did fail */
+		hlast = hist_get_newest(TRUE);
 	} else {
-		if (lflag)
-			hbeg = histptr - 16, hend = histptr;
-		else
-			hbeg = hend = histptr - 1;
-		if (hbeg < history)
-			hbeg = history;
+		/* POSIX says not an error if first/last out of bounds
+		 * when range is specified; at&t ksh and pdksh allow out of
+		 * bounds for -l as well.
+		 */
+		hfirst = hist_get(first, (lflag || last) ? TRUE : FALSE);
+		if (!hfirst)
+			return 1;
+		hlast = last ? hist_get(last, TRUE)
+			    : (lflag ? hist_get_newest(TRUE) : hfirst);
+		if (!hlast)
+			return 1;
 	}
-	if (hbeg == NULL || hend == NULL)
-		errorf("can't find history\n");
+	if (hfirst > hlast) {
+		char **temp;
 
-	if (lflag)
-		shf = shf_fdopen(1, SHF_WR, (struct shf *) 0);
-	else {
-		nflag++;
-		tf = maketemp(ATEMP);
-		tf->next = e->temps; e->temps = tf;
-		shf = shf_open(tf->name, O_WRONLY|O_CREAT|O_TRUNC, 0666, 0);
-		if (shf == NULL)
-			errorf("cannot create temp file %s\n", tf->name);
+		temp = hfirst; hfirst = hlast; hlast = temp;
+		rflag = 1; /* POSIX (doesn't seem to say rflag = !rflag) */
 	}
 
-	for (hp = (rflag ? hend : hbeg); rflag ? (hp >= hbeg) : (hp <= hend);
-	      rflag ? hp-- : hp++) {
-		if (!nflag)
-			shf_fprintf(shf, "%3d: ",
-				source->line - (int)(histptr-hp));
-		shf_fprintf(shf, "%s\n", *hp);
-	}
+	/* List history */
+	if (lflag) {
+		char *s, *t;
+		char *nfmt = nflag ? "\t" : "%d\t";
 
-	shf_flush(shf);
-	if (lflag)
+		for (hp = rflag ? hlast : hfirst;
+		     hp >= hfirst && hp <= hlast; hp += rflag ? -1 : 1)
+		{
+			shf_fprintf(shl_stdout, nfmt,
+				hist_source->line - (int) (histptr - hp));
+			/* print multi-line commands correctly */
+			for (s = *hp; (t = strchr(s, '\n')); s = t)
+				shf_fprintf(shl_stdout, "%.*s\t", ++t - s, s);
+			shf_fprintf(shl_stdout, "%s\n", s);
+		}
+		shf_flush(shl_stdout);
 		return 0;
-	else
-		shf_close(shf);
+	}
+
+	/* Run editor on selected lines, then run resulting commands */
+
+	tf = maketemp(ATEMP);
+	tf->next = e->temps; e->temps = tf;
+	shf = shf_open(tf->name, O_WRONLY|O_CREAT|O_TRUNC, 0666, 0);
+	if (!shf) {
+		bi_errorf("cannot create temp file %s - %s",
+			tf->name, strerror(errno));
+		return 1;
+	}
+	for (hp = rflag ? hlast : hfirst;
+	     hp >= hfirst && hp <= hlast; hp += rflag ? -1 : 1)
+		shf_fprintf(shf, "%s\n", *hp);
+	if (shf_close(shf) == EOF) {
+		bi_errorf("error writing temporary file - %s", strerror(errno));
+		return 1;
+	}
 
 	setstr(local("_"), tf->name);
-	if (cmd) {
-		command(cmd); /* edit temp file */
-		afree(cmd, ATEMP);
-	} else
-		command("${FCEDIT:-/bin/ed} $_");
 
-	f = fopen(tf->name, "r");
-	if (f == NULL)
-		errorf("cannot open temp file %s\n", tf->name);
-	/* we push the editted lines onto the history list */
-	while (fgets(line, sizeof(line), f) != NULL) {
-#ifdef EASY_HISTORY
-		histsave(line); 
-#else
-		histsave(source->line, line, 1); 
-#endif
-		histpush--; 
+	/* XXX: source should not get trashed by this.. */
+	{
+		Source *sold = source;
+		int ret;
+
+		ret = command(editor ? editor : "${FCEDIT:-/bin/ed} $_");
+		source = sold;
+		if (ret)
+			return ret;
 	}
-	line[0] = '\0';
-	fclose(f);
 
-	return 0;
+	{
+		struct stat statb;
+		XString xs;
+		char *xp;
+		int n;
+
+		if (!(shf = shf_open(tf->name, O_RDONLY, 0, 0))) {
+			bi_errorf("cannot open temp file %s", tf->name);
+			return 1;
+		}
+
+		n = fstat(shf_fileno(shf), &statb) < 0 ? 128
+			: statb.st_size + 1;
+		Xinit(xs, xp, n, hist_source->areap);
+		while ((n = shf_read(xp, Xnleft(xs, xp), shf)) > 0) {
+			xp += n;
+			if (Xnleft(xs, xp) <= 0)
+				XcheckN(xs, xp, Xlength(xs, xp));
+		}
+		if (n < 0) {
+			bi_errorf("error reading temp file %s - %s",
+				tf->name, strerror(shf_errno(shf)));
+			shf_close(shf);
+			return 1;
+		}
+		shf_close(shf);
+		*xp = '\0';
+		strip_nuls(Xstring(xs, xp), Xlength(xs, xp));
+		return hist_execute(Xstring(xs, xp));
+	}
 }
 
-/******************************/
-/* Back up over last histsave */
-/******************************/
-void
-histbackup()
+/* Save cmd in history, execute cmd (cmd gets trashed) */
+static int
+hist_execute(cmd)
+	char *cmd;
 {
-	static int last_line = -1;
+	Source *sold;
+	int ret;
+	char *p, *q;
 
-	if (histptr > history && last_line != source->line) { 
-		source->line--;
-		afree((void*)*histptr, APERM);
-		histptr--;
-		last_line = source->line;
+	for (p = cmd; p; p = q) {
+		if ((q = strchr(p, '\n'))) {
+			*q++ = '\0'; /* kill the newline */
+			if (!*q) /* ignore trailing newline */
+				q = (char *) 0;
+		}
+#ifdef EASY_HISTORY
+		if (p != cmd)
+			histappend(p, TRUE);
+		else
+#endif /* EASY_HISTORY */
+			histsave(++(hist_source->line), p, 1);
+
+		shellf("%s\n", p); /* POSIX doesn't say this is done... */
+		if ((p = q)) /* restore \n (trailing \n not restored) */
+			q[-1] = '\n';
 	}
+
+	/* Commands are executed here instead of pushing them onto the
+	 * input 'cause posix says the redirection and variable assignments
+	 * in
+	 *	X=y fc -e - 42 2> /dev/null
+	 * are to effect the repeated commands environment.
+	 */
+	/* XXX: source should not get trashed by this.. */
+	sold = source;
+	ret = command(cmd);
+	source = sold;
+	return ret;
+}
+
+static int
+hist_replace(hp, pat, rep, global)
+	char **hp;
+	char *pat;
+	char *rep;
+	int global;
+{
+	char *line;
+
+	if (!pat)
+		line = strsave(*hp, ATEMP);
+	else {
+		char *s, *s1, *last = (char *) 0;
+		int pat_len = strlen(pat);
+		int rep_len = strlen(rep);
+		int len;
+		XString xs;
+		char *xp;
+
+		Xinit(xs, xp, 128, ATEMP);
+		for (s = *hp; (s1 = strstr(s, pat)); s = s1 + pat_len) {
+			len = s1 - s;
+			XcheckN(xs, xp, len + rep_len);
+			memcpy(xp, s, len);		/* first part */
+			xp += len;
+			memcpy(xp, rep, rep_len);	/* replacement */
+			xp += rep_len;
+			if (!global)
+				break;
+		}
+		if (xp == Xstring(xs, xp)) {
+			bi_errorf("substitution failed");
+			return 1;
+		}
+		len = strlen(s) + 1;
+		XcheckN(xs, xp, len);
+		memcpy(xp, last, len);
+		xp += len;
+		line = Xclose(xs, xp);
+	}
+	return hist_execute(line);
 }
 
 /*
  * get pointer to history given pattern
  * pattern is a number or string
  */
-char **
-histget(str)
+static char **
+hist_get(str, approx)
 	char *str;
+	int approx;
 {
-	register char **hp = NULL;
+	char **hp = (char **) 0;
+	int n;
 
-	if (*str == '-')
-		hp = histptr + getn(str);
-	else
-	if (digit(*str))
-		hp = histptr + (getn(str) - source->line);
-	else 
-	if (*str == '?') {	/* unanchored match */
-		for (hp = histptr-1; hp >= history; hp--)
-			if (strstr(*hp, str+1) != NULL)
-				break;
-	} else {		/* anchored match */
-		for (hp = histptr; hp >= history; hp--)
-			if (strncmp(*hp, str, strlen(str)) == 0)
-				break;
+	if (getn(str, &n)) {
+		/* n + 1 if n < 0 to account for the histbackup() */
+		hp = histptr + (n < 0 ? n + 1 : (n - hist_source->line));
+		if (hp < history) {
+			if (approx)
+				hp = hist_get_oldest(TRUE);
+			else {
+				bi_errorf("%s: not in history", str);
+				hp = (char **) 0;
+			}
+		} else if (hp > histptr) {
+			if (approx)
+				hp = hist_get_newest(TRUE);
+			else {
+				bi_errorf("%s: not in history", str);
+				hp = (char **) 0;
+			}
+		}
+	} else {
+		int anchored = *str == '?' ? (++str, 0) : 1;
+
+		n = findhist(histptr - history, 0, str, anchored);
+		if (n < 0) {
+			bi_errorf("%s: not in history", str);
+			hp = (char **) 0;
+		} else
+			hp = &history[n];
 	}
-
-	return (history <= hp && hp <= histptr) ? hp : NULL;
+	return hp;
 }
 
-static char *
-histrpl(s, pat, rep, global)
-	char *s;
-	char *pat, *rep;
-	int global;
+/* Return a pointer to the newest command in the history */
+static char **
+hist_get_newest(print_err)
+	int print_err;
 {
-	char *s1, *p, *last = NULL;
-	int len = strlen(pat);
-	int rep_len = strlen(rep);
-
-	line[0] = '\0';
-	p = line;
-	while ((s1 = strstr(s, pat))) {
-		if ((p - line) + (s1 - s) + rep_len >= LINE)
-			errorf("substitution too long\n");
-		strncpy(p, s, s1 - s);		/* first part */
-		p += s1 - s;
-		strcpy(p, rep);	/* replacement */
-		p += rep_len;
-		s = s1 + len;
-		last = s1;
-		if (!global)
-			s = "";
+	if (histptr < history) {
+		if (print_err)
+			bi_errorf("no history (yet)");
+		return (char **) 0;
 	}
-	if (last) {
-		if (p - line + strlen(last + len) >= LINE)
-			errorf("substitution too long\n");
-		strcpy(p, last + len);		/* last part */
-	} else
-		errorf("substitution failed\n");
-	return line;
+	return histptr;
+}
+
+/* Return a pointer to the newest command in the history */
+static char **
+hist_get_oldest(print_err)
+	int print_err;
+{
+	if (histptr < history) {
+		if (print_err)
+			bi_errorf("no history (yet)");
+		return (char **) 0;
+	}
+	return history;
+}
+
+/******************************/
+/* Back up over last histsave */
+/******************************/
+static void
+histbackup()
+{
+	static int last_line = -1;
+
+	if (histptr > history && last_line != hist_source->line) { 
+		hist_source->line--;
+		afree((void*)*histptr, APERM);
+		histptr--;
+		last_line = hist_source->line;
+	}
 }
 
 /*
@@ -323,31 +482,30 @@ histnum(n)
 }
 
 /*
- * This will become unecessary if histget is modified to allow
+ * This will become unecessary if hist_get is modified to allow
  * searching from positions other than the end, and in either 
  * direction.
  */
 int
-findhist(start, fwd, str)
+findhist(start, fwd, str, anchored)
 	int	start;
 	int	fwd;
 	char 	*str;
+	int	anchored;
 {
 	char	**hp;
 	int	maxhist = histptr - history;
+	int	incr = fwd ? 1 : -1;
+	int	len = strlen(str);
 
 	if (start < 0 || start >= maxhist)
 		start = maxhist;
 
-	if (fwd) {
-		for (hp = &history[start]; *hp != (char *) 0; hp++)
-			if (strstr(*hp, str))
-				return hp - history;
-	} else {
-		for (hp = &history[start]; hp >= history; hp--)
-			if (strstr(*hp, str))
-				return hp - history;
-	}
+	hp = &history[start];
+	for (; hp >= history && hp <= histptr; hp += incr)
+		if ((anchored && strncmp(*hp, str, len) == 0)
+		    || (!anchored && strstr(*hp, str)))
+			return hp - history;
 
 	return -1;
 }
@@ -360,17 +518,19 @@ void
 sethistsize(n)
 	int n;
 {
-	int	offset;
-	
-	if (n != histsize) {
-		offset = histptr - history;
+	if (n > 0 && n != histsize) {
+		int cursize = histptr - history;
+
+		/* save most recent history */
+		if (n < cursize) {
+			memmove(history, histptr - n, n * sizeof(char *));
+			cursize = n;
+		}
+
 		history = (char **)aresize(history, n*sizeof(char *), APERM);
 
-		if (n < histsize && offset > histsize)
-			offset = histsize;
-
 		histsize = n;
-		histptr = history + offset;
+		histptr = history + cursize;
 	}
 }
 
@@ -394,12 +554,12 @@ sethistfile(name)
 	/*
 	 * its a new name - possibly
 	 */
-#ifdef EASY_HISTORY
+# ifdef EASY_HISTORY
 	if (hname) {
 		afree(hname, APERM);
 		hname = NULL;
 	}
-#else
+# else
 	if (histfd) {
 		/* yes the file is open */
 		(void) close(histfd);
@@ -409,11 +569,11 @@ sethistfile(name)
 		hname = NULL;
 		/* let's reset the history */
 		histptr = history - 1;
-		source->line = 0;
+		hist_source->line = 0;
 	}
-#endif
+# endif
 
-	hist_init(source);
+	hist_init(hist_source);
 }
 
 /*
@@ -423,27 +583,30 @@ void
 init_histvec()
 {
 	if (history == (char **)NULL) {
-		histsize = HISTORY;
+		histsize = HISTORYSIZE;
 		history = (char **)alloc(histsize*sizeof (char *), APERM);
-		histptr = history-1;
+		histptr = history - 1;
 	}
 }
 
-#ifdef EASY_HISTORY
+# ifdef EASY_HISTORY
 /*
  * save command in history
  */
 void
-histsave(cmd)
+histsave(lno, cmd, dowrite)
+	int lno;	/* ignored (compatibility with COMPLEX_HISTORY) */
 	char *cmd;
+	int dowrite;	/* ignored (compatibility with COMPLEX_HISTORY) */
 {
 	register char **hp = histptr;
 	char *cp;
 
 	if (++hp >= history + histsize) { /* remove oldest command */
-		afree((void*)*history, APERM);
-		for (hp = history; hp < history + histsize - 1; hp++)
-			hp[0] = hp[1];
+		afree((void*)history[0], APERM);
+		memmove(history, history + 1,
+			sizeof(history[0]) * (histsize - 1));
+		hp = &history[histsize - 1];
 	}
 	*hp = strsave(cmd, APERM);
 	/* trash trailing newline but allow imbedded newlines */
@@ -497,20 +660,22 @@ hist_init(s)
 
 	hstarted = 1;
 
+	hist_source = s;
+
 	if ((f = strval(global("HISTFILE"))) == NULL || *f == '\0') {
-#if 1 /* Don't use history file unless the user asks for it */
+# if 1 /* Don't use history file unless the user asks for it */
 		hname = NULL;
 		return;
-#else
+# else
 		char *home = strval(global("HOME"));
 		int len;
 
 		if (home == NULL)
-			home = "";
+			home = null;
 		f = HISTFILE;
 		hname = alloc(len = strlen(home) + strlen(f) + 2, APERM);
 		shf_snprintf(hname, len, "%s/%s", home, f);
-#endif
+# endif
 	} else
 		hname = strsave(f, APERM);
 
@@ -518,24 +683,26 @@ hist_init(s)
 		int pos = 0, nread = 0;
 		int contin = 0;		/* continuation of previous command */
 		char *end;
+		char hline[LINE + 1];
 
 		while (1) {
 			if (pos >= nread) {
 				pos = 0;
-				nread = fread(line, 1, LINE, fh);
+				nread = fread(hline, 1, LINE, fh);
 				if (nread <= 0)
 					break;
-				line[nread] = '\0';
+				hline[nread] = '\0';
 			}
-			end = strchr(line + pos, 0); /* will always succeed */
+			end = strchr(hline + pos, 0); /* will always succeed */
 			if (contin)
-				histappend(line + pos, 0);
-			else
-				histsave(line + pos);
-			pos = end - line + 1;
-			contin = end == &line[nread];
+				histappend(hline + pos, 0);
+			else {
+				hist_source->line++;
+				histsave(0, hline + pos, 0);
+			}
+			pos = end - hline + 1;
+			contin = end == &hline[nread];
 		}
-		line[0] = '\0';
 		fclose(fh);
 	}
 }
@@ -565,13 +732,13 @@ hist_finish()
     hp = history;
   if (hname && (fh = fopen(hname, "w")))
   {
-    for (i = 0; i < histsize && hp[i]; i++)
+    for (i = 0; hp + i <= histptr && hp[i]; i++)
       fprintf(fh, "%s%c", hp[i], '\0');
     fclose(fh);
   }
 }
 
-#else /* EASY_HISTORY */
+# else /* EASY_HISTORY */
 
 /*
  *	Routines added by Peter Collinson BSDI(Europe)/Hillside Systems to
@@ -632,9 +799,9 @@ histsave(lno, cmd, dowrite)
  *	Each command is
  *	<command byte><command number(4 bytes)><bytes><null>
  */
-#define HMAGIC1		0xab
-#define HMAGIC2		0xcd
-#define COMMAND		0xff
+# define HMAGIC1		0xab
+# define HMAGIC2		0xcd
+# define COMMAND		0xff
 
 void
 hist_init(s)
@@ -642,7 +809,6 @@ hist_init(s)
 {
 	unsigned char	*base;
 	int	lines;
-	int	bytes;
 	int	fd;
 	
 	if (Flag(FTALKING) == 0)
@@ -650,6 +816,8 @@ hist_init(s)
 
 	hstarted = 1;
 	
+	hist_source = s;
+
 	hname = strval(global("HISTFILE"));
 	if (hname == NULL)
 		return;
@@ -664,7 +832,7 @@ hist_init(s)
 
 	(void) flock(histfd, LOCK_EX);
 
-	hsize = lseek(histfd, 0L, L_XTND);
+	hsize = lseek(histfd, 0L, SEEK_END);
 
 	if (hsize == 0) {
 		/* add magic */
@@ -699,11 +867,11 @@ hist_init(s)
 				goto retry;
 			}
 		}
-		histload(s, base+2, hsize-2);
+		histload(hist_source, base+2, hsize-2);
 		munmap((caddr_t)base, hsize);
 	}
 	(void) flock(histfd, LOCK_UN);
-	hsize = lseek(histfd, 0L, L_XTND);
+	hsize = lseek(histfd, 0L, SEEK_END);
 }
 
 typedef enum state {
@@ -768,7 +936,7 @@ hist_shrink(oldbase, oldbytes)
 	/*
 	 *	create temp file
 	 */
-	(void) shf_snprintf(nfile, sizeof(nfile), "%s.%d", hname, getpid());
+	(void) shf_snprintf(nfile, sizeof(nfile), "%s.%d", hname, procpid);
 	if ((fd = creat(nfile, 0600)) < 0)
 		return 1;
 
@@ -811,21 +979,20 @@ hist_skip_back(base, bytes, no)
 	register int lines = 0;
 	register unsigned char *ep;
 
-	
-
-	for (ep = base + *bytes; ep > base; ep--)
-	{
-		while (*ep != COMMAND) {
-			if (--ep == base)
-				break;
-		}
+	for (ep = base + *bytes; --ep > base; ) {
+		/* this doesn't really work: the 4 byte line number that is
+		 * encoded after the COMMAND byte can itself contain the
+		 * COMMAND byte....
+		 */
+		for (; ep > base && *ep != COMMAND; ep--)
+			;
+		if (ep == base)
+			break;
 		if (++lines == no) {
 			*bytes = *bytes - ((char *)ep - (char *)base);
 			return ep;
 		}
 	}
-	if (ep > base)
-		return base;
 	return NULL;
 }
 
@@ -920,7 +1087,7 @@ writehistfile(lno, cmd)
 	char	hdr[5];
 	
 	(void) flock(histfd, LOCK_EX);
-	sizenow = lseek(histfd, 0L, L_XTND);
+	sizenow = lseek(histfd, 0L, SEEK_END);
 	if (sizenow != hsize) {
 		/*
 		 *	Things have changed
@@ -936,10 +1103,10 @@ writehistfile(lno, cmd)
 				munmap((caddr_t)base, sizenow);
 				goto bad;
 			}
-			source->line--;
-			histload(source, new, bytes);
-			source->line++;
-			lno = source->line;
+			hist_source->line--;
+			histload(hist_source, new, bytes);
+			hist_source->line++;
+			lno = hist_source->line;
 			munmap((caddr_t)base, sizenow);
 			hsize = sizenow;
 		} else {
@@ -959,7 +1126,7 @@ writehistfile(lno, cmd)
 	hdr[4] = lno&0xff;
 	(void) write(histfd, hdr, 5);
 	(void) write(histfd, cmd, strlen(cmd)+1);
-	hsize = lseek(histfd, 0L, L_XTND);
+	hsize = lseek(histfd, 0L, SEEK_END);
 	(void) flock(histfd, LOCK_UN);
 	return;
 bad:
@@ -986,4 +1153,29 @@ sprinkle(fd)
 	return(write(fd, mag, 2) != 2);
 }
 
-#endif
+# endif
+#else /* HISTORY */
+
+/* No history to be compiled in: dummy routines to avoid lots more ifdefs */
+void
+init_histvec()
+{
+}
+void
+hist_init(s)
+	Source *s;
+{
+}
+void
+hist_finish()
+{
+}
+void
+histsave(lno, cmd, dowrite)
+	int lno;
+	char *cmd;
+	int dowrite;
+{
+	errorf("history not enabled");
+}
+#endif /* HISTORY */

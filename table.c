@@ -1,7 +1,3 @@
-#if !defined(lint) && !defined(no_RCSids)
-static char *RCSid = "$Id: table.c,v 1.3 1994/05/31 13:34:34 michael Exp $";
-#endif
-
 /*
  * dynamic hashed associative table for commands and variables
  */
@@ -21,7 +17,7 @@ static int      tnamecmp    ARGS((void *p1, void *p2));
 
 unsigned int
 hash(n)
-	register char * n;
+	register const char * n;
 {
 	register unsigned int h = 0;
 
@@ -30,20 +26,17 @@ hash(n)
 	return h * 32821;	/* scatter bits */
 }
 
-#if 0
-phash(s) char *s; {
-	shellf("%2d: %s\n", hash(s)%32, s);
-}
-#endif
-
 void
-tinit(tp, ap)
+tinit(tp, ap, tsize)
 	register struct table *tp;
 	register Area *ap;
+	int tsize;
 {
 	tp->areap = ap;
-	tp->size = tp->nfree = 0;
 	tp->tbls = NULL;
+	tp->size = tp->nfree = 0;
+	if (tsize)
+		texpand(tp, tsize);
 }
 
 static void
@@ -83,7 +76,7 @@ texpand(tp, nsize)
 struct tbl *
 tsearch(tp, n, h)
 	register struct table *tp;	/* table */
-	register char *n;		/* name to enter */
+	register const char *n;		/* name to enter */
 	unsigned int h;			/* hash(n) */
 {
 	register struct tbl **pp, *p;
@@ -106,11 +99,11 @@ tsearch(tp, n, h)
 struct tbl *
 tenter(tp, n, h)
 	register struct table *tp;	/* table */
-	register char *n;		/* name to enter */
+	register const char *n;		/* name to enter */
 	unsigned int h;			/* hash(n) */
 {
 	register struct tbl **pp, *p;
-	register char *cp;
+	register int len;
 
 	if (tp->size == 0)
 		texpand(tp, INIT_TBLS);
@@ -129,17 +122,14 @@ tenter(tp, n, h)
 	}
 
 	/* create new tbl entry */
-	for (cp = n; *cp != '\0'; cp++)
-		;
-	p = (struct tbl *) alloc(offsetof(struct tbl, name[(cp-n)+1]), tp->areap);
+	len = strlen(n) + 1;
+	p = (struct tbl *) alloc(offsetof(struct tbl, name[len]), tp->areap);
 	p->flag = 0;
 	p->type = 0;
 	p->areap = tp->areap;
 	p->field = 0;
-	p->array = (struct tbl *)0;
-	for (cp = p->name; *n != '\0';)
-		*cp++ = *n++;
-	*cp = '\0';
+	p->u.array = (struct tbl *)0;
+	memcpy(p->name, n, len);
 
 	/* enter in tp->tbls */
 	tp->nfree--;
@@ -200,3 +190,47 @@ tsort(tp)
 	return p;
 }
 
+#ifdef PERF_DEBUG /* performance debugging */
+
+void
+tprintinfo(tp)
+	struct table *tp;
+{
+	struct tbl *te;
+	char *n;
+	unsigned int h;
+	int ncmp;
+	int totncmp = 0, maxncmp = 0;
+	int nentries = 0;
+
+	shellf("table size %d, nfree %d\n", tp->size, tp->nfree);
+	shellf("    Ncmp name\n");
+	twalk(tp);
+	while ((te = tnext())) {
+		register struct tbl **pp, *p;
+
+		h = hash(n = te->name);
+		ncmp = 0;
+
+		/* taken from tsearch() and added counter */
+		for (pp = &tp->tbls[h & (tp->size-1)]; (p = *pp); pp--) {
+			ncmp++;
+			if (*p->name == *n && strcmp(p->name, n) == 0
+			    && (p->flag&DEFINED))
+				break; /* return p; */
+			if (pp == tp->tbls) /* wrap */
+				pp += tp->size;
+		}
+		shellf("    %4d %s\n", ncmp, n);
+		totncmp += ncmp;
+		nentries++;
+		if (ncmp > maxncmp)
+			maxncmp = ncmp;
+	}
+	if (nentries)
+		shellf("  %d entries, worst ncmp %d, avg ncmp %d.%02d\n",
+			nentries, maxncmp,
+			totncmp / nentries,
+			(totncmp % nentries) * 100 / nentries);
+}
+#endif /* PERF_DEBUG */

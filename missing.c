@@ -2,13 +2,10 @@
  * Routines which may be missing on some machines
  */
 
-#if !defined(lint) && !defined(no_RCSids)
-static char *RCSid = "$Id: missing.c,v 1.1 1994/05/31 13:34:34 michael Exp $";
-#endif
-
 #include "sh.h"
 #include "ksh_stat.h"
 #include "ksh_dir.h"
+
 
 #ifndef HAVE_MEMSET
 void *
@@ -25,7 +22,6 @@ memset(d, c, n)
 	return d;
 }
 #endif /* !HAVE_MEMSET */
-
 
 #if !defined(HAVE_MEMMOVE) && !defined(HAVE_BCOPY)
 void *
@@ -192,56 +188,6 @@ strerror(err)
 }
 #endif /* !HAVE_STRERROR */
 
-
-#ifndef HAVE_GETCWD
-# include <sys/param.h>
-# ifndef MAXPATHLEN
-#  define MAXPATHLEN 1024
-# endif /* MAXPATHLEN */
-
-char *
-getcwd(buf, size)
-	char	*buf;
-	int	size;
-{
-	extern char *getwd ARGS((char *));
-	char tmp_buf[MAXPATHLEN + 1];
-
-	if (size <= 0) {
-		errno = EINVAL;
-		return (char *) 0;
-	}
-	if (getwd(size < MAXPATHLEN ? tmp_buf : buf) == (char *) 0) {
-		errno = EACCES;
-		return (char *) 0;
-	}
-	if (size < MAXPATHLEN) {
-		tmp_buf[sizeof(tmp_buf) - 1] = '\0';
-		if (strlen(tmp_buf) >= size) {
-			errno = ERANGE;
-			return (char *) 0;
-		}
-		strcpy(buf, tmp_buf);
-	}
-	return buf;
-}
-#endif /* !HAVE_GETCWD */
-
-
-#ifdef DUP2_BROKEN
-#undef dup2
-int
-dup2_fixup(ofd, nfd)
-	int ofd, nfd;
-{
-	int ret = dup2(ofd, nfd);
-
-	if (ret >= 0)
-		(void) fcntl(nfd, F_SETFD, 0);
-	return ret;
-}
-# define dup2	dup2_fixup
-#endif /* DUP2_BROKEN */
 
 #ifdef TIMES_BROKEN
 # include "ksh_time.h"

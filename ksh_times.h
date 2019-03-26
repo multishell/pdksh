@@ -1,10 +1,10 @@
 #include <sys/times.h>
 
-#ifdef BROKEN_TIMES
+#ifdef TIMES_BROKEN
 extern clock_t	ksh_times ARGS((struct tms *));
-#else /* BROKEN_TIMES */
+#else /* TIMES_BROKEN */
 # define ksh_times times
-#endif /* BROKEN_TIMES */
+#endif /* TIMES_BROKEN */
 
 #ifdef HAVE_TIMES
 extern clock_t	times ARGS((struct tms *));

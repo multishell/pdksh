@@ -8,11 +8,11 @@
 
 # pattern that matches the date in the version string in version.c
 # \1 is preamble, \2 is the date, \3 is postamble (use ? pattern delimiters).
-DATEPAT='\(.*KSH_VERSION=.* \)\([0-9]*/[0-9]*/[.0-9]*\)\(.*\)'
+DATEPAT='\(@(#).* \)\([0-9]*/[0-9]*/[.0-9]*\)\(.*\)'
 
 vfile=version.c
-bfile=version.c.bak
-tfile=version.c.new
+bfile=$vfile.bak
+tfile=$vfile.new
 
 odatev=`sed -n "s?$DATEPAT?\2?p" < $vfile`
 odate=`echo "$odatev" | sed 's?\..*??'`

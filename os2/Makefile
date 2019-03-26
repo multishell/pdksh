@@ -2,26 +2,26 @@
 #  @configure_input@
 #
 
-srcdir = @srcdir@
-VPATH = @srcdir@
+srcdir = .
+VPATH = .
 
-CC = @CC@
-CPP = @CPP@
+CC = gcc
+CPP = cpp
 
-INSTALL = @INSTALL@
-INSTALL_PROGRAM = @INSTALL_PROGRAM@
-INSTALL_DATA = @INSTALL_DATA@
+INSTALL = /bin/install -c
+INSTALL_PROGRAM = $(INSTALL)
+INSTALL_DATA = $(INSTALL) -m 644
 
-DEFS = @DEFS@
-LIBS = @LIBS@
+DEFS = -DHAVE_CONFIG_H
+LIBS = -los2
 
-CPPFLAGS = @CPPFLAGS@
-CFLAGS = @CFLAGS@
-LDSTATIC = @LDSTATIC@
-LDFLAGS = @LDFLAGS@
+CPPFLAGS = 
+CFLAGS = -O -DOS2
+LDSTATIC = 
+LDFLAGS = -O $(LDSTATIC)
 
-prefix = @prefix@
-exec_prefix = @exec_prefix@
+prefix = c:/usr
+exec_prefix = c:/usr
 binprefix =
 manprefix =
 
@@ -30,7 +30,7 @@ mandir = $(prefix)/man/man$(manext)
 manext = 1
 
 # Suffix for executables: nothing for unix, .exe for os/2.
-exe_suffix=@ac_exe_suffix@
+exe_suffix=.exe
 
 SHELL = /bin/sh
 
@@ -38,7 +38,7 @@ SRCS = alloc.c c_ksh.c c_sh.c c_test.c c_ulimit.c edit.c emacs.c \
 	eval.c exec.c expr.c history.c io.c jobs.c lex.c mail.c \
 	main.c misc.c missing.c path.c shf.c sigact.c syn.c table.c trap.c \
 	tree.c tty.c var.c version.c vi.c
-OBJS = alloc.o c_ksh.o c_sh.o c_test.o c_ulimit.o edit.o emacs.o \
+OBJS = os2.o alloc.o c_ksh.o c_sh.o c_test.o c_ulimit.o edit.o emacs.o \
 	eval.o exec.o expr.o history.o io.o jobs.o lex.o mail.o \
 	main.o misc.o missing.o path.o shf.o sigact.o syn.o table.o trap.o \
 	tree.o tty.o var.o version.o vi.o
@@ -103,26 +103,23 @@ $(srcdir)/stamp-h.in: configure.in aclocal.m4 acconfig.h
 	cd $(srcdir) && autoheader
 	date > $(srcdir)/stamp-h.in
 
-config.h: stamp-h
-stamp-h: config.h.in config.status
-	CONFIG_FILES="" CONFIG_HEADERS=config.h ./config.status
-	date > stamp-h
+config.h:
+	cmd /c copy $(srcdir)\os2\config.h config.h > nul
+	touch config.h
 
-Makefile: Makefile.in config.status
-	CONFIG_FILES=Makefile CONFIG_HEADERS= ./config.status
-
-config.status: configure
-	LDSTATIC="$(LDSTATIC)" ./config.status --recheck
+Makefile:
+	cmd /c copy $(srcdir)\os2\Makefile Makefile > nul
+	touch Makefile
 
 # two steps to prevent the creation of a bogus siglist.out
-siglist.out: config.h sh.h siglist.in siglist.sh
-	$(srcdir)/siglist.sh "$(CPP) $(CPPFLAGS) $(DEFS) -I. -I$(srcdir)" < $(srcdir)/siglist.in > tmpsiglist.out
-	mv tmpsiglist.out siglist.out
+siglist.out:
+	cmd /c copy $(srcdir)\os2\os2siglist.out siglist.out > nul
+	touch siglist.out
 
 # two steps to prevent the creation of a bogus emacs.out
-emacs.out: emacs.c
-	$(srcdir)/emacs-gen.sh $(srcdir)/emacs.c > tmpemacs.out
-	mv tmpemacs.out emacs.out
+emacs.out:
+	cmd /c copy $(srcdir)\os2\emacs.out emacs.out > nul
+	touch emacs.out
 
 debugtools: check-fd$(exe_suffix) check-sigs$(exe_suffix) \
 	check-pgrp$(exe_suffix)

@@ -1,8 +1,305 @@
+Version 5.2.3
+
+* bug fixes
+    * arrays: set -A and unset now unset whole array.
+    * history(complex version): fixed core caused by uninitialized hist_source.
+    * getopts: will continue parsing options if called after error.
+    * getopts: doesn't print shell name twice in error message.
+    * posix: if posix option is set, $0 is always the name of the shell.
+    * history: "fc -s foo" now finds foo if it is the most recent command.
+    * let: expression errors no longer cause scripts to exit.
+    * PS1: does not go into infinite loop if there is an expansion error.
+    * configure: memmove/bcopy test has a change of working now.
+    * configure: check for flock(), undefine COMPLEX_HISTORY if not found.
+    * substitution: tilde substitution works in word part of ${var[-+=?]word}.
+    * history: "fc <number>" now edits <number>, not <number> to most recent.
+    * cd: two argument form works again.
+    * special commands taking assignments (alias,set,etc.): field splitting,
+      file globing, etc. suppressed only for args that look like assignments.
+    * command: -V now finds reserved words.
+
+* added support for Korn's /dev/fd tests
+
+* new compile time option: DEFAULT_ENV - if defined, it names a file to
+  include if $ENV is not set.
+
+* test -o option: if option starts with a !, the test is negated.  The test
+  always fails if the option doesn't exist (so [ -o foo -o -o !foo ] is true
+  iff option foo exists).
+
+* new option: set -o nohup (currently on by default) - if set, running jobs
+  are not kill -HUP'd when a login shell exits; if clear, they are.  In
+  future, this will be clear by default (to act like at&t ksh) - if you don't
+  (won't) like this, add "[ -o !nohup ] && set -o nohup" to your .profile.
+
+Version 5.2.2
+
+* bug fixes
+    * included c_test.h in distribution (opps).
+
+Version 5.2.1
+
+* bug fixes
+    * emacs: buffer no longer overflowed when completing file names/commands.
+    * emacs: <ESC><tty-erase-char> now bound to delete-back-word (was ...-char).
+    * emacs: ignores a space char after ^V (version), as in at&t ksh.
+    * emacs: ^O bound to newline-and-next, ^X^Y bound to list-file.
+    * emacs: emacs words now include underscore.
+    * vi: set -o markdirs, directories and ^[= now get along.
+    * cd: -P no longer leaves .. and . in PWD.
+    * cd: if CDPATH set and can't cd, error doesn't contain any of CDPATH.
+    * cd: sets PWD properly, on machines without getwd().
+    * configuration: unistd.h test fixed (include sys/types before dirent.h).
+    * configuration: detects memmove/bcopy's that don't handle overlaps.
+    * [[ ... ]] does lazy evaluation (eg, [[ ! -f foo || $(<foo) = bar ]] does
+      not evaluate $(<foo) if foo doesn't exist).
+
+
+Version 5.2.0
+
+* bug fixes
+    * vi: completion now allows globing characters.
+    * vi: can deal with very long prompts.
+    * vi: . (redo) works after j, k, return.
+    * vi: [dyc]% causing backwards motion now gets correct start/end position.
+    * vi: complete_word (<ESC>\) no longer rings bell on ambiguous matches.
+    * vi: globing doesn't append * if last component of file has globing chars.
+    * emacs: most commands now take arguments, arguments can be multi digit.
+    * emacs: newline-and-next command works more correctly.
+    * after set -u, trimming substitutions no longer automatically fail.
+    * set -i no longer reports an internal error.
+    * FPATH: no longer incorrectly complains about function not being defined.
+      by a file; when it connectly complains, shell name in error is correct.
+    * set -a; set -o allexport: these now do something.
+    * shell deals with non-blocking input (clears non-blocking flag).
+    * autoconf: fixed memmove/memcpy tests.
+    * ! translation in prompt now done before parameter substitution.
+    * siglist.sh works around bug in bash 1.4.3.
+    * correct positional parameters accessible in local assignments.
+    * (sleep 100&) no longer waits for sleep to complete.
+
+* fc -s option added (same as -e -).
+
+* vi: ^V command (version) added.
+
+* vi: @<char> macros added (@X executes vi commands in alias _X).
+
+* emacs: bind -l lists all command names.
+
+* emacs: goto-history command added.
+
+* emacs: search-char function changed to search-char-forward;
+  added search-char-backward (bound to <ESC>^]).
+
+* cd and pwd take -L and -P options; added set -o physical option
+  (PWD,OLDPWD no longer readonly).
+
+* new command line -l option tells shell it is a login session.
+
+* os2 changes completed.
+
+* uses autoconf 2.x (was using 1.x).
+
+Version 5.1.3
+
+* bug fixes
+    * fixed bug in arithmetic expression evaluation (||,&& caused core dump).
+    * ulimit code now uses rlim_t or quad_t, if appropriate.
+    * vi: file completion in command mode of single character filename works.
+    * vi: file completion with markdirs set resulted in two trailing /'s.
+    * vi: completion/expansion/listing acts like at&t ksh when expand fails.
+    * vi: ~ takes count.
+    * lines from history file are no longer negative (easy history).
+    * Makefile now uses manual extension consistently.
+    * fc now allows out of range relative (negative) numbers.
+    * functions with elif now printed correctly.
+    * FPATH now searched if PATH search fails, as in at&t ksh.
+
+* typeset -f output is readable (and more correct)
+
+* compiles under SCO unix
+
+* more os/2 changes integrated
+
+Version 5.1.2
+
+* bug fixes
+    * for i; do ...; done now accepted.
+    * leading non-white-space IFS chars no longer ignored (now delimit fields).
+    * fixed globing code so echo /usr/*/make works.
+
+Version 5.1.1
+
+* bug fixes
+    * { ..;} allowed instead of do ..;done in for/select loops
+    * EOF after ; or & no longer causes syntax error
+    * complex history: when shrinking history file, keeps inside buffer space.
+    * vi editing: `v' on modified line no longer changes command numbering.
+    * ^C in vi/emacs no longer prints two newlines.
+    * long arguments (> 255) with globing characters don't cause core dumps.
+
+* new (un)option, KSH, which compiles out ksh code (for producing minimal sh).
+
+* os/2 changes partly merged.
+
+Version 5.1.0
+
+* bug fixes
+    * problem caused by _POSIX_VDISABLE on BSDI machines fixed
+    * exit status set to 127 if command file could not be opened
+    * profile files processed if basename argv[0] starts with (was $0)
+    * PWD now imported properly from environment.
+    * emacs code now either uses dynamic buffers or does overflow checking.
+    * emacs forward-word and delete-forward-word now work like other emacs's.
+    * ^C/^\ in vi/emacs work like at&t ksh (prompt reprinted, even if trapped).
+    * history number to command mapping now constant (numbers used to change).
+    * configuration: BSD tty now used on ultrix (avoids type ahead problem)
+    * eof in the middle of multiline commands now ignored if ignoreeof set.
+    * vi space command now works again.
+    * pointer mismatch compiler warning for waitpid() call dealt with.
+    * emacs internal memory error in command completion fixed.
+    * autoloaded functions now work first try.
+    * SECONDS parameter now acts like in at&t ksh.
+
+* sense of vi-show8 option changed: 8-bit characters are printed as is by
+  default; turning on vi-show8 now causes chars with 8th bit set to be
+  prefixed with M-.
+
+* missing sections in man page added (now basicly complete)
+
+* emacs ^V command added: prints ksh version
+
+* vi g command added: moves to most recent history
+
+Version 5.0.10
+
+* bug fixes
+    * [[ ]] construct unbroken.
+    * the newline after a here document marker is now read properly.
+    * blank lines no longer cause $? to be set to 0.
+    * mail checking now uses atime/mtime instead of size.
+    * changing attributes of exported parameters no longer causes core dump.
+    * the last command in a file does not have to end in a newline.
+    * empty expressions now treated as 0 (previously generated an error).
+    * nul bytes stripped from input.
+    * 0241 (M-!) in a command substitution no longer lost.
+    * when read used in startup file, line continuation no longer causes crash.
+    * very long commands in history no longer cause vi to overwrite memory.
+    * easy history: when saving history, avoid going past the end of history.
+    * emacs mode no longer entered if EDITOR/VISUAL set to null string.
+    * command -p disabled in restricted mode.
+    * closed file descriptors are re-closed after a redirection.
+    * lone [ (test command) no longer causes globing code to search directory.
+    * if TIMES_BROKEN is defined, ksh_times no longer recurses infinitely.
+    * `r r' no longer repeats r command forever.
+    * make depend no longer generates backslash followed by a blank line.
+    * globing code now deals with symlinks that point to non-existent files.
+    * if the ] is missing in a pattern, the [ matches the [ character.
+    * syntax errors in test no longer have two newlines.
+    * in vi, G now goes to the oldest history (was newest).
+    * configuration: test for sys_siglist now harder for optimizers to break.
+    * configuration: look for clock_t in sys/times.h.
+    * configuration: use _SIGMAX, if available, for # of signals.
+    * SIGHUP now causes builtin read command to exit.
+    * wait builtin now returns whenever a traped signal occurs as per POSIX.
+
+* v command now works in vi; anchored searches now work in vi mode (/^ptrn);
+  multi-line commands displayed correctly by history.
+
+* echo is now schizophrenic: accepts -n/-e/-E and backslash sequences.
+
+* test -H file added (checks for context dependent files on HPs).
+
+* set -o gmacs and markdirs honoured.
+
+* ansi arrow keys in default emacs key bindings.
+
+* ulimit now takes arithmetic expression (as per Korn book).
+
+* co-processes changed to be more compatible with at&t ksh.
+
+Version 5.0.9
+
+* bug fixes
+    * FOO is put in the environment for FOO=bar exec blah.
+    * compiles under QNX and with dmake.
+    * the file pattern [!a--]* is now invalid (POSIX) (used to match everything)
+    * echo "${foo:-"a"}*" no longer the same as echo a*.
+    * alternation (brace expansion) fixes:
+	* brace expansion done after variable expansion, as in csh/at&t ksh.
+	* `echo a{b,c' no longer gives "Missing }" error (it echos a{b,c).
+	* expansion only done if there is a comma (ie, `echo {a}' prints {a}).
+    * globbing/expansion code passes 0x80 unharmed.
+    * "echo ${XX=a*b}" no longer sets XX to "a\200*b".
+    * "echo ${unset-a*b}" no longer has \200 in the error message.
+    * bad substitution error generated for things like ${x:a}, ${x^a}, etc.
+    * `x="a cdef"; echo ${x#a c}' now prints "def" instead of "a a cdef".
+    * on systems where /etc/passwd//// is a valid name, echo /etc/pass*/ no
+      longer matches /etc/passwd.
+    * trace output (set -x) flushed correctly, PS4 initialized.
+    * ulimit output ungarbled, code to use {set,get}ulimit (if available)
+      enabled.
+    * tilde expansion done in word part of ${foo-~/bar}
+    * when reading stdin (ie, ksh -s), no longer reads too much.
+    * shell handles i/o redirection and errors in builtin commands as per
+      POSIX (still have to sort out variable assignment errors).
+    * starting jobs that save/change/restore tty settings in the background
+      no longer messes up tty settings when job finishes.
+    * the pattern [a'-'z] now matches three characters, not 26, and
+      the pattern [ab']'] also matches three characters.
+
+* a mostly complete man page! (work is still in progress)
+
+* quoting inside $(..) mostly works.
+
+* error reporting has been orthogonalized.
+
+* brace expansion on by default (can be disabled with set +o braceexpand, or
+  set -o posix).
+
+* output of "set -o" now fits on a normal screen.
+
+* co-processes added (|&, read -p, print -p, etc.).
+
+* restricted mode added (for what its worth).
+
+* vi now prints meta characters with M- prefix, unless vi-show8 option is on.
+
+Version 5.0.8
+
+* bug fixes
+    * two problems in fc (introduced in 5.0.7)
+    * install target in Makefile missing a dollar
+
+Version 5.0.7
+
+* POSIX command command added
+
+* a few bug fixes
+    * now compiles with various options undefined (eg, VI, EMACS, JOBS).
+    * fixed typos in Makefile.in (maxext -> manext) and ksh.1 (\f -> \fP).
+    * CLK_TCK defined to correct value for FreeBSD 1.1.5 (and earlier?).
+    * original process group restored when an exec is done.
+    * the exit value of set is that of the last $(...) on the command line.
+    * ditto for a command with no command (eg, x=`false`).
+    * command variable assignments done before path search (so PATH=... x works)
+      and are added as they are processed (so A=1 B=$A works).
+    * variable assignments infront of function calls are exported to programs
+      inside the function.
+    * aliases with trailing space are only honoured in command contexts
+      if in posix mode.
+
+* make depend target added; install target warns if ksh not in /etc/shells.
+
+* set -o bgnice now does something.
+
+* vi mode: ESC is no longer a file completion command (too annoying).
+
 Version 5.0.6
 
-* most reported bugs/problems fixed (all but two)
+* most reported bugs/problems fixed (all but two).
 
-* temporary files now created in $TMPDIR (if it is a sane path)
+* temporary files now created in $TMPDIR (if it is a sane path).
 
 Version 5.0.5
 
@@ -45,7 +342,7 @@ Version 5.0.2
 * arithmetic expressions (let, $((..)), etc.) now understand full C
   integer expressions (except ++/-- and sizeof()).
 
-* typeset -L -R -Z -u -l added (ala at&t ksh)
+* typeset -L -R -Z -u -l added (as in at&t ksh)
 
 * at&t/posix $(( .. )) arithmetic expansions supported.
 

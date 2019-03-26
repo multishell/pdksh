@@ -1,3 +1,1626 @@
+Thu Jun 15 11:02:06 NDT 1995 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* made pdksh-5.2.3 distribution
+
+	* c_ksh.c(c_whence): search keyword table if vflag set.
+
+	* tree.h(DOVACHECK): new define.
+	* eval.c(expand): check DOVACHECK flag.
+	* exec.c(execute): when calling eval(), or in t->evalflags.
+	* syn.c(get_command): set evalflags to DOVACHECK instead of DOASNTILDE.
+
+Wed Jun 14 09:27:19 NDT 1995 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* c_ksh.c(c_cd): two argument format: use current_wd, not path
+	  when appending elen bytes.
+	  (fix from Gabor Zahemszky).
+
+Tue Jun 13 15:54:11 NDT 1995 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* history.c(c_fc): if last not specified and !-l, use first as last.
+
+	* eval.c(maybe_expand_tilde): allow CSUBST to end tilde word.
+
+	* misc.c(gmatch): made sc and pc unsigned.
+
+Fri Jun  2 11:55:40 NDT 1995 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* configure.in: added flock to AC_CHECK_FUNCS call.
+	* conf-end.h: undef COMPLEX_HISTORY if !HAVE_FLOCK.
+
+Tue May 30 20:38:47 NDT 1995 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* sh.h(SEEK_SET,SEEK_CUR,SEEK_END): define if not defined.
+	* history.c: change L_XTND to SEEK_END.
+
+Tue May 30 17:01:34 NDT 1995 John Rochester (jr@panda.cs.mun.ca)
+
+	* shf.c(shf_seek): new function.
+	* shf.h(shf_seek): new prototype.
+
+Tue May 30 16:42:41 NDT 1995 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* aclocal.m4(KSH_DEV_FD): new test.
+	* acconfig.h(HAVE_DEV_FD): new define.
+	* configure.in: call KSH_DEV_FD.
+
+	* c_test.h(TO_FILAXST): new enum.
+	* c_test.c(test_stat,test_eaccess): new functions for /dev/fd/n
+	  handling.
+	* c_test.c(test_evalop): call test_stat() and test_eaccess()
+	  instead of stat() and eaccess() in most places; added case
+	  for TO_FILAXST.
+
+Tue May 30 16:06:21 NDT 1995 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* aclocal.m4(KSH_MEMMOVE): fixed test so copies overlap.
+
+Sun May 28 11:11:03 NDT 1995 John Rochester (jr@panda.cs.mun.ca)
+
+	* sh.h(safe_prompt): new variable.
+	* main.c(initsubs): removed PS1.
+	* main.c(main): initialize safe_prompt; initialize PS1 from
+	  safe_prompt.
+	* lex.c(set_prompt): create new env while expanding PS1 - if expansion
+	  fails, use safe_prompt.
+
+Sat May 27 20:59:02 NDT 1995 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* exec.c: put comments around token after #endif.
+
+Thu May 25 10:10:45 NDT 1995 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* c_test.c(test_eval): case TO_OPTION: negate test if option starts
+	  with a !, always fail if option doesn't exist.
+
+	* sh.h(FNOHUP): new define.
+	* misc.c(options[]): "nohup" new option.
+	* jobs.c(j_stopped,j_stopped_running): name of j_stopped changed
+	  to j_stopped_running; changed all calls; check for/warn about
+	  running jobs if appropriate.
+	* jobs.c(j_exit): check for/kill running jobs if appropriate.
+	* main.c(shell),c_sh.c(c_exit): un-ifdef JOBS the j_stopped_running()
+	  call and really_exit initialization/clearing.
+
+Wed May 24 10:06:14 NDT 1995 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* options.h(DEFAULT_ENV): new define.
+	* main.c(main): if ENV isn't set and DEFAULT_ENV is defined, include
+	  the later.
+	  (based on patches from Dave Kinchlea).
+
+	* sh.h(LAEXPR): new define.
+	* expr.c(evaluate): changed return type to error indicator; added
+	  rval and error_ok arguments; changed all calls (c_sh.c(c_shift),
+	  c_ulimit.c(c_ulimit),eval.c(expand),var.c(global,local)).
+	* expr.c(v_evaluate): added error_ok argument; changed return value
+	  to error indicator; call unwind() if !error_ok.
+	* expr.c(evalerr): changed errorf() to warningf(); call unwind(LAEXPR).
+	* c_test.c(test_eval): merged code for integer operations to have
+	  two calls to evaluate().
+
+	* io.c(warningf): print trailing newline; changed all calls.
+
+	* history.c(hist_get): string search: use histptr, not histptr - 1.
+
+Tue May 23 11:07:50 NDT 1995 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* sh.h(GI_NONAME): new define.
+	* misc.c(ksh_getopts): honour GI_NONAME flag.
+	* c_ksh.c(getopts_reset): set GI_NONAME flag.
+
+	* exec.c(comexec): don't change $0 if FPOSIX flag set.
+
+	* misc.c(ksh_getopt): don't use GI_DONE to allow parsing past
+	  bad options.
+	* sh.h(GI_DONE): deleted define.
+
+	* var.c(unset): added array_ref parameter; unset/free whole array
+	  if not an array_reference; changed all calls.
+	* c_sh.c(c_unset): set array_ref parameter if there is a [ in the name.
+
+Mon May 22 10:33:14 NDT 1995 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* history.c(hist_init): complex version: initialize hist_source
+	  (fix from Simon J. Gerraty).
+
+Sat May 20 11:06:15 NDT 1995 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* made pdksh-5.2.2 distribution
+
+	* Makefile.in: added c_test.h to HDRS.
+
+Fri May 19 12:35:18 NDT 1995 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* made pdksh-5.2.1 distribution
+
+	* emacs.c(v_version): ignore typed character if it is a space.
+	* emacs.c(x_emacs_keys): bind <ESC>erase-char to delete-back-word
+	  (was delete-back-char).
+	* emacs.c(x_defkeybindings[]): bound list-file to ^X^Y and
+	  newline-and-next to ^O, as per man page.
+
+	* c_ksh.c(c_whence): changed "is a keyword" to "is a reserved word".
+
+	* sh.h: changed SVSV_PGRP to SYSV_PGRP.
+
+	* vi.c(vi_cmd): uncommented case for ^[ to make it easy to enable
+	  completion.
+
+Mon May 15 15:25:22 NDT 1995 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* history.c(c_fc): accept -40 as -- -40.
+	* main.c(initcoms[]): take -- out of history alias.
+
+	* vi.c(print_expansions): handle trailing slash correctly (don't
+	  print empty strings).
+
+	* c_ksh.c(c_cd): put back ksh_get_wd() call for os/2.
+
+	* misc.c(ksh_get_wd): changed buf to b in call to getcwd().
+
+Tue May  9 13:57:31 NDT 1995 Michael Rendell (michael@dragon.cs.mun.ca)
+
+	* c_test.h: new file.
+	* c_test.c: major code restructuring: common parsing/evaluation
+	  routines call/called-by three sets of routines: one for
+	  normal test (and [..]), one for parsing [[ .. ]] one for
+	  evaluating [[ .. ]].
+	* c_test.c(oexpr,aexpr,nexpr,primary,is_op): renamed to test_oexpr,
+	  test_aexpr, test_nexpr, test_primary, test_isop.
+	* c_test.c(eval_unop,eval_binop): combined into new test_eval function.
+	* c_test.c(syntax): renamed to ptest_error,
+	* c_test.c(ptest_isa,ptest_getopnd,ptest_eval): new functions.
+	* syn.c(syntaxerr): added extra arg; changed all calls.
+	* syn.c(db_parse,db_oaexpr,db_nexpr,db_primary): deleted.
+	* syn.c(dbtestp_isa,dbtestp_getopnd,dbtestp_eval,dbtestp_error): added.
+	* syn.c(get_command): case DBRACKET: changed to call new routines.
+	* tree.c(ptree): case DBRACKET: changed.
+	* exec.c(execute): case DBRACKET: changed.
+	* exec.c(dbteste_isa,dbteste_getopnd,dbteste_eval,dbteste_error): added.
+
+Fri May  5 17:10:23 NDT 1995 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* emacs.c(compl_file,compl_command): fixed buffer growing code.
+
+Thu May  4 22:44:01 NDT 1995 Michael Rendell (michael@garfield.cs.mun.ca)
+
+	* aclocal.m4(KSH_UNISTD_H): include <sys/types.h> and only include
+	  <dirent.h> if HAVE_DIRENT_H is defined.
+
+Thu May  4 21:19:15 NDT 1995 Michael Rendell (michael@garfield.cs.mun.ca)
+
+	* c_ksh.c: include "ksh_stat.h".
+	* c_ksh.c(c_cd): don't do physical chdir if S_ISLNK not defined.
+
+Wed May  3 10:08:32 NDT 1995 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* made pdksh-5.2.0 distribution
+
+	* misc.c: include <ctype.h>.
+	* misc.c(gmatch): added isfile argument; changed all calls.
+	* sh.h(FILECHCONV): (os2 version) - use isupper.
+	* emacs.c(strmatch): don't increment in FILECHCONV.
+
+	* aclocal.m4(KSH_HEADER_SYS_WAIT): new macro.
+	* configure.in: use KSH_HEADER_SYS_WAIT instead of AC_HEADER_SYS_WAIT.
+	* ksh_wait.h: if POSIX_SYS_WAIT not defined, undef W* macros.
+
+Tue May  2 12:10:39 NDT 1995 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* emacs.c,emacs-gen.sh,emacs-c.in,emacs.out,Makefile.in: changed emacs
+	  source munging to create emacs.out which is included by emacs.c
+	  rather then munging emacs.c itself.
+
+	* lex.c(pprompt): flush shl_out.
+
+	* vi.c(glob_word): if path has *?[, don't add * (was if last component).
+
+	* emacs.c(x_search_char): renamed to x_search_char_forw.
+	* emacs.c(x_search_char_back): new function; bound to ^[^].
+
+	* sh.h: changed SVR3_PGRP to SYSV_PGRP.
+	(fixes from Gabor Zahemszky).
+
+Tue May  2 10:09:57 NDT 1995 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* c_ksh.c(c_cd): deleted OS2 ifdefs.
+	* path.c(make_path): use ISRELPATH instead of ISABSPATH
+	* path.c(simplify_path): use ISROOTEDPATH instead of ISABSPATH.
+	* sh.h(ISABSPATH,ISROOTEDPATH,ISRELPATH): changed/new defines.
+
+	* aclocal.m4(AC_LANG_C,AC_LANG_CPLUSPLUS,AC_TRY_RUN): copied
+	  from autoconf's acgeneral.m4, changed to handle .exe suffix.
+	* aclocal.m4(KSH_OS_TYPE): os2 case: set $ac_exe_suffix.
+	* configure.in: substitute ac_exe_suffix.
+	* Makefile.in: changed references to E to exe_suffix, set to
+	  ac_exe_suffix
+
+	* c_ksh.c(c_cd): ifdef S_ISLNK second use of get_phys_path().
+	* edit.c(x_mode): removed ifndef OS2.
+	  (fixes from Dale DePriest)
+	* exec.c(search_access1): add .sh to suffix lists.
+	* vi.c(vi_insert,vi_hook): OS2: changes to allow arrow keys work
+	  in insert mode.
+
+Mon May  1 16:28:44 NDT 1995 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* path.c(ksh_get_wd): getcwd() case, return alloc'd buffer, not
+	  a malloc'd one.
+
+Mon May  1 09:41:56 NDT 1995 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* aclocal.m4: changed HAVE_SYS_RESOURCES_H to HAVE_SYS_RESOURCE_H.
+
+	* aclocal.m4(KSH_OS_TYPE): new macro.
+	* aclocal.m4(KSH_OS2_EMX): deleted.
+	* configure.in: deleted calls to AC_AIX,AC_MINIX,AC_ISC_POSIX,
+	  KSH_OS2_EMX; replaced with KSH_OS_TYPE.
+	* acconfig.h(OS_ISC,OS_SCO): new undefs.
+	* sh.h: changed use of isc386 to OS_ISC
+	* edit.c: changed use of M_UNIX to OS_SCO.
+
+Sat Apr 29 21:10:54 NDT 1995 Michael Rendell (michael@garfield.cs.mun.ca)
+
+	* vi.c(glob_word): don't append * if there are unescaped globing
+	  characters in the last component of the filename; some redundent
+	  code eliminated.
+	  (based on fix from Michael Jetzer).
+
+Fri Apr 28 16:10:22 NDT 1995 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* eval.c(globit): save/restore actual DIRSEP char - don't use DIRSEP.
+
+	* c_ulimit.c: removed ARGS from declaration of ulimit to avoid
+	  portability problems (osf/1 has ulimit(int,...), os2 has
+	  ulimit(int,long)).
+
+	* tty.c(tty_init): added __SCO__ defines to avoid opening /dev/tty.
+
+	* configure.in,aclocal.m4,acconfig.h: added KSH_OS2_EMX test.
+	* os2/config.h, os2/configure.cmd, os2/make.sed: updated for new
+	  autoconf.
+
+Tue Apr 25 12:20:45 NDT 1995 Michael Rendell (michael@dragon.cs.mun.ca)
+
+	* configure.in: added sys/param.h test; changed getcwd test to getwd.
+	* c_ksh.c(c_pwd): new function.
+	* sh.h(current_wd, current_wd_size): new variables.
+	* c_ksh.c(c_cd): changed to handle -L, -P.
+	* main.c(main): use set_current_wd when setting $PWD; 
+	  instead of changing to / when can't get pwd, print warning;
+	  deleted pwd alias; don't make PWD and OLDPWD reaedonly.
+	* path.c(simplify_path): changed to handle relative paths.
+	* path.c(make_path): added phys_path argument to support cd -P.
+	* path.c(set_current_wd,get_phys_path,do_phys_path): new functions.
+	* misc.c(ksh_get_wd): new function.
+	* missing.c(getcwd): deleted.
+	* misc.c(options[]),sh.h: added "physical", FPHYSICAL.
+
+Mon Apr 24 14:33:03 NDT 1995 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* shf.c(shf_smprintf): new function.
+
+	* expand.h(Xsize): new define.
+
+Fri Apr 21 21:22:44 NDT 1995 Michael Rendell (michael@garfield.cs.mun.ca)
+
+	* sh.h: changed SIZEOF_long to SIZEOF_LONG.
+	* exec.c(scriptexec): if OS2 ifdefed code, changed ISDIRSEP to
+	  explicit /.
+
+Thu Apr 20 21:18:12 NDT 1995 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* history.c(hist_get) if n < 0, use n + 1 to account for histbackup().
+
+	* lex.c(set_prompt): added source argument; changed all calls; 
+	  changed to do ! and !! substitutions when setting PS1.
+	* lex.c(pprompt): ifdef'd out code to deal with ! and !!.
+
+	* shf.c(shf_puts): new routine.
+	* exec.c(herein), lex.c(getsc_): changed to use shf_puts.
+
+Thu Apr 20 15:50:35 NDT 1995 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* siglist.sh: clear traps in subshell to cover for bug in bash 1.4.3
+	  (based on fix from Fritz Heinrichmeyer).
+
+Wed Apr 19 12:04:59 NDT 1995 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* vi.c(classify): cleaned up table; filled in U_ flag for commands
+	  that don't modify things.
+	* vi.c(first_insert, saved_inslen): new variables.
+	* vi.c(vi_reset): don't reset yanklen, inslen, lastcmd, lastac;
+	  set first_insert, saved_inslen.
+	* vi.c(vi_insert): added code to handle first insertion to allow
+	  redoing commands from last edit.
+	  (based on fixes from Michael Jetzer).
+
+	* vi.c(VVERSION): new state.
+	* vi.c(classify): cleared C_ flag for 032 (^Z); set it for ^V.
+	* vi.c(nextstate): added VVERSION.
+	* vi.c(vi_hook): cases for VVERSION.
+	* sh.h(ksh_version): new declaration; removed declaration from
+	  all other files.
+
+	* Makefile.in: removed rcs-ci, rcs-diff targets; put RCSFILES
+	  into DISTFILES and removed former.
+
+	* var.c(newblock): copy argc/argv from previous env if it exists.
+
+Tue Apr 18 23:10:32 NDT 1995 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* jobs.c(exchild): report internal error if execute() returns in child.
+	* exec.c(execute): case TASYNC: clear exec flag in call to execute().
+
+Tue Apr 18 12:05:23 NDT 1995 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* emacs.c(x_bind): added list argument.
+	* c_ksh.c(c_bind): added -l (list) option.
+
+	* emacs.c,emacs-c.in: moved emacs.c to emacs-c.in.
+	* Makefile: add rule to create emacs.c from emacs-c.in.
+	* emacs-gen.sh: new file.
+	* emacs.c(struct x_defbindings, x_defbindings[]): new struct/array.
+	* emacs.c(struct x_ftab, x_ftab[]): removed x_db_tab, x_db_char;
+	  initialize x_ftab[] via script.
+	* emacs.c(x_init_emacs): changed to load key bindings from
+	  x_defbindings.
+	* emacs.c(Findex): added typedef.
+	* emacs.c(x_tab[]): changed to index into x_ftab; changed all refernces.
+	* emacs.c(xft_*): changed to XFUNC_*.
+	* emacs.c(XF_PREFIX): new flag, used for x_meta1, 2, 3.
+	* emacs.c(KPREF,KNULL): deleted (no functional use), changed
+	  references to KSTD.
+	* emacs.c(x_last_command): changed type to Findex.
+	* emacs.c(x_emacs): set x_last_command to 0 at start; removed
+	  same from case KEOL.
+
+	* emacs.c(XF_ARG): new flag for struct ftab.
+	* emacs.c(x_ftab[]): filled in XF_ARG for appropriate commands.
+	* emacs.c(x_arg_defaulted): new variable.
+	* emacs.c(x_emacs,x_set_arg): set x_arg_defaulted.
+	* emacs.c(x_bword, x_fword,x_fold_case): removed use of x_last_command.
+	* emacs.c(x_fold_upper,x_fold_lower,x_fold_capitailze): trivial
+	  functions that call x_fold_case; changed x_ftab[] to use these
+	  instead of x_fold_case so arbitrary keys can be bound to them.
+	* emacs.c(x_fold_case): changed to assume argument is 'L', 'U', or 'C'.
+	* emacs.c(x_del_back,x_del_char,x_prev_histword,x_prev_com,x_next_com,
+	  x_kill,x_insert): use x_arg and x_arg_defaulted.
+	* emacs.c(x_delete): don't change mark point (xmp) if <= cp; added
+	  force_push argument; changed all calls.
+
+Mon Apr 17 10:30:12 NDT 1995 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* emacs.c(x_e_getc): changed to handle macroptr, ungetting characters.
+	* emacs.c(x_e_ungetc): new function.
+	* emacs.c(x_emacs): let x_e_getc() take care of macroptr.
+	* emacs.c(x_version,x_search_hist): use x_e_ungetc() instead of
+	  macroptr.
+	* emacs.c(x_set_arg): handle string of digits.
+
+	* emacs.c(x_search_hist): handle deleting chars from search string.
+	  (fix from Dale DePriest)
+	* emacs.c(x_search): added sameline paramater.
+	* emacs.c(x_search_list): changes x_zots() to x_e_puts(); make
+	  deleting in empty pattern break out of search.
+
+	* vi.c(domove): case '%': adjust ncursor forward only if matching
+	  opening bracket (so when cursor is on the B in "(fooBar)", c%
+	  changes the openbracket as well.
+	* vi.c(vi_cmd): case y/d/c: special case to move end point ahead
+	  if move cmd is % and match was to the left of the cursor.
+
+Thu Apr 13 10:34:26 NDT 1995 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* vi.c(complete_word): no bell on ambiguous matches (user can
+	  tell its ambiguous 'cause there is not space or slash appended)
+
+	* configure.in,aclocal.m4: added KSH_MEMMOVE, KSH_MEMSET tests
+	  to fix problems with compiler builtins.
+
+	* misc.c(blocking_read, reset_nonblock) new routines.
+	* sh.h: deleted O_NONBLOCK ifdefs/defines.
+	* main.c(main),lex.c(getsc_),edit.c(x_getc),shf.c(shf_fillbuf):
+	  use reset_nonblock().
+	  (fix based on code from John Rochester)
+
+Tue Apr 11 14:36:22 NDT 1995 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* history.c(c_fc): mostly POSIXized.
+	* history.c(hist_execute,hist_get_newest,hist_get_oldest): new routines.
+	* history.c(hist_get,histget): changed histget to hist_get.
+	* history.c(hist_replace,histrpl): changed histrpl to hist_replace.
+	* lex.h(SHIST,histpush): deleted; deleted all references.
+	* history.c(histget): add approx check for history that hasn't
+	  happened yet.
+
+	* misc.c(getn): allow leading plus (eg, +3).
+
+	* main.c(initcoms[]): defined history as "fc -l --".
+
+	* conf-end.h(JOBS): don't define if no posix or bsd process groups
+	  (was if SIGCONT not defined).
+
+Mon Apr 10 14:51:54 NDT 1995 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* exec.c(comexec),c_ksh.c(c_getopts),c_sh.c(c_read): use FEXPORT flag.
+
+	* ksh_wait.h: changed to work with autoconf 2.x AC_HEADER_SYS_WAIT -
+	  if sys/wait.h uses union wait, don't include it.
+
+Thu Apr  6 12:19:58 NDT 1995 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* tty.c(tty_init): print warning if open of /dev/tty fails.
+
+Sat Mar  4 01:20:03 NST 1995 Michael Rendell (michael@garfield.cs.mun.ca)
+
+	* io.c(maketemp): create valid dos filenames.
+
+Mon Feb 27 11:04:32 NST 1995 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* Changed from autoconf 1.x to autoconf 2.x.
+	* acconfig.h: included old config.h.top and config.h.bot.
+	* config.h.top, config.h.bot: deleted; deleted all references.
+	* install.sh: changed to install-sh; changed all references.
+	* Makefile.in: use @CPPFLAGS@, @CFLAGS@, @LDFLAGS@;
+	  use @configure_input@; remove config.log and config.cache in
+	  distclean; use @prefix@ and @exec_prefix@.
+	* ksh_dir.h: changed to use new autoconf defines; changed NLENGTH()
+	  to NAMLEN(); changed all references.
+
+Mon Feb 27  9:31:02 NST 1995 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* sh.h(ISABSPATH): new macro.
+	* var.c(setspec): use ISABSPATH() when setting tmpdir.
+
+	* emacs.c(compl_file): added OS2 ifdefs.
+	* exec.c(scriptexec): OS2: ignore path specified in #! scripts.
+	* sh.h(ksh_dupbase): OS2: now same as unix.
+	* trap.c(sigtraps[],inittraps): remove OS2 defines.
+	* trap.c(alarm_catcher): V7_SIGNALS: use sig, not i.
+	  (Fixes from Dale DePriest)
+
+Mon Feb 27 10:06:00 NST 1995 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* configure.in: test for resource.h.
+	* c_ulimit.c: include ksh_time.h instead of sys/time.h; use
+	  HAVE_SYS_RESOURCE_H when including sys/resource.h
+	  (was HAVE_SETRLIMIT).
+	* aclocal.m4(KSH_RLIM_T): check sys/resources.h for rlim_t.
+
+Fri Feb 24 17:30:16 NST 1995 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* vi.c(struct macro_state, macro): new structure/variable.
+	* vi.c(vi_hook, vi_cmd): use macro state info to allow nested macros,
+	  detect recursive macros.
+
+Wed Feb 22 21:20:43 NST 1995 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* c_ksh.c(c_whence): "an export" instead of "a export".
+	* vi.c(classify[]): added @<char>.
+	* vi.c(vi_hook,vi_cmd): added support for @<char> (macros).
+	  (fixes from Frank Edwards).
+
+Sun Feb 19 11:57:20 NST 1995 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* exec.c(comexec): case CFUNC: use cp (not tp->name) when checking if
+	  an autoloaded function was defined; save/restore kshname before/after
+	  function call.
+	* var.c(popblock): don't set kshname to e->loc->argv[0] - it isn't
+	  always right.
+
+Fri Feb 10 12:36:16 NST 1995 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* misc.c(parse_args): check OF_SET when building set_opts (was
+	  checking OF_CMDLINE).
+
+	* conf-end.h(JOBS): don't define if SIGCONT not defined.
+
+	* sh.h(FLOGIN) new enum.
+	* misc.c(options[],parse_args): added login option; set FLOGIN if
+	  name in argv[0] starts with -.
+	* main.c(main): use FLOGIN flag; changed the way OS2 code looks
+	  for profile.
+
+Wed Feb  1 09:55:40 NST 1995 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* expr.c(varsub): in FUNSET test, don't always fail # and %
+	  substitutions (test for unset variable).
+
+Wed Jan 25 09:22:15 NST 1995 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* sh.h(MIN_COLS): new define.
+	* sh.h(MIN_EDIT_SPACE): new define.
+	* vi.c(prompt_trunc): new variable.
+	* vi.c(edit_resize): calculate how much of prompt to truncate.
+	* lex.c(pprompt): added new argument; changed all calls.
+	* lex.c(yylex),emacs.c(x_emacs),vi.c(x_vi): move pprompt() inside
+	  x_emacs(), x_vi() or just before read in yylex().
+
+Tue Jan 24 12:35:18 NST 1995 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* misc.c(parse_args): changed arrayname variable to array.
+	* var.c(basename): changed name of function to arrayname();
+	  changed all references (Based on fix from Dan Quinlan).
+
+Fri Dec 30 10:34:50 NST 1994 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* ksh.1: modifications to generate two man pages: sh and ksh
+	  (Fixes from Michael Harrdt).
+
+Wed Dec 28 16:55:13 NST 1994 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* vi.c(complete_word): don't check for globing characters.
+
+Wed Dec 28 10:32:18 NST 1994 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* exec.c(search_access1): don't use ret variable; move "." to end
+	  of xsuffixes/rsuffixes.
+	* os2.c(_execve): OS2: fixed typo.
+	* sh.h(FILENCMP): changed stricmp to strnicmp.
+	* os2/config.h: added define for rlim_t.
+	* os2/make.sed: changed > null to > nul.
+	* Makefile.in(dist): generate os2/makefile after running Dist-fixup.
+	  (Fixes from Dale DePriest)
+
+Thu Dec 22 15:06:06 NST 1994 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* made pdksh-5.1.3 distribution
+
+	* *.c: removed RCSids.
+
+Wed Dec 21 11:55:01 NST 1994 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* table.h(struct tbl): changed array field to union of array/fname;
+	  changed all references.
+	* c_ksh.c(c_whence): print undefined function path.
+	* exec.c(comexec): do autoloading of undefined functions; print
+	  error if function can't be found.
+	* exec.c(findcom): fill in tp->u.fname for undefined functions;
+	  search FPATH if search of PATH fails.
+	* table.h(FC_NOAUTOLOAD): deleted define; removed all references.
+
+Tue Dec 20 14:16:16 NST 1994 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* exec.c(herein): check if name is null.
+	* lex.h(HEREDELIM,SHEREDELIM,SHEREDQUOTE): new defines.
+	* lex.c(yylex): added code for HEREDELIM.
+	* syn.c(synio): use HEREDELIM.
+	* lex.c(readhere): changed to allow \n in here-delimiter.
+
+	* tree.c(tputS): quote ", ` and $ inside "-quotes.
+	* tree.c(ptree,pioact): made static.
+	* tree.c(ptree,fptreef,vfptreef): added indent argument; changed to
+	  use indent argument; changed all calls.
+	* tree.h(struct ioword): added delim field.
+	* tree.c(iocopy),syn.c(synio,syntaxerr): deal with delim field.
+	* tree.c(pioact): print contents of here documents.
+
+	* c_ksh.c(c_typeset): typeset -f foo: set exit code to 1 if function
+	  not found.
+
+Mon Dec 19 15:14:02 NST 1994 Michael Rendell (michael@garfield.cs.mun.ca)
+
+	* history.c(histinit): increment line number for each history line.
+
+	* exec.c(iosetup): OS2: if open /dev/null fails, try nul instead.
+	* Makefile.in(debugtools,install,uninstall): make check-pgrp last;
+	  use $E.
+	* eval.c(eval,expand): OS2: added DODIRSWP code.
+	* main.c(main): OS2: only include $HOME/kshrc.ksh if interactive.
+	* sh.h(FILENCMP,FILECMP,FILECHCONV): new defines.
+	* misc.c(gmatch),vi.c(grabsearch,complete_word),emacs.c(compl_file):
+	  OS2: case insensitive compares.
+	  (fixes from Dale DePriest).
+
+Mon Dec 19 09:54:42 NST 1994 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* vi.c(vi_cmd): make ~ honour argcnt (fix from Troy Bollinger).
+
+	* vi.c(complete_word): don't add trailing / if there is already one.
+	* vi.c(glob_word): return rval, not 0.
+
+Thu Dec 15 11:06:01 NST 1994 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* vi.c(vi_cmd): call complete_word() with argument of 1 not 0.
+
+Tue Dec 13 12:07:50 NST 1994 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* history.c(histget): made static; added approx argument; changed
+	  all calls.
+
+Tue Dec 13 10:58:14 NST 1994 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* Makefile.in(mandir): use $(manext), not 1 (fix from Mike Long).
+
+Mon Dec 12 20:55:53 NST 1994 John Rochester (jr@panda.cs.mun.ca)
+
+	* tree.c(ptree): print TELIF part of if statements
+
+Fri Dec  9 15:21:36 NST 1994 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* trap.c(inittraps): OS2: don't trap SIGTERM (temproary fix).
+
+	* exec.c(search_access1): OS2: fixed to check for valid suffix
+	  and change mode from X_OK to R_OK if appropriate.
+
+	* edit.c: include <sys/stream.h>, <sys/ptem.h> for SCO unix
+	  (fix from William Bader).
+
+	* c_ulimit.c(c_ulimit): changed type of val from long to rlim_t
+	  (fix from Thomas Gellekum and J.T.Conklin).
+	* aclocal.m4(KSH_RLIM_T): new test for rlim_t.
+	* configure.in: use KSH_RLIM_T.
+	* acconfig.h: added rlim_t.
+
+Thu Dec  8 12:20:25 NST 1994 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* expr.c(evalexpr): changed div-by-zero test to only derefernce vr
+	  if operation is a divide.
+
+Mon Dec  5 14:42:52 NST 1994 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* exec.c(search): OS2: typo - changed namlen to namelen.
+	* exec.c(search_access): OS2: check execute bit explicitly.
+	* main.c(main): OS2: don't include ./profile.ksh.
+	* options.h(DEFAULT_PATH): OS2: added /os2 to path.
+	* sh.h(ksh_getdup): OS2: define to getdup(); prototype for getdup().
+	* Makefile.in(dist): create os2 Makefile based on distribution
+	  Makefile.in.
+
+Mon Dec  5 12:17:14 NST 1994 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* made pdksh-5.1.2 distribution
+
+	* eval.c(globit): when searching directory, re-calculate end of
+	  string based on prefix length.
+
+Fri Dec  2 11:07:48 NST 1994 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* syn.c(wordlist): if token isn't 'in', don't reject ;.
+
+	* eval.c(expand): leading non-white-space IFS chars no cause initial
+	  empty field.
+
+Thu Dec  1 12:04:00 NST 1994 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* made pdksh-5.1.1 distribution
+
+Thu Dec  1 10:50:38 NST 1994 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* sh.h(TF_FATAL,fatal_trap): new define,variable.
+	* trap.c(inittraps,trapsig,fatal_trap_check,trap_pending,runtrap,
+	  settrap): use TF_FATAL, fatal_trap.
+	* trap.c(runtraps): changed argument from bool to TF_* flag; changed
+	  all calls.
+	* jobs.c(j_waitj): check fatal_trap flag.
+
+Wed Nov 30 11:20:03 NST 1994 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* conf-end.h: new file.
+	* config.h.bot: moved guts to conf-end.h.
+
+	* emacs.c(struct x_ftab): changed type of xf_db_char from char to int.
+	* emacs.c(x_emacs): changed type of c from char to int.
+	* emacs.c(X_NTAB): new define.
+	* emacs.c(x_bind,x_init_eamcs): new X_NTAB, X_TABSZ.
+	* emacs.c(x_prefix3, x_meta3): ifdef OS2.
+	* emacs.c(x_bind): ifdef OS2; mask *a1 with CHARMASK.
+
+	* exec.c(search_access): new function.
+	* exec.c(search): use search_access() instead of duplicating test.
+	* exec.c(search,search_access1): ifdef OS2.
+
+	* Makefile.in(OS2FILES): new macro.
+	* Makefile.in(dist): add OS2FILES to distribution.
+
+	* options.h(DEFAULT_PATH): ifdef OS2.
+	* edit.c(x_getc,x_mode): ifdef OS2.
+	* path.c(make_path): ifdef OS2.
+
+Tue Nov 29 16:51:35 NST 1994 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* sh.h(EXECSHELL,EXECSHELL_STR): ifdef OS2.
+	* exec.c(scriptexec): use EXECSHELL_STR (was "EXECSHELL").
+
+	* trap.c(sigtraps[]): ifdef OS2.
+	* lex.c(yylex): ifdef OS2.
+	* misc.c(change_flag): ifdef OS2.
+	* history.c(HISTFILE): ifdef OS2.
+	* eval.c(homedir): ifdef OS2.
+	* c_sh.c(shbuiltins[]): ifdef OS2.
+
+	* sh.h(ksh_execve,ksh_dupbase): new defines.
+
+	* jobs.c(exchild): ifdef use of nice.
+
+Tue Nov 29 12:32:26 NST 1994 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* eval.c(globit,copy_non_glob): changed to pass/use &xp it can change
+	  (memory can be re-allocated).
+
+	* ksh_dir.h(NLENGTH): new macro.
+	* eval.c(globit): use NLENGTH macro.
+
+	* alloc.c(aresize): removed redundent np and optr variables.
+
+Mon Nov 28 14:55:49 NST 1994 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* config.h.bot(HISTORY): new define.
+	* lex.c(getsc_): ifdef HISTORY.
+	* history.c: ifdef HISTORY (dummy histsave, init_histvec and
+	  hist_finish routines).
+	* c_ksh.c(kshbuiltins): c_fc: ifdef KSH
+	* lex.h(HISTORY): changed to HISTORYSIZE; changed all references.
+
+	* options.h(KSH): new define.
+	* config.h.bot: changed to deal with KSH define.
+	* exec.c(do_select,pr_menu): ifdef KSH.
+	* exec.c(execute): case TSELECT: ifdef KSH.
+	* c_ksh.c(c_whence,c_command,kshbuiltins[]): ifdef KSH.
+	* main.c(initcoms[],main): ifdef some aliases, SECONDS/RANDOM/TMOUT.
+	* syn.c(get_command): case TDBRACKET: ifdef KSH.
+	* syn.c(db_parse,db_aoexpr,db_nexpr,dp_primary): ifdef KSH.
+	* syn.c(tokentab[]): "select", "[[" ifdef KSH.
+	* var.c(special,getspec,setspec,unsetspec): ifdef KSH.
+	* ksh.1: ifdef KSH; misc fixups.
+	  (changes mostly from Michael Haardt).
+
+Mon Nov 28 14:27:34 NST 1994 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* var.c(skip_varname,special,global,local), table.c(hash,tsearch,
+	  tenter): made argument and return value const.
+
+	* main.c(version_param[]): new variable.
+	* main.c(initcoms[],main): use version_param instead of "KSH_VERSION".
+
+	* history.c(histsave): EASY_HISTORY: changed to take same arguments
+	  as COMPLEX_HISTORY histsave(); changed all calls, removing
+	  unneeded ifdefs.
+
+	* vi.c(x_vi), emacs.c(x_emacs): changed unwind() call from LINTR
+	  to LSHELL so newline isn't printed twice - also lets runtrap()
+	  set the exit code.
+
+	* vi.c(vi_cmd): increment source line if saving to history.
+
+Fri Nov 25 14:43:57 NST 1994 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* syn.c(get_command): don't generate a syntax error if EOF is read.
+
+	* configure.in: add LDSTATIC to LDFALGS if the former is set.
+
+	* history.c(hist_skip_back): start at the end of the buffer, not
+	  one past the end (fix from Simon J. Gerraty).
+
+Thu Nov 24 09:53:49 NST 1994 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* syn.c(get_command,dogroup): allow { ...;} to be used instead
+	  of do ...;done in for/select loops.
+
+Wed Nov 23 09:09:43 NST 1994 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* made pdksh-5.1.0 distribution
+
+	* var.c(setspec): set seconds to current time - assigned value,
+	  not just current time.
+
+	* emacs.c(x_copy_arg): deleted ifdef'd out code (x_prev_histword()
+	  does what it was supposed to do).
+
+	* emacs.c(compl_command): don't call list_stash() twice (happened
+	  if type == 2 and multi set).
+
+Tue Nov 22 10:26:13 NST 1994 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* c_test.c(eval_unop): don't assume S_ISBLK, S_ISCHR, S_ISUID,
+	  S_ISGID are defined.
+
+	* path.c(make_path): avoid addeding extra /'s in paths; avoid
+	  infinate loop if result buffer not big enough.
+
+	* main.c(main): setting PWD: avoid calling setstr() with the
+	  current value of PWD.
+
+	* var.c(typeset): set free_me to 0 if t is integer.
+
+	* emacs.c(x_search_hist): added overflow checking to fixed sized
+	  buffers.
+	* emacs.c(compl_file,compl_command): removed fixed sized buffers.
+
+	* vi.c(x_vi), emacs.c(x_emacs): on interrupt, unwind instead of
+	  calling runtraps().
+
+	* vi.c(vi_cmd): added 'g' command to goto the most recent command.
+
+	* c_sh.c(c_read), c_ksh.c(c_print): always increment source->line when
+	  saving history.
+
+Mon Nov 21 10:45:34 NST 1994 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* exec.c(do_selectargs): removed use of pmenu variable (redundent)
+	  use isspace() instead of IFS chars; include <ctype.h>.
+
+	* aclocal.m4(KSH_TERM_CHECK): do not allow HAVE_TERMIOS_H check to
+	  succeed on ultrix (avoid type-ahead loss).
+
+	* emacs.c(x_fword): cahnged loop to skip non word chars, then word
+	  chars (was the opposite).
+
+	* main.c(shell): after error/interrupt/etc, reset an EOF if ignoreeof
+	  option is set.
+
+	* vi.c(classify[]): changed space (040) from C_|U_ to M_
+	  (got broken in 5.0.10).
+
+	* ksh_wait.h(ksh_waitpid): new define.
+	* jobs.c(waitpid): moved define to ksh_wait.h; changed use of
+	  waitpid() to ksh_waitpid().
+
+	* history.c(hist_skip_back),io.c(maketemp): use procpid instead of
+	  getpid().
+
+Fri Nov 18 16:08:09 NST 1994 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* vi.c(FSHOW8): inverted meaning: now if set, do the M- stuff
+	  (done so 8 bit char sets work by default).
+
+	* main.c(main): set exstat to 127 if command file can't be opened.
+
+	* main.c(main): use argv[0] instead of kshname when deciding
+	  whether to include profiles.
+
+Fri Nov 18 14:25:11 NST 1994 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* made pdksh-5.0.10.1 distribution
+
+	* tty.h: deleted KSH_VDISABLE; moved _POSIX_VDISABLE stuff to edit.c.
+	* edit.c(x_init): calculate value for vdisable_c.
+	* edit.c(x_mode): use vdisable_c instead of KSH_VDISABLE.
+
+Thu Nov 17 12:09:13 NST 1994 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* made pdksh-5.0.10 distribution
+
+	* lex.c(getsc_),edit.c(x_getc): call runtraps(FALSE) if read is
+	  interrupted.
+	* vi.c(x_vi),emacs.c(x_emacs): call runtraps(FALSE) (was TRUE).
+
+Wed Nov 16 09:48:54 NST 1994 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* exec.c(execute,scriptexec): call __setostype(0)/(1) before/after
+	  execve() on ISC machines.
+
+	* trap.c(trap_pending): new fuction.
+	* jobs.c(j_waitj): use trap_pending(); return -<signal-number> if
+	  interrupted.
+	* jobs.c(waitfor): added sigp argument; changed all calls.
+	* c_sh.c(c_wait): use signal number set by waitfor() to set exit status.
+
+	* shf.c(SHF_INTERRUPT): no longer calls intrcheck() - now sets
+	  error flag and returns EOF.
+	* c_sh.c(c_read): re-arranged to have single shf_getc() call; if read
+	  interrupted and signal is fatal (fatal_trap_check()), make read
+	  return with appropriate exit code.
+	* trap.c(fatal_trap_check()): new function.
+	* trap.c(inittraps()): catch and cleanup on SIGHUP; don't force the
+	  setting of SIGINT,SIGQUIT,SIGTERM,SIGHUP.
+
+	* table.c(tenter): changed to use strlen()/memcpy() instead of loops.
+
+	* var.c(initvar): new function.
+	* main.c(main): call initvar().
+	* var.c(special): changed to use hash table for lookup.
+
+	* main.c(main),syn.c(initkeywords): moved table initialization
+	  from main() to initkeywords().
+
+Tue Nov 15 10:01:20 NST 1994 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* eval.c(copy_non_glob): new routine.
+	* eval.c(globit): changed to use copy_non_glob() instead of strchr().
+
+	* misc.c(cclass): if [..] pattern has no closing ], do literal
+	  compare of character with [ (used to always fail).
+
+	* eval.c(globit): handle symbolic links in the check code.
+
+	* configure.in: added check for lstat().
+	* ksh_stat.h: defined lstat to be stat if lstat is not available.
+
+	* exec.c(search): return Xclose() instead of Xstring().
+
+Mon Nov 14 16:28:41 NST 1994 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* ksh_times.h: changed BROKEN_TIMES to TIMES_BROKEN.
+
+	* c_test.c(syntax): removed \n from error messages.
+
+	* eval.c(glob,globit): changed to use dynamicly allocated string
+	  instead of a fixed sized buffer.
+
+Thu Nov 10 10:47:55 NST 1994 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* history.c(sethistsize): don't set size if new size is < 0; fixed
+	  offset calculation so histptr is not way beyond the end of array;
+	  if history is shrinking, save newest history back.
+
+	* vi.c(vi_hook): case VSEARCH: call restore_cbuf() after \n or \r.
+
+	* main.c(quitenv): call restfd() even if fd < 0 to re-close fd.
+
+	* exec.c(execute): commented out code that set savefd[0/1] to -1
+	  if input/output was a pipeline.
+
+	* missing.c(dup2_fixup): deleted function.
+	* sh.h(dup2->dup2_fixup): deleted define.
+	* io.c(ksh_dup2): new function; changed all dup2() calls to ksh_dup2().
+
+Wed Nov  9 11:11:31 NST 1994 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* edit.h(struct edchars): added eof field.
+	* edit.c(x_init): initialize eof fields.
+	* vi.c(x_vi): changed ^D to edchars.eof.
+	* vi.c(vi_cmd): make I/cc/S skip blanks.
+
+	* history.c(histsave): EASY_HISTORY: use memmove() to copy pointers
+	  back one.
+
+	* vi.c(vi_cmd): make G act the same as at&t ksh.
+	* vi.c(ismeta,O_): deleted macros; removed all references to O_.
+	* vi.c(classify[]): add ^X and ^F to command mode.
+
+Tue Nov  8 11:15:01 NST 1994 Michael Rendell (michael@arlene.cs.mun.ca)
+
+	* main.c(initsubs[]): don't set SHELL.
+
+	* vi.c(vi_cmd): added v command (start up vi).
+	* vi.c(vi_hook): added case for vi_cmd() returning 2.
+	* vi.c(grabsearch): set anchored flag if pattern starts with ^.
+	  (based on fixes from Michael Jetzer).
+
+	* history.c(findhist): added anchored argument; changed all calls.
+	* history.c(histget): start searching from histptr-1; changed to
+	  call findhist() to do searching.
+	* history.c(c_fc): changed to print multiline commands correctly.
+	  (based on fixes from Michael Jetzer).
+
+Fri Nov  4 10:30:14 NST 1994 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* lex.c(yylex): when pushing alias sources, allocate from existing
+	  source's area.
+
+	* lex.c(struct source): added areap field.
+	* lex.c(pushs): added area argument; changed all calls.
+	* history.c(histrpl): changed constant sized hline[] to expandable
+	  string; removed hline/hsize parameters; changed all calls; put
+	  newline at end of string.
+	* history.c(c_fc): changed to use dynamically sized buffer when reading
+	  commands; strip nulls after read.
+	* history.c(histbackup): made static.
+
+	* trap.c(block_pipe): if handler is SIG_DFL, change it to SIG_IGN.
+
+	* lex.c(readhere): changed to allow eof after end-of-file marker
+	  (bug report from Andrew Moore).
+
+Thu Nov  3 09:09:39 NST 1994 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* io.c(coproc_read_close,coproc_write_close): new functions.
+	* c_sh.c(c_read): call coproc_read_close() when eof is read.
+	* c_ksh.c(c_print): set PO_COPROC if fd is coproc.write; call
+	  coproc_write_close() if write fails due to EPIPE.
+	* exec.c(iosetup): call coproc_write_close() after #>&p.
+	* sh.h(EF_COPROC_DUPED): deleted.
+	* sh.h(struct coproc): deleted isopen field.
+	* io.c(cleanup_coproc): do not use isopen field.
+	* c_sh.c(c_exec): deleted EF_COPROC_DUPED code.
+	* exec.c(TCOPROC): don't set isopen; don't start new coprocess if
+	  old job exists and write pipe hasn't been closed.
+
+	* misc.c(str_zcpy): new function.
+	* lex.c(getsc_): made line[] buffer local/static; use str_zcpy()
+	  to fill line[].
+	* history.c(c_fc): use local hline buffer instead of global line[];
+	  use str_zcpy() to fill hline[];
+	* history.c(histrpl): added hline and hsize parameters; changed all
+	  calls.
+	* history.c(hist_init): EASY_HISTORY: use local hilne buffer instead
+	  of global line[].
+	* lex.h(line[]): deleted.
+	* syn.c(compile): do not set s->str to null for STTY and SHIST.
+
+Wed Nov  2 11:48:36 NST 1994 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* lex.c(getsc_): case SDDPAREN: set csstate before going to
+	  SPAREN state.
+
+	* Makefile.in(RCSFILES): removed POSIX from list (now covered in
+	  man page).
+
+Tue Nov  1 09:27:46 NST 1994 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* eval.c(comsub): save/restore source before/after compile().
+
+	* c_ulimit.c(c_ulimit): allow value to be arithmetic expression
+	  (as per Korn book).
+
+	* c_sh.c(c_read): call set_prompt() before printing prompt.
+
+	* expr.c(v_evaluate): treat an empty expression as 0.
+
+Mon Oct 31 09:23:57 NST 1994 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* vi.c(grabhist,grabsearch): check that history line doesn't overflow
+	  edit buffer.
+
+	* history.c(hist_finish): (EASY_HISTORY) changed for-loop condition to
+	  prevent passing the end of history.
+
+	* eval.c(expand): when stuffing MAGIC, cast c to char.
+
+	* misc.c(strip_nuls): new function.
+	* lex.c(getsc_): case STTY/SFILE/SSTDIN: call strip_nuls() after
+	  reading commands.
+
+	* edit.c(set_editmode): reversed strstr() arguments - check for
+	  vi/emacs in $EDITOR/$VISUAL string.
+
+	* syn.c(yyparse): allow EOF as well as newline after a command.
+	* lex.c(getsc_): case SSTRING: don't fake newline
+
+Sun Oct 30 10:55:20 NST 1994 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* c_ksh.c(c_print): echo: check for -n, -e and -E options.
+
+	* exec.c(comexec): don't allow command -p if restricted.
+
+Fri Oct 28 10:24:48 NDT 1994 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* var.c(typeset): in fake_assign code, was freeing t->val.s + t->type
+	  instead of t->val.s - now uses free_me variable instead of aflag.
+
+	* Makefile.in(depend): change blank lines in depend output to sh.h
+	  so dumb make(1)s won't die.
+
+	* mail.c: changed checking to use atime/mtime instead of size; changed
+	  struct mbox mb_size field to mb_mtime, changed all references.
+
+	* main.c(shell): do not execute (or set the exit status for) a null
+	  command.
+	* lex.c(readhere): read the newline after the eof marker.
+
+Wed Oct 26 09:11:08 NDT 1994 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* eval.c(globit): added FMARKDIRS support.
+
+	* emacs.c(x_ftab[]): added entries for ansi arrow key bindings.
+
+	* exec.c(execute,iosetup): move tracing of redirections from
+	  execute() to iosetup() so expanded name can be printed.
+
+	* exec.c(execute): case TDBRACKET: read was being called instead of
+	  test.
+
+	* ksh_stat.h(S_ISCDF): new define.
+	* c_test.c: added -H for context dependent files (HP bizarreness).
+
+	* main.c(initcoms[]): added alias local=typeset.
+
+	* Makefile.in(stamp-h,config.status): added double quotes CONFIG_FILES
+	  and LDSTATIC assignments for dmake.
+	* aclocal.m4(KSH_SYS_SIGLIST): do something with sys_siglist so it
+	  isn't optimized away.
+	* aclocal.m4(KSH_CLOCK_T): do extra check for clock_t in sys/times.h.
+	* acconfig.h(CLOCK_T_IN_SYS_TIMES_H): new define.
+	* sh.h(SIGNALS): use _SIGMAX if NSIG, _MINIX not defined.
+	  (fixes from Brian Campbell <brianc@qnx.com>)
+
+	* emacs.c(x_transpose): changed behavior if FGMACS flag set
+	  (fix from <guy@netapp.com>).
+
+Tue Oct 25 17:11:58 NDT 1994 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* tty.c(KSH_VDISABLE): new define.
+	* edit.c(x_init): use KSH_VDISABLE.
+
+Tue Oct 25 09:55:09 NDT 1994 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* made pdksh-5.0.9 distribution
+
+	* c_ulimit.c(c_ulimit): changed SOFT, HARD from enum to defines
+	  to avoid problems with ancient compilers.
+
+	* vi.c(CHAR_LEN,char_len): changed macro to function; added FVISHOW8
+	  support.
+	* misc.c(options[]), sh.h(FVISHOW8): added FVISHOW8 option.
+
+Sun Oct 23 11:02:26 NDT 1994 Michael Rendell (michael@maple.cs.mun.ca)
+
+	* main.c(shell): keep unwinding if LINTR and not interactive.
+
+	* lex.c(yylex): do redumentery quote parsing for $(..).
+
+Thu Oct 20 11:02:27 NDT 1994 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* exec.c(execute): case TSELECT: set rv to 1 if eof is read.
+	* exec.c(execute): case TFOR/TSELECT/TWHILE/TUNTIL: set rv to 0 before
+	  entering loop, but after setjmp incase of a continue; rv to 0
+	  after a break.
+	* exec.c(execute): case TFOR/TSELECT: do readonly check before
+	  assigning value.
+	* c_ksh.c(c_getopts): do readonly check before assigning value.
+
+	* misc.c(print_columns),c_ksh.c(kill_fmt_entry),
+	  misc.c(options_fmt_entry),exec.c(select_fmt_entry): new functions.
+	* c_ksh.c(c_kill),misc.c(printoptions),exec.c(pr_menu): use
+	  print_columns() call a call-back routine to format information
+	  in columns.
+
+Wed Oct 19 10:26:25 NDT 1994 Michael Rendell (michael@arlene.cs.mun.ca)
+
+	* misc.c(cclass): require MAGIC before - and ].
+	* eval.c(expand): prefix - and ] with MAGIC if appropriate.
+
+	* var.c(typeset): don't allow export flag of readonly variables
+	  to be cleared.
+
+	* eval.c(globit): added call to intrcheck().
+
+Mon Oct 17 11:48:05 NDT 1994 Michael Rendell (michael@arlene.cs.mun.ca)
+
+	* lex.c(readhere): check for and report write errors.
+
+Sun Oct 16 16:10:59 NDT 1994 Michael Rendell (michael@arlene.cs.mun.ca)
+
+	* c_ksh.c(c_cd): don't allow cd if restricted.
+	* exec.c(comexec): if restricted and command contains /, print error.
+	* exec.c(ioestup): if restricted, don't allow file creations.
+	* main.c(is_restricted): new function.
+	* main.c(main): save and reset FRESTRICTED during .profile/ENV reading;
+	  set FRESTRICTED if argv[0] or SHELL refers to restricted shell;
+	  make PATH, ENV, SHELL readonly if restricted.
+	* var.c(typeset): check for restricted shell and PATH/ENV/SHELL.
+
+Thu Oct 13 21:01:14 NDT 1994 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* main.c(shell): only call j_notify() for interactive shells.
+
+	* c_sh.c(c_read): check if variable is readonly before assigning
+	  value.
+
+Wed Oct 12 14:08:46 NDT 1994 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* lex.h(COPROC),tree.h(TCOPROC,XCOPROC): added defines.
+	* lex.c(yylex): return COPROC for |& token.
+	* syn.c(tokentab): added COPROC.
+	* syn.c(c_list): accept COPROC, create TCOPROC node.
+	* tree.c(ptree): added case for TCOPROC.
+	* exec.c(execute): added case for TCOPROC.
+	* io.c(check_fd,get_coproc_fd): new functions.
+	* c_sh.c(c_read),c_ksh.c(c_print): changed to use check_fd();
+	  added -p option; for c_print() ensure SIGPIPE doesn't kill shell.
+	* exec.c(iosetup): changed to use check_fd() for IODUP; when
+	  checking fore close, require exactly the string '-', not any
+	  string starting with '-'; added strerror() to error message.
+	* jobs.c(exchild): don't open /dev/null if XCOPROC; close
+	  coproc.read/write/childread in child if XCOPROC; don't pass
+	  XCOPROC flag on to execute(); set coproc.job to job in parent
+	  if XCOPROC.
+	* jobs.c(check_job): clear coproc.job if said job dies.
+	* trap.c(block_pipe,restore_pipe): new functions.
+	* sh.h(struct coproc, EF_COPROC_DUPED): new structure and define.
+	* c_sh.c(c_exec): if EF_COPROC_DUPED set, clean up co-process stuff.
+
+	* main.c(cleanup_parents_env): new function.
+	* jobs.c(exchild): call cleanup_parents_env() after fork().
+
+	* tree.h(IORDUP): new define.
+	* lex.c(yylex): changed redirection parsing to not accept & only after
+	  a single < or >; set IORDUP flag for x<&y; fixed <</<>/>> check to
+	  not allow >< (again).
+	* tree.c(pioact): use IORDUP flag to print <& or >&.
+
+	* jobs.c(exchild): set JF_ORIGFG flag if job started in foreground.
+	* jobs.c(j_waitj): don't get default tty settings if JF_ORIGFG not
+	  set.
+
+	* misc.c(parse_args): treat -A as a flag that is handled later
+	  (used to require argument); do array setting after argument
+	  sorting.
+	* var.c(set_array): changed second argument from 0/1 flag to
+	  -1/1 flag; changed all calls.
+
+Thu Oct  6 11:55:27 NDT 1994 Michael Rendell (michael@arlene.cs.mun.ca)
+
+	* table.c(tinit): added initial table size argument; call texpand
+	  if size isn't 0; changed all calls.
+	* main.c(main): try to make sure table size is big enough for
+	  builtins and keywords (cut down on amount of re-hashing).
+
+	* eval.c(expand): added next and prev fields to struct SubType;
+	  removed fixed length subtype array, changed code to allocate
+	  SubTypes as needed.
+
+Wed Oct  5 09:25:06 NDT 1994 Michael Rendell (michael@arlene.cs.mun.ca)
+
+	* main.c(main): moved initio() above inittraps() as later can print
+	  stuff.
+
+	* table.h(IMPORT): new flag.
+	* var.c(typeset): if IMPORT flag set, don't allow array references,
+	  insist on assignment.
+	* var.c(import): deleted function.
+	* main.c(main): use typeset() instead of import().
+
+	* sh.h: include expand.h.
+	* expand.h(Xnleft): new define.
+	* expand.h(struct XString, Xinit): added areap field; added area
+	  argument to Xinit; changed all calls.
+	* lex.h(struct source): added xs field.
+	* shf.c(shf_gets,shf_getse): changed name fromshf_gets to shf_getse;
+	  return pointer to null byte instead of start of buffer.
+	* lex.c(pushs): if type is SFILE or SSTDIN, initialize s->xs.
+	* lex.c(getsc_): case SFILE/SSTDIN: use s->xs instead of fixed
+	  size line buffer.
+
+	* syn.c(compile): don't change s->str if SFILE.
+	* main.c(main): call pushs() explicitly for each of SSTRING,
+	  SFILE, SSTDIN, STTY.
+
+	* aclocal.m4(KSH_GCC_FUNC_ATTR): changed GCC_FUNC_ATTR to
+	  HAVE_GCC_FUNC_ATTR.
+	* config.h.bot: changed use of GCC_FUNC_ATTR; deleted
+	  GCC_FA_NORETURN, GCC_FA_CONST, GCC_FA_FORMAT defines, created
+	  generic GCC_FUNC_ATTR define; changed all uses of GCC_FA_*.
+
+	* main.c(main): set s->file for SSTDIN input.
+
+	* main.c(shell): pass LERROR on if not interactive.
+
+	* expand.h(Xcheck,XcheckN): added XcheckN define, changed Xcheck
+	  to use XcheckN; made XcheckN call Xcheck_grow_() do do any real work
+	  (to cut down on code size).
+	* misc.c(Xcheck_grow_): new function.
+	* exec.c(search),c_sh.c(c_read): changed to use Xstring() routines
+	  (used to use the fixed size buffer line[]).
+	* exec.c(findcom): avoid re-saving search() result in ATEMP.
+
+Tue Oct  4 15:32:37 NDT 1994 Michael Rendell (michael@arlene.cs.mun.ca)
+
+	* jobs.c(j_jobs): return int value indicating error/ok; changed
+	  all calls.
+
+	* misc.c(getn): added int * argument to hold result; changed
+	  return value to indicate success/failure; changed all calls.
+	* misc.c(bi_getn): new function.
+	* misc.c(getn_): deleted function.
+
+	* io.c(internal_error,error_prefix,warningf): new functions.
+	* *.c: changed errorf() calls reporting internal errors to
+	  use internal_error() function; changed many shellf()s to
+	  warningf().
+	* io.c(errorf),lex.c(yyerror): changed to use error_prefix().
+
+	* alloc.c(aprint): ifdef'd out.
+	* tree.c(phash): deleted function.
+
+Mon Oct  3 15:08:24 NDT 1994 Michael Rendell (michael@arlene.cs.mun.ca)
+
+	* sh.h(kshname): new variable
+	* main.c(main): changed name to kshname, deleted local variable.
+	* exec.c(comsub): update kshname.
+	* var.c(popblock): restore kshname.
+	* io.c(errorf,bi_errorf): print shell name before error message.
+
+	* c_ksh.c(c_cd): print new directory on stdout, not stderr.
+
+	* sh.h(GI_MINUS): new define.
+	* misc.c(ksh_getopts): changed so once - or + introduces option,
+	  all options must start with same character.
+
+	* sh.h(builtin_argv0): new variable.
+	* exec.c(call_builtin): set/clear builtin_argv0, builtin_flag; changed
+	  argument to a struct tbl *; changed all calls.
+	* io.c(bi_errorf): new function.
+	* c_ksh.c,c_sh.c,c_ulimit.c,emacs.c,history.c,jobs.c: changed all uses
+	  of errorf() to bi_errorf().
+	* emacs.c(x_bind): changed return value to int; changed all calls.
+	* history.c(histrpl): return 0 if there is an error; changed all calls.
+	* misc.c(parse_args): use bi_errorf(); return -1 for error; changed all
+	  calls.
+	* misc.c(ksh_getopts): call bi_errorf instead of errorf which means
+	  ksh_getopts() may return after an error, so changed all calls to
+	  check for '?' return.
+
+	* exec.c(iosetup): use shellf() to report errors and return value
+	  indicating success or failure.
+	* exec.c(execute): if iosetup fails, cause fatal error for special
+	  builtins, return otherwise; print PS4 and redirections.
+
+Fri Sep 30 15:17:37 NDT 1994 Michael Rendell (michael@arlene.cs.mun.ca)
+
+	* c_ulimit.c(c_ulimit): accept unlimited as a valid value.
+
+	* c_test.c(c_test): changed posix special case code to use
+	  while loop.
+
+	* c_ksh.c(c_whence): for whence -p, don't look for built-ins or
+	  fuctions.
+
+Thu Sep 29 10:34:59 NDT 1994 Michael Rendell (michael@arlene.cs.mun.ca)
+
+	* c_ksh.c(c_alias): added -r option so the sysv-bounre shell
+	  hash -r will work.
+
+	* eval.c(debunk): use strchr() to find first MAGIC, if any.
+
+Wed Sep 28 15:34:32 NDT 1994 Michael Rendell (michael@arlene.cs.mun.ca)
+
+	* sh.h(O_NONBLOCK): define to O_NDELAY or FNDELAY if not defined.
+	* main.c(main): if stdin is O_NONBLOCK'd, clear O_NONBLOCK.
+
+	* misc.c(options[], parse_args): make -c a normal flag, not an option
+	  with an argument (POSIX); deleted cargp argument to parse_args().
+	* main.c(main): print error if -c and no arguments left.
+
+	* lex.h(SSTDIN): new define.
+	* lex.c(yylex): added case for SSTDIN.
+	* main.c(main): if -s flag used, set source type to SSTDIN.
+
+Tue Sep 27 08:52:11 NDT 1994 Michael Rendell (michael@arlene.cs.mun.ca)
+
+	* lex.c(get_brace_var): new function.
+	* lex.c(yylex): removed most ${..} parsing - leave it to expand();
+	  use get_brace_var() to read the variable part of a ${..} expression.
+	* tree.c(tputs,wdscan): case OSUBST: delete code that understood
+	  partially compiled ${..}.
+	* sh.h(C_SUBOP,C_SUBOP1,C_SUBOP2): changed C_SUBOP to C_SUBOP1,
+	  added C_SUBOP2.
+	* misc.c(initctypes): removed # and % from C_SUBOP; changed C_SUBOP to
+	  C_SUBOP1; added C_SUBOP2.
+	* eval.c(varsub): look at word part of substitution to figure out
+	  type of substitution; check for bad substitutions; check for unset
+	  variables for #/% substitutions.
+	* eval.c(struct SubType): changed type field to stype; changed quote
+	  field to short; added f field.
+	* tree.h(DOTEMP_): new define.
+	* eval.c(expand): case CSUBST: case '=': deleted bad substitution
+	  error (now handled in varsub); case OSUBST: removed special handling
+	  of trimming - varsub() does it now; when pushing/poping state (st),
+	  save/restore value of f; set f to DOPAT when trimming; case CSUBST:
+	  case '=': restore original position in string, substitute the value
+	  of the variable (as opposed to the value that was assigned to the
+	  variable); case OSUBST: if '?' qualifier, turn off DOBLANK when
+	  expandined word part; define DOTEMP_ when expanding word part
+	  of ${..[#%=?]..}; deleted first_eq and tstart - replaced with
+	  tilde_ok and saw_eq.
+
+	* eval.c(expand): tilde expansion: use tstart variable instead of cp;
+	  changed '?' error message to be like at&t ksh; don't test if strval()
+	  returns NULL - it doesn't.
+
+	* var.c(strval): if !ISSET, instead of returning null, set s to null.
+
+	* exec.c(comexec): case TDBRACKET: don't pass DOASNTILDE to evalstr().
+
+	* exec.c(scriptexec): changed line[] to buf[] so it doesn't get
+	  confused with global the line[].
+
+	* main.c(initsubs): initialize PS4.
+	* edit.c(x_getc): cast char to unsigned before returning.
+
+Mon Sep 26 11:06:55 NDT 1994 Michael Rendell (michael@arlene.cs.mun.ca)
+
+	* eval.c(globit): call strnsave instead of strsave; if file has
+	  trailing /, use stat() to check that it is a directory.
+
+	* eval.c(expand): case CSUBST: case #/%: deleted duplicate *dp = 0;
+	  case CSUBST: case =: copy string and call debunk() to oust MAGICs.
+
+	* misc.c(print_value_quoted): deleted bogus shf_shlout argument to
+	  shprintf(); deleted unneeded test (p != s).
+
+	* main.c(main): turn on FBRACEEXPAND.
+	* misc.c(change_flag): turn FBRACEEXPAND off if turning FPOSIX on.
+
+	* vi.c(x_vi): use x_vi_zotc() to print ^D.
+	* vi.c(CHAR_LEN): new define.
+	* vi.c(vi_hook): use CHAR_LEN() instead of inline tests for
+	  c < ' ' || c== 0x7f; search editing: display M- if necessary.
+	* vi.c(display): changed to deal tiwh meta-characters.
+
+	* vi.c(x_vi_zotc): print M- for meta chars.
+	* emacs.c(x_e_getc): new function; changed all x_getc() calls to
+	  x_e_getc() calls.
+	* edit.c(x_getc): don't and out upper bit.
+
+	* sh.h(OPAREN,CPAREN,OBRACK,CBRACK,OBRACE,CBRACE): new defines
+	* expr.c(OPAREN,CPAREN): re-named to OPEN_PAREN, CLOSE_PAREN.
+
+	* eval.c(debunk): changed to convert MAGIC MAGIC -> MAGIC.
+	* eval.c(expand): removed ismagic_bracket stuff - not needed.
+	* eval.c(expand): always restore value of quote when CSUBST
+	  reached; don't set DOGLOB in fdo if trimming.
+
+Sat Sep 24 11:46:03 NDT 1994 Michael Rendell (michael@arlene.cs.mun.ca)
+
+	* tree.h(DOBRACE_): new define.
+	* eval.c(expand): changed check for leading ! in [..] to be more
+	  robust (old test could have looked before start of string).
+	* eval.c(expand,maybe_expand_tilde): case ~: moved code into a function
+	  (maybe_expand_tilde).
+	* eval.c(expand): expand alternations after macros, before globing
+	  (was before macros).
+	* eval.c(alt_expand): changed to be called after macro expansion.
+	* eval.c(alt_scan,alt_count): deleted (no longer needed).
+
+	* misc.c(cclass): return NULL (no match) if first char in a range
+	  is greater than the second.
+	* eval.c(expand): when building strings, stuff literal MAGIC chars.
+
+Thu Sep 22 15:05:48 NDT 1994 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* exec.c(comexec): re-arranged handling of builtin and exec;
+	  handle command (and command -p, etc.); deleted comexec_flags
+	  variable; made function static again; removed fcflags argument.
+	* table.h(FC_NOBLOCK): deleted define.
+	* c_sh.c(c_exec): changed empty function to deal with preserving I/O
+	  redirects (code taken from comexec()).
+	* c_ksh.c(c_command): new function - calls c_whence.
+	* c_ksh.c(c_whence): removed code to deal with command -p.
+
+	* Makefile.in: changed [ to test.
+	* shf.h: changed errno structure member to errno_; changed all uses
+	  (fixes for QNX from Brian Campbell).
+
+	* c_test.c(enum Op): deleted trailing comma (some compilers complain).
+	* proto.h: added volatile to tp arg of comexec() prototype.
+
+Thu Sep 22 11:08:31 NDT 1994 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* made pdksh-5.0.8 distribution
+
+	* Makefile.in(install): added missing dollar (fix from Thomas Gellekum).
+
+	* emacs.c: changed CMASK to CHARMASK to avoid conflicts with some
+	  system headers (eg, HP-UX 9.01 <sys/param.h>).  Reported by Sean
+	  Hogan.
+
+	* history.c(c_fc): wp not being incremented; -e strcmp() test reversed
+	  (reported by Sean Hogan).
+
+Thu Sep 21 21:12:03 NDT 1994 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* made pdksh-5.0.7 distribution
+
+Tue Sep 20 09:56:54 NDT 1994 Michael Rendell (michael@arlene.cs.mun.ca)
+
+	* history.c(c_fc): use ksh_getopt() to parse arguments.
+	* c_ksh.c(c_bind): use ksh_getopt() to parse arguments.
+
+	* main.c(initcoms[]): changed hash alias from alias -t - to alias -t --.
+
+	* misc.c(print_value_quoted): don't use quotes if no special
+	  characters.
+
+	* c_ksh.c(c_whence): added POSIX command command.
+
+	* c_sh.c(c_label): removed check for null wp.
+
+	* exec.c(comexec): added new flags argument (FC_*);
+	  don't call newblock() if FC_NOBLOCK set; pass flags on to
+	  findcom(); changed all calls; made comexc() a non-static
+	  function.
+
+	* table.h:(FC_SPECBI,FC_FUNC,FC_REGBI,FC_UNREGBI,FC_PATH,FC_DEFPATH,
+	  FC_NOAUTOLOAD,FC_NOBLOCK): new defines.
+	* exec.c(findcom): merged insert/justsearch/autoload arguments
+	  into one flags argument; changed code to check various flags;
+	  changed all calls.
+
+Sat Sep 17 20:17:59 NDT 1994 Michael Rendell (michael@garfield.cs.mun.ca)
+
+	* exec.c(comexec): print error if builtin has no command.
+
+	* exec.c(execute): before doing redirections, check for TCOM and
+	  evaluate arguments and determine if it is a special builtin;
+	  print arguments (using PS4) if FXTRACE set; case TCOM: simply call
+	  comexec().
+	* exec.c(comexec): deleted vp argument; only call newblock() if
+	  needed (ie, !special, !empty); evaluate assignments and put
+	  in environment one at a time; print environment (using PS4) if
+	  FXTRACE set; removed code to turn empty command into :;
+	  removed environment setting code in switch statement.
+	* exec.c(echo): deleted function.
+
+	* lex.c(yylex): only honour CMDWORD if FPOSIX set.
+
+	* c_sh.c(shbuiltins): removed = attribute from false/true commands.
+
+	* sh.h(E_TCOM): delete define - not used.
+
+	* sh.h(null),var.c: use EXTERN for initialization of null.
+	* sh.h(space,newline,slash): new variables (" ", "\n", "/")
+	  use these everwhere instead of "", " ", "\n", "/".
+	* path.c: include sh.h.
+
+	* exec.c(execute): combined TFOR/TSELECT cases.
+
+Fri Sep 16 11:32:01 NDT 1994 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* lex.h(CMDWORD): new define to prevent continued alias expansion in
+	  non-command contexts.
+	* lex.c(yylex): only set ALIAS if SF_ALIAS and CMDWORD are set.
+	* syn.c(get_command): case LWORD/REDIR: pass CMDWORD if argc is 0.
+
+	* exec.c(comexec): if there is no command, do assignments and set
+	  the return value to subst_exstat (used to fake a : command).
+
+	* sh.h(subst_exstat): new variable.
+	* exec.c(execute): case TCOM: clear subst_exstat before doing eval()s.
+	* eval.c(expand): set subst_exstat to return value of waitlast().
+	* c_sh.c(c_set): if !FPOSIX, return subst_exstat instead of 0.
+
+	* exec.c(execute): removed redundent "exstat = rv;" near if FERREXIT.
+	* exec.c(comexec): case CFUNC: for normal function completion, set
+	  i to 0 and rv to return value of execute() (was i=LRETURN,exstat=..).
+
+	* main.c(include): return -1 if file could not be found/opened,
+	  otherwise, the exit status of the last command is returned;
+	  changed all calls.
+	* c_sh.c(c_dot): print error if include() returns < 0.
+
+	* var.c(setspec): ifdef EDIT'd V_VISUAL, V_EDITOR cases.
+
+	* misc.c(parse_args): no longer accept set -o alternations as
+	  a substitute for set -o braceexpand.
+
+	* jobs.c(j_exit): when restoring tty process group, also restore
+	  our process group.
+
+	* config.h.bot: define JOB_SIGS iff we have modern signal and wait
+	  routines.
+	* jobs.c: use ifdef JOB_SIGS instead of ifdef JOBS when setting
+	  signal masks and routines or using waitpid; define TTY_PGRP and
+	  NEED_PGRP_SYNC seperately from JOBS.
+	* jobs.c(j_kill): only send SIGCONT if job is stopped.
+	* jobs.c(j_jobs): remove exited/signaled jobs even if !FMONITOR,
+	  un-ifdef JOBS same.
+
+	* jobs.c(check_job): ifdef FNOTIFY with JOBS (noted by
+	  Michael Haardt <u31b3hs@POOL.Informatik.RWTH-Aachen.DE>).
+	* jobs.c(j_notify,j_waitj): put ifdef JOBS around use of FMONITOR.
+	* main.c(shell): removed ifdef JOBS from declaration of interactive.
+
+	* ksh_limval.h,sh.h: moved include of <limits.h> from ksh_limval.h
+	  to sh.h since some machines define CLK_TCK there.
+
+Thu Sep 15 09:58:14 NDT 1994 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* vi.c(vi_cmd): took out ESC as file completion char in command mode
+	  (too annoying).
+
+	* jobs.c(exchild): if starting a job in the background and FBGNICE
+	  is set, call nice().
+
+	* Makefile.in: changed maxext to manext (fix from Thomas Gellekum
+	  <thomas@ghpc8.ihf.rwth-aachen.de>); in the install target, check
+	  if the path of the installed shell is in /etc/shells and
+	  complain if it isn't; added depend target, removed old $(OBJS)
+	  and trap.o dependencies.
+
+Wed Sep 14 09:39:55 NDT 1994 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* misc.c(options[]): changed position of vi-tabcomplete option.
+
+	* lex.c(yylex): ifdef use of FVI/FEMACS/FGMACES with VI/EMACS
+	  (fix from Gordan Larson <hoh@approve.se>).
+
+	* ksh.1(DESCRIPTION): added missing P in \fP
+	  (fix from Gordan Larson <hoh@approve.se>).
+
 Tue Sep 13 11:01:47 NDT 1994 Michael Rendell (michael@panda.cs.mun.ca)
 
 	* made pdksh-5.0.6 distribution

@@ -4,6 +4,10 @@
 /* assumes <sys/types.h> already included */
 #include <sys/stat.h>
 
+#ifndef HAVE_LSTAT
+# define lstat(path, buf)	stat(path, buf)
+#endif /* HAVE_LSTAT */
+
 #ifdef STAT_MACROS_BROKEN
 # undef S_ISREG
 # undef S_ISDIR
@@ -33,6 +37,9 @@
 #endif /* S_ISLNK */
 #if !defined(S_ISSOCK) && defined(S_IFSOCK)
 # define S_ISSOCK(m)	(((m) & S_IFMT) == S_IFSOCK)
+#endif /* S_ISSOCK */
+#if !defined(S_ISCDF) && defined(S_CDF)
+# define S_ISCDF(m)	(S_ISDIR(m) && ((m) & S_CDF))
 #endif /* S_ISSOCK */
 
 #ifndef S_ISVTX

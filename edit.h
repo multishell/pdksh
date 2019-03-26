@@ -30,6 +30,7 @@ typedef struct {
 	int werase;
 	int intr;
 	int quit;
+	int eof;
 } X_chars;
 
 EXTERN X_chars edchars;
@@ -39,7 +40,6 @@ int 	x_emacs		ARGS((char *buf, size_t len));
 void 	x_init_emacs	ARGS((void));
 void	x_emacs_keys	ARGS((X_chars *ec));
 /* vi.c */
-int 	vi_hook		ARGS((int ch));
 int 	x_vi		ARGS((char *buf, size_t len));
 
 #ifdef DEBUG

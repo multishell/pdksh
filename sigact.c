@@ -132,9 +132,6 @@
  *	- define IS_KSH before including anything; ifdef out routines
  *	  not used in ksh if IS_KSH is defined (same in sigact.h).
  */
-#if !defined(lint) && !defined(no_RCSids)
-static char  *RCSid = "$Id: sigact.c,v 1.3 1994/05/31 13:34:34 michael Exp $";
-#endif
 
 /*
 #include <signal.h>
@@ -221,7 +218,7 @@ sigaction(sig, act, oact)
     nsv.sv_flags = SV_INTERRUPT;	/* punt */
     sigvec(sig, &nsv, &osv);
     oldh = osv.sv_handler;
-# else USE_SIGMASK
+# else /* USE_SIGMASK */
     oldh = signal(sig, act->sa_handler);
 # endif /* USE_SIGMASK */
 #endif

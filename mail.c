@@ -2,9 +2,6 @@
  * Mailbox checking code by Robert J. Gibson, adapted for PD ksh by
  * John R. MacMillan
  */
-#if !defined(lint) && !defined(no_RCSids)
-static char *RCSid = "$Id: mail.c,v 1.3 1994/05/31 13:34:34 michael Exp $";
-#endif
 
 #include "sh.h"
 #include "ksh_stat.h"
@@ -16,7 +13,7 @@ typedef struct mbox {
 	struct mbox    *mb_next;	/* next mbox in list */
 	char	       *mb_path;	/* path to mail file */
 	char	       *mb_msg;		/* to announce arrival of new mail */
-	unsigned int	mb_size;	/* size of mail file (bytes) */
+	time_t		mb_mtime;	/* mtime of mail file */
 } mbox_t;
 
 struct mailmsg {
@@ -51,12 +48,12 @@ mcheck()
 	if (getint(global("MAILCHECK"), &mailcheck) < 0)
 		return;
 
+	now = time((time_t *) 0);
 	if (mlastchkd == 0)
-		mlastchkd = time((time_t *)0);
-
-	if ((now=time((time_t *)0)) - mlastchkd >= mailcheck) {
 		mlastchkd = now;
-		
+	if (now - mlastchkd >= mailcheck) {
+		mlastchkd = now;
+
 		vp = global("MAILPATH");
 		if (vp && (vp->flag & ISSET))
 			mbp = mplist;
@@ -69,17 +66,19 @@ mcheck()
 			if (mbp->mb_path && stat(mbp->mb_path, &stbuf) == 0
 			    && S_ISREG(stbuf.st_mode))
 			{
-				if (mbp->mb_size < stbuf.st_size)
-					maddmsg( mbp );
-				mbp->mb_size = stbuf.st_size;
+				if (stbuf.st_size
+				    && mbp->mb_mtime != stbuf.st_mtime
+				    && stbuf.st_atime <= stbuf.st_mtime)
+					maddmsg(mbp);
+				mbp->mb_mtime = stbuf.st_mtime;
 			} else {
 				/*
 				 * Some mail readers remove the mail
 				 * file if all mail is read.  If file
 				 * does not exist, assume this is the
-				 * case and set size to zero.
+				 * case and set mtime to zero.
 				 */
-				mbp->mb_size = 0;
+				mbp->mb_mtime = 0;
 			}
 			mbp = mbp->mb_next;
 		}
@@ -97,9 +96,9 @@ mbset(p)
 	mbox.mb_path = p;
 	mbox.mb_msg = NULL;
 	if (p && stat(p,&stbuf) == 0 && S_ISREG(stbuf.st_mode))
-		mbox.mb_size = stbuf.st_size;
+		mbox.mb_mtime = stbuf.st_mtime;
 	else
-		mbox.mb_size = 0;
+		mbox.mb_mtime = 0;
 }
 
 void
@@ -108,17 +107,33 @@ mpset(mptoparse)
 {
 	register mbox_t	*mbp;
 	register char	*mpath, *mmsg, *mval;
+	char *p;
 
 	munset( mplist );
 	mplist = NULL;
 	mval = strsave(mptoparse, APERM);
 	while (mval) {
 		mpath = mval;
-		if ((mval = strchr(mval, ':')) != NULL) {
+		if ((mval = strchr(mval, PATHSEP)) != NULL) {
 			*mval = '\0', mval++;
 		}
-		if ((mmsg = strchr(mpath, '?')) != NULL) {
-			*mmsg = '\0', mmsg++;
+		/* POSIX/bourne-shell say file%message */
+		for (p = mpath; (mmsg = strchr(p, '%')); ) {
+			/* a literal percent? (POSIXism) */
+			if (mmsg[-1] == '\\') {
+				/* use memmove() to avoid overlap problems */
+				memmove(mmsg - 1, mmsg, strlen(mmsg) + 1);
+				p = mmsg + 1;
+				continue;
+			}
+			break;
+		}
+		/* at&t ksh says file?message */
+		if (!mmsg && !Flag(FPOSIX))
+			mmsg = strchr(mpath, '?');
+		if (mmsg) {
+			*mmsg = '\0';
+			mmsg++;
 		}
 		mbp = mballoc(mpath, mmsg);
 		mbp->mb_next = mplist;
@@ -154,9 +169,9 @@ mballoc(p, m)
 	mbp->mb_path = p;
 	mbp->mb_msg = m;
 	if (stat(mbp->mb_path, &stbuf) == 0 && S_ISREG(stbuf.st_mode))
-		mbp->mb_size = stbuf.st_size;
+		mbp->mb_mtime = stbuf.st_mtime;
 	else
-		mbp->mb_size = 0;
+		mbp->mb_mtime = 0;
 	return(mbp);
 }
 
@@ -166,8 +181,7 @@ mprint()
 	struct mailmsg *mm;
 
 	while ((mm = mmsgs) != NULL) {
-		shellf( "%s\n", mm->msg );
-		shf_flush(shl_out);
+		shellf("%s\n", mm->msg);
 		afree((void *)mm->msg, APERM);
 		mmsgs = mm->next;
 		afree((void *)mm, APERM);
@@ -189,7 +203,7 @@ mbox_t	*mbp;
 	else
 		message->msg = strsave(substitute(MBMESSAGE,0),APERM);
 
-	unset(vp);
+	unset(vp, 0);
 	message->next = mmsgs;
 	mmsgs = message;
 }

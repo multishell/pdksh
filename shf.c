@@ -2,10 +2,6 @@
  *  Shell file I/O routines
  */
 
-#if !defined(lint) && !defined(no_RCSids)
-static char *RCSid = "$Id: shf.c,v 1.3 1994/05/31 13:34:34 michael Exp $";
-#endif
-
 #include "sh.h"
 #include "ksh_limval.h"
 
@@ -42,7 +38,7 @@ shf_open(name, oflags, mode, sflags)
 	if ((sflags & SHF_MAPHI) && fd < FDBASE) {
 		int nfd;
 
-		nfd = fcntl(fd, F_DUPFD, FDBASE);
+		nfd = ksh_dupbase(fd, FDBASE);
 		close(fd);
 		if (nfd < 0)
 			return NULL;
@@ -81,7 +77,7 @@ shf_fdopen(fd, sflags, shf)
 	}
 
 	if (!(sflags & (SHF_RD | SHF_WR)))
-		errorf("shf_fdopen: internal error - missing read/write\n");
+		internal_errorf(1, "shf_fdopen: missing read/write");
 
 	if (shf) {
 		if (bsize) {
@@ -102,7 +98,7 @@ shf_fdopen(fd, sflags, shf)
 	shf->wnleft = 0; /* force call to shf_emptybuf() */
 	shf->wbsize = sflags & SHF_UNBUF ? 0 : bsize;
 	shf->flags = sflags;
-	shf->errno = 0;
+	shf->errno_ = 0;
 	shf->bsize = bsize;
 	if (sflags & SHF_CLEXEC)
 		fd_clexec(fd);
@@ -134,9 +130,9 @@ shf_reopen(fd, sflags, shf)
 	}
 
 	if (!(sflags & (SHF_RD | SHF_WR)))
-		errorf("shf_reopen: internal error - missing read/write\n");
+		internal_errorf(1, "shf_reopen: missing read/write");
 	if (!shf || !shf->buf || shf->bsize < bsize)
-		errorf("shf_reopen: bad shf/buf/bsize\n");
+		internal_errorf(1, "shf_reopen: bad shf/buf/bsize");
 
 	/* assumes shf->buf and shf->bsize already set up */
 	shf->fd = fd;
@@ -146,7 +142,7 @@ shf_reopen(fd, sflags, shf)
 	shf->wnleft = 0; /* force call to shf_emptybuf() */
 	shf->wbsize = sflags & SHF_UNBUF ? 0 : bsize;
 	shf->flags = (shf->flags & (SHF_ALLOCS | SHF_ALLOCB)) | sflags;
-	shf->errno = 0;
+	shf->errno_ = 0;
 	if (sflags & SHF_CLEXEC)
 		fd_clexec(fd);
 	return shf;
@@ -170,7 +166,7 @@ shf_sopen(buf, bsize, sflags, shf)
 	/* can't have a read+write string */
 	if (!(sflags & (SHF_RD | SHF_WR))
 	    || (sflags & (SHF_RD | SHF_WR)) == (SHF_RD | SHF_WR))
-		errorf("shf_sopen: internal error - flags 0x%x\n", sflags);
+		internal_errorf(1, "shf_sopen: flags 0x%x", sflags);
 
 	if (!shf) {
 		shf = (struct shf *) alloc(sizeof(struct shf), ATEMP);
@@ -190,7 +186,7 @@ shf_sopen(buf, bsize, sflags, shf)
 	shf->wnleft = bsize - 1;	/* space for a '\0' */
 	shf->wbsize = bsize;
 	shf->flags = sflags | SHF_STRING;
-	shf->errno = 0;
+	shf->errno_ = 0;
 	shf->bsize = bsize;
 
 	return shf;
@@ -284,10 +280,10 @@ shf_flush(shf)
 		return (shf->flags & SHF_WR) ? EOF : 0;
 
 	if (shf->fd < 0)
-		errorf("shf_flush: internal error: no fd\n");
+		internal_errorf(1, "shf_flush: no fd");
 
 	if (shf->flags & SHF_ERROR) {
-		errno = shf->errno;
+		errno = shf->errno_;
 		return EOF;
 	}
 
@@ -316,10 +312,10 @@ shf_emptybuf(shf, flags)
 	int ret = 0;
 
 	if (!(shf->flags & SHF_STRING) && shf->fd < 0)
-		errorf("shf_emptybuf: internal error: no fd\n");
+		internal_errorf(1, "shf_emptybuf: no fd");
 
 	if (shf->flags & SHF_ERROR) {
-		errno = shf->errno;
+		errno = shf->errno_;
 		return EOF;
 	}
 
@@ -357,13 +353,11 @@ shf_emptybuf(shf, flags)
 			while (ntowrite > 0) {
 				n = write(shf->fd, buf, ntowrite);
 				if (n < 0) {
-					if (errno == EINTR) {
-						if (shf->flags & SHF_INTERRUPT)
-							intrcheck();
+					if (errno == EINTR
+					    && !(shf->flags & SHF_INTERRUPT))
 						continue;
-					}
 					shf->flags |= SHF_ERROR;
-					shf->errno = errno;
+					shf->errno_ = errno;
 					shf->wnleft = 0;
 					if (buf != shf->buf) {
 						/* allow a second flush
@@ -401,11 +395,11 @@ shf_fillbuf(shf)
 		return 0;
 
 	if (shf->fd < 0)
-		errorf("shf_fillbuf: internal error: no fd\n");
+		internal_errorf(1, "shf_fillbuf: no fd");
 
 	if (shf->flags & (SHF_EOF | SHF_ERROR)) {
 		if (shf->flags & SHF_ERROR)
-			errno = shf->errno;
+			errno = shf->errno_;
 		return EOF;
 	}
 
@@ -416,18 +410,17 @@ shf_fillbuf(shf)
 
 	shf->rp = shf->buf;
 	while (1) {
-		shf->rnleft = read(shf->fd, shf->buf, shf->rbsize);
-		if (shf->rnleft < 0 && errno == EINTR) {
-			if (shf->flags & SHF_INTERRUPT)
-				intrcheck();
+		shf->rnleft = blocking_read(shf->fd, (char *) shf->buf,
+					    shf->rbsize);
+		if (shf->rnleft < 0 && errno == EINTR
+		    && !(shf->flags & SHF_INTERRUPT))
 			continue;
-		}
 		break;
 	}
 	if (shf->rnleft <= 0) {
 		if (shf->rnleft < 0) {
 			shf->flags |= SHF_ERROR;
-			shf->errno = errno;
+			shf->errno_ = errno;
 			shf->rnleft = 0;
 			shf->rp = shf->buf;
 			return EOF;
@@ -436,6 +429,54 @@ shf_fillbuf(shf)
 	}
 	return 0;
 }
+
+/* Seek to a new position in the file.  If writing, flushes the buffer
+ * first.  If reading, optimizes small relative seeks that stay inside the
+ * buffer.  Returns 0 for success, EOF otherwise.
+ */
+int
+shf_seek(shf, where, from)
+	struct shf *shf;
+	off_t where;
+	int from;
+{
+	if (shf->fd < 0) {
+		errno = EINVAL;
+		return EOF;
+	}
+
+	if (shf->flags & SHF_ERROR) {
+		errno = shf->errno_;
+		return EOF;
+	}
+
+	if ((shf->flags & SHF_WRITING) && shf_emptybuf(shf, EB_READSW) == EOF)
+		return EOF;
+
+	if (shf->flags & SHF_READING) {
+		if (from == SEEK_CUR &&
+				(where < 0 ?
+					-where >= shf->rbsize - shf->rnleft :
+					where < shf->rnleft)) {
+			shf->rnleft -= where;
+			shf->rp += where;
+			return 0;
+		}
+		shf->rnleft = 0;
+		shf->rp = shf->buf;
+	}
+
+	shf->flags &= ~(SHF_EOF | SHF_READING | SHF_WRITING);
+
+	if (lseek(shf->fd, where, from) < 0) {
+		shf->errno_ = errno;
+		shf->flags |= SHF_ERROR;
+		return EOF;
+	}
+
+	return 0;
+}
+
 
 /* Read a buffer from shf.  Returns the number of bytes read into buf,
  * if no bytes were read, returns 0 if end of file was seen, EOF if
@@ -451,10 +492,10 @@ shf_read(buf, bsize, shf)
 	int ncopy;
 
 	if (!(shf->flags & SHF_RD))
-		errorf("shf_read: internal error: flags %x\n", shf->flags);
+		internal_errorf(1, "shf_read: flags %x", shf->flags);
 
 	if (bsize <= 0)
-		errorf("shf_read: internal error: bsize %d\n", bsize);
+		internal_errorf(1, "shf_read: bsize %d", bsize);
 
 	while (bsize > 0) {
 		if (shf->rnleft == 0
@@ -475,11 +516,11 @@ shf_read(buf, bsize, shf)
 }
 
 /* Read up to a newline or EOF.  The newline is put in buf; buf is always
- * null terminated.  Returns EOF on read error or if nothing was read before
- * end of file, returns buf otherwise.
+ * null terminated.  Returns NULL on read error or if nothing was read before
+ * end of file, returns a pointer to the null byte in buf otherwise.
  */
 char *
-shf_gets(buf, bsize, shf)
+shf_getse(buf, bsize, shf)
 	char *buf;
 	int bsize;
 	struct shf *shf;
@@ -489,7 +530,7 @@ shf_gets(buf, bsize, shf)
 	char *orig_buf = buf;
 
 	if (!(shf->flags & SHF_RD))
-		errorf("shf_gets: internal error: flags %x\n", shf->flags);
+		internal_errorf(1, "shf_getse: flags %x", shf->flags);
 
 	if (bsize <= 0)
 		return (char *) 0;
@@ -516,7 +557,7 @@ shf_gets(buf, bsize, shf)
 		bsize -= ncopy;
 	} while (!end && bsize);
 	*buf = '\0';
-	return orig_buf;
+	return buf;
 }
 
 /* Returns the char read.  Returns EOF for error and end of file. */
@@ -525,7 +566,7 @@ shf_getchar(shf)
 	struct shf *shf;
 {
 	if (!(shf->flags & SHF_RD))
-		errorf("shf_getchar: internal error: flags %x\n", shf->flags);
+		internal_errorf(1, "shf_getchar: flags %x", shf->flags);
 
 	if (shf->rnleft == 0 && (shf_fillbuf(shf) == EOF || shf->rnleft == 0))
 		return EOF;
@@ -542,7 +583,7 @@ shf_ungetc(c, shf)
 	struct shf *shf;
 {
 	if (!(shf->flags & SHF_RD))
-		errorf("shf_ungetc: internal error: flags %x\n", shf->flags);
+		internal_errorf(1, "shf_ungetc: flags %x", shf->flags);
 
 	if ((shf->flags & SHF_ERROR) || c == EOF
 	    || (shf->rp == shf->buf && shf->rnleft))
@@ -579,7 +620,7 @@ shf_putchar(c, shf)
 	struct shf *shf;
 {
 	if (!(shf->flags & SHF_WR))
-		errorf("shf_putchar: internal error: flags %x\n", shf->flags);
+		internal_errorf(1, "shf_putchar: flags %x", shf->flags);
 
 	if (c == EOF)
 		return EOF;
@@ -589,20 +630,18 @@ shf_putchar(c, shf)
 		int n;
 
 		if (shf->fd < 0)
-			errorf("shf_putchar: internal error: no fd\n");
+			internal_errorf(1, "shf_putchar: no fd");
 		if (shf->flags & SHF_ERROR) {
-			errno = shf->errno;
+			errno = shf->errno_;
 			return EOF;
 		}
 		while ((n = write(shf->fd, &cc, 1)) != 1)
 			if (n < 0) {
-				if (errno == EINTR) {
-					if (shf->flags & SHF_INTERRUPT)
-						intrcheck();
+				if (errno == EINTR
+				    && !(shf->flags & SHF_INTERRUPT))
 					continue;
-				}
 				shf->flags |= SHF_ERROR;
-				shf->errno = errno;
+				shf->errno_ = errno;
 				return EOF;
 			}
 	} else {
@@ -614,6 +653,20 @@ shf_putchar(c, shf)
 	}
 
 	return c;
+}
+
+/* Write a string.  Returns the length of the string if successful, EOF if
+ * the string could not be written.
+ */
+int
+shf_puts(s, shf)
+	char *s;
+	struct shf *shf;
+{
+	if (!s)
+		return EOF;
+
+	return shf_write(s, strlen(s), shf);
 }
 
 /* Write a buffer.  Returns nbytes if successful, EOF if there is an error. */
@@ -628,10 +681,10 @@ shf_write(buf, nbytes, shf)
 	int ncopy;
 
 	if (!(shf->flags & SHF_WR))
-		errorf("shf_write: internal error: flags %x\n", shf->flags);
+		internal_errorf(1, "shf_write: flags %x", shf->flags);
 
 	if (nbytes < 0)
-		errorf("shf_write: internal error: nbytes %d\n", nbytes);
+		internal_errorf(1, "shf_write: nbytes %d", nbytes);
 
 	if ((ncopy = shf->wnleft)) {
 		if (ncopy > nbytes)
@@ -654,13 +707,11 @@ shf_write(buf, nbytes, shf)
 			while (ncopy > 0) {
 				n = write(shf->fd, buf, ncopy);
 				if (n < 0) {
-					if (errno == EINTR) {
-						if (shf->flags & SHF_INTERRUPT)
-							intrcheck();
+					if (errno == EINTR
+					    && !(shf->flags & SHF_INTERRUPT))
 						continue;
-					}
 					shf->flags |= SHF_ERROR;
-					shf->errno = errno;
+					shf->errno_ = errno;
 					shf->wnleft = 0;
 					/* Note: fwrite(3S) returns 0 for
 					 * errors - this doesn't */
@@ -716,8 +767,8 @@ shf_snprintf(buf, bsize, fmt, va_alist)
 	int n;
 
 	if (!buf || bsize <= 0)
-		errorf("shf_sprintf: internal error - buf %lx, bsize %d\n",
-			buf, bsize);
+		internal_errorf(1, "shf_snprintf: buf %lx, bsize %d",
+			(long) buf, bsize);
 
 	shf_sopen(buf, bsize, SHF_WR, &shf);
 	SH_VA_START(args, fmt);
@@ -725,6 +776,26 @@ shf_snprintf(buf, bsize, fmt, va_alist)
 	va_end(args);
 	shf_sclose(&shf); /* null terminates */
 	return n;
+}
+
+char *
+#ifdef HAVE_PROTOTYPES
+shf_smprintf(char *fmt, ...)
+#else
+shf_smprintf(fmt, va_alist)
+	char *fmt;
+	va_dcl
+#endif
+{
+	struct shf shf;
+	va_list args;
+	int n;
+
+	shf_sopen((char *) 0, 0, SHF_WR|SHF_DYNAMIC, &shf);
+	SH_VA_START(args, fmt);
+	n = shf_vfprintf(&shf, fmt, args);
+	va_end(args);
+	return shf_sclose(&shf); /* null terminates */
 }
 
 #undef FP  			/* if you want floating point stuff */

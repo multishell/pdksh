@@ -2,10 +2,6 @@
  * signal handling
  */
 
-#if !defined(lint) && !defined(no_RCSids)
-static char *RCSid = "$Id: trap.c,v 1.3 1994/05/31 13:34:34 michael Exp $";
-#endif
-
 #include "sh.h"
 
 /* Table is indexed by signal number
@@ -48,13 +44,15 @@ inittraps()
 
 	sigtraps[SIGINT].flags |= TF_DFL_INTR | TF_TTY_INTR;
 	sigtraps[SIGQUIT].flags |= TF_DFL_INTR | TF_TTY_INTR;
-	sigtraps[SIGTERM].flags |= TF_DFL_INTR;
+	sigtraps[SIGTERM].flags |= TF_DFL_INTR;/* not fatal for interactive */
+	sigtraps[SIGHUP].flags |= TF_FATAL;
 	sigtraps[SIGCHLD].flags |= TF_SHELL_USES;
 
 	/* these are always caught so we can clean up any temproary files. */
-	setsig(&sigtraps[SIGINT], trapsig, SS_RESTORE_ORIG|SS_FORCE);
-	setsig(&sigtraps[SIGQUIT], trapsig, SS_RESTORE_ORIG|SS_FORCE);
-	setsig(&sigtraps[SIGTERM], trapsig, SS_RESTORE_ORIG|SS_FORCE);
+	setsig(&sigtraps[SIGINT], trapsig, SS_RESTORE_ORIG);
+	setsig(&sigtraps[SIGQUIT], trapsig, SS_RESTORE_ORIG);
+	setsig(&sigtraps[SIGTERM], trapsig, SS_RESTORE_ORIG);
+	setsig(&sigtraps[SIGHUP], trapsig, SS_RESTORE_ORIG);
 }
 
 void
@@ -70,6 +68,7 @@ alarm_catcher(sig)
 	int sig;
 {
 	trapsig(sig);
+#ifdef KSH
 	if (ksh_tmout_state == TMOUT_READING) {
 		int left = alarm(0);
 
@@ -79,8 +78,9 @@ alarm_catcher(sig)
 		} else
 			alarm(left);
 	}
+#endif /* KSH */
 #ifdef V7_SIGNALS
-	sigaction(i, &Sigact_alarm, (struct sigaction *) 0);
+	sigaction(sig, &Sigact_alarm, (struct sigaction *) 0);
 #endif /* V7_SIGNALS */
 }
 
@@ -92,9 +92,11 @@ gettrap(name)
 	register Trap *p;
 
 	if (digit(*name)) {
-		i = getn(name);
-		/* don't allow -32 for ERR */
-		return (0 <= i && i < SIGNALS) ? &sigtraps[i] : NULL;
+		int n;
+
+		if (getn(name, &n) && 0 <= n && n < SIGNALS)
+			return &sigtraps[n];
+		return NULL;
 	}
 	for (p = sigtraps, i = SIGNALS+1; --i >= 0; p++)
 		if (p->name && strcasecmp(p->name, name) == 0)
@@ -114,20 +116,59 @@ trapsig(i)
 	trap = p->set = 1;
 	if (p->flags & TF_DFL_INTR)
 		intrsig = 1;
+	if ((p->flags & TF_FATAL) && !p->trap) {
+		fatal_trap = 1;
+		intrsig = 1;
+	}
 #ifdef V7_SIGNALS
 	if (sigtraps[i].cursig == trapsig) /* this for SIGCHLD,SIGALRM */
 		sigaction(i, &Sigact_trap, (struct sigaction *) 0);
 #endif /* V7_SIGNALS */
 }
 
-/* called when a read/write/wait system call returns EINTR.
- * May or may not return.
+/* called when we want to allow the user to ^C out of something - won't
+ * work if user has trapped SIGINT.
  */
 void
 intrcheck()
 {
 	if (intrsig)
-		runtraps(TRUE);
+		runtraps(TF_DFL_INTR|TF_FATAL);
+}
+
+/* called after EINTR to check if a signal with normally causes process
+ * termination has been received.
+ */
+int
+fatal_trap_check()
+{
+	int i;
+	Trap *p;
+
+	/* todo: should check if signal is fatal, not the TF_DFL_INTR flag */
+	for (p = sigtraps, i = SIGNALS+1; --i >= 0; p++)
+		if (p->set && (p->flags & (TF_DFL_INTR|TF_FATAL)))
+			/* return value is used as an exit code */
+			return 128 + p->signal;
+	return 0;
+}
+
+/* Returns the signal number of any pending traps: ie, a signal which has
+ * occured for which a trap has been set or for which the TF_DFL_INTR flag
+ * is set.
+ */
+int
+trap_pending()
+{
+	int i;
+	Trap *p;
+
+	for (p = sigtraps, i = SIGNALS+1; --i >= 0; p++)
+		if (p->set && ((p->trap && p->trap[0])
+			       || ((p->flags & (TF_DFL_INTR|TF_FATAL))
+				   && !p->trap)))
+			return p->signal;
+	return 0;
 }
 
 /*
@@ -135,25 +176,32 @@ intrcheck()
  * can interrupt commands.
  */
 void
-runtraps(intr)
-	int intr;
+runtraps(flag)
+	int flag;
 {
 	int i;
 	register Trap *p;
 
+#ifdef KSH
 	if (ksh_tmout_state == TMOUT_LEAVING) {
 		ksh_tmout_state = TMOUT_EXECUTING;
-		shellf("%s: timed out waiting for input\n",
-			strval(global("0")));
-		shf_flush(shl_out);
+		warningf(FALSE, "timed out waiting for input");
 		unwind(LEXIT);
 	} else
+		/* XXX: this means the alarm will have no effect if a trap
+		 * is caught after the alarm() was started...not good.
+		 */
 		ksh_tmout_state = TMOUT_EXECUTING;
-	if (!intr)
+#endif /* KSH */
+	if (!flag)
 		trap = 0;
-	intrsig = 0;
+	if (flag & TF_DFL_INTR)
+		intrsig = 0;
+	if (flag & TF_FATAL)
+		fatal_trap = 0;
 	for (p = sigtraps, i = SIGNALS+1; --i >= 0; p++)
-		if (p->set && (!intr || p->trap == (char *) 0))
+		if (p->set && (!flag
+			       || ((p->flags & flag) && p->trap == (char *) 0)))
 			runtrap(p);
 }
 
@@ -168,6 +216,11 @@ runtrap(p)
 
 	p->set = 0;
 	if (trapstr == (char *) 0) { /* SIG_DFL */
+		if (p->flags & TF_FATAL) {
+			/* eg, SIGHUP */
+			exstat = 128 + i;
+			unwind(LLEAVE);
+		}
 		if (p->flags & TF_DFL_INTR) {
 			/* eg, SIGINT, SIGQUIT, SIGTERM, etc. */
 			exstat = 128 + i;
@@ -204,6 +257,7 @@ cleartraps()
 
 	trap = 0;
 	intrsig = 0;
+	fatal_trap = 0;
 	for (i = SIGNALS+1, p = sigtraps; --i >= 0; p++) {
 		p->set = 0;
 		if ((p->flags & TF_USER_SET) && (p->trap && p->trap[0]))
@@ -238,7 +292,7 @@ settrap(p, s)
 	f = !s ? SIG_DFL : s[0] ? trapsig : SIG_IGN;
 
 	p->flags |= TF_USER_SET;
-	if ((p->flags & TF_DFL_INTR) && f == SIG_DFL)
+	if ((p->flags & (TF_DFL_INTR|TF_FATAL)) && f == SIG_DFL)
 		f = trapsig;
 	else if (p->flags & TF_SHELL_USES) {
 		if (!(p->flags & TF_ORIG_IGN) || Flag(FTALKING)) {
@@ -257,6 +311,35 @@ settrap(p, s)
 
 	/* todo: should we let user know signal is ignored? how? */
 	setsig(p, f, SS_RESTORE_CURR|SS_USER);
+}
+
+/* Called by c_print() when writing to a co-process to ensure SIGPIPE won't
+ * kill shell (unless user catches it and exits)
+ */
+int
+block_pipe()
+{
+	int restore_dfl = 0;
+	Trap *p = &sigtraps[SIGPIPE];
+
+	if (!(p->flags & (TF_ORIG_IGN|TF_ORIG_DFL))) {
+		setsig(p, SIG_IGN, SS_RESTORE_CURR);
+		if (p->flags & TF_ORIG_DFL)
+			restore_dfl = 1;
+	} else if (p->cursig == SIG_DFL) {
+		setsig(p, SIG_IGN, SS_RESTORE_CURR);
+		restore_dfl = 1; /* restore to SIG_DFL */
+	}
+	return restore_dfl;
+}
+
+/* Called by c_print() to undo whatever block_pipe() did */
+void
+restore_pipe(restore_dfl)
+	int restore_dfl;
+{
+	if (restore_dfl)
+		setsig(&sigtraps[SIGPIPE], SIG_DFL, SS_RESTORE_CURR);
 }
 
 /* Set action for a signal.  Action may not be set if original
@@ -281,7 +364,7 @@ setsig(p, f, flags)
 		p->cursig = SIG_IGN;
 	}
 	if ((p->flags & TF_ORIG_IGN) && (flags & SS_USER)
-	    && !((flags & SS_FORCE) || Flag(FTALKING)))
+	    && !(flags & SS_FORCE) && !Flag(FTALKING))
 		return 0;
 	if (!(flags & SS_USER)) {
 		if (!(flags & SS_FORCE) && (p->flags & TF_ORIG_IGN))
@@ -309,7 +392,7 @@ setexecsig(p, restore)
 {
 	/* XXX debugging */
 	if (!(p->flags & (TF_ORIG_IGN|TF_ORIG_DFL)))
-		errorf("internal error: setexecsig: unset signal %d(%s)\n",
+		internal_errorf(1, "setexecsig: unset signal %d(%s)",
 			p->signal, p->name);
 
 	/* restore original value for exec'd kids */

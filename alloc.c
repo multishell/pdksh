@@ -2,10 +2,6 @@
  * area-based allocation built on malloc/free
  */
 
-#if !defined(lint) && !defined(no_RCSids)
-static char *RCSid = "$Id";
-#endif
-
 #include "sh.h"
 #ifdef MEM_DEBUG
 # undef alloc
@@ -150,14 +146,11 @@ aresize(ptr, size, ap)
 	cells = (unsigned)(size - 1) / sizeof(Cell) + 1;
 
 	if (dp == NULL || (dp-1)->size < cells) { /* enlarge object */
-		register Cell *np;
-		void *optr = ptr;
-
+		/* XXX check for available adjacent free block */
 		ptr = alloc(size, ap);
-		np = (Cell*) ptr;
 		if (dp != NULL) {
-			memcpy(np, dp, (dp-1)->size * sizeof(Cell));
-			afree(optr, ap);
+			memcpy(ptr, dp, (dp-1)->size * sizeof(Cell));
+			afree((void *) dp, ap);
 		}
 	} else {		/* shrink object */
 		int split;
@@ -220,6 +213,7 @@ afree(ptr, ap)
 		fpp->next = dp;
 }
 
+#if DEBUG_ALLOC
 void
 aprint(ap, ptr, size)
 	register Area *ap;
@@ -260,8 +254,8 @@ aprint(ap, ptr, size)
 					(fp-1)->size * sizeof(Cell));
 		}
 	}
-	shf_flush(shl_out);
 }
+#endif /* DEBUG_ALLOC */
 
 
 #ifdef TEST_ALLOC

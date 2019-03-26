@@ -21,7 +21,9 @@ struct signal_info siginfo[] = {
 };
 
 int		usage();
+#if 0
 RETSIGTYPE	sig_catcher();
+#endif /* 0 */
 char		*signal_name();
 #ifndef HAVE_STRERROR
 char		*strerror(int);
@@ -80,12 +82,30 @@ main(argc, argv)
 	}
 
 	if (!wait_forever) {
-		for (i = 0; i < NSIG; i++) {
+		char *blocked = "";
+#ifdef POSIX_SIGNALS
+		sigset_t mask;
+
+		sigprocmask(SIG_BLOCK, (sigset_t *) 0, &mask);
+#endif /* POSIX_SIGNALS */
+#ifdef BSD42_SIGNALS
+		int mask;
+
+		mask = sigblock(0);
+#endif /* BSD42_SIGNALS */
+		for (i = 1; i < NSIG; i++) {
 			f = signal(i, SIG_DFL);
 			eno = errno;
-			if (f != SIG_DFL || report_all)
-				printf("%3d: %40s: ",
-					i, (s = signal_name(i)) ? s : "");
+#ifdef BSD42_SIGNALS
+			blocked = (mask & sigmask(i)) ? "blocked" : "";
+#endif /* BSD42_SIGNALS */
+#ifdef POSIX_SIGNALS
+			blocked = sigismember(&mask, i) ? "blocked" : "";
+#endif /* POSIX_SIGNALS */
+			if (f == SIG_DFL && !report_all && !*blocked)
+				continue;
+			printf("%3d: %7s %30s: ",
+				i, blocked, (s = signal_name(i)) ? s : "");
 			if (f == SIG_IGN)
 				printf("ignored\n");
 			else if (f == SIG_ERR)
@@ -106,11 +126,12 @@ main(argc, argv)
 			(void) signal(i, sig_catcher);
 		while (1) {
 			sigpause(0L);
-			for (i = 0; i < NSIG; i++)
+			for (i = 1; i < NSIG; i++)
 				if (caught_sigs & sigmask(i))
 					printf("received signal %d - %s\n",
 						i,
-						(s = signal_name(i)) ? s : "");
+						(s = signal_name(i)) ? s
+								     : "");
 			caught_sigs = 0L;
 		}
 	}
@@ -135,12 +156,14 @@ usage(verbose)
 	return 0;
 }
 
+#if 0
 RETSIGTYPE
 sig_catcher(sig)
 	int sig;
 {
 	caught_sigs |= sigmask(sig);
 }
+#endif /* 0 */
 
 
 

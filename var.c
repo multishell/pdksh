@@ -1,12 +1,7 @@
-#if !defined(lint) && !defined(no_RCSids)
-static char *RCSid = "$Id: var.c,v 1.2 1994/05/19 18:32:40 michael Exp michael $";
-#endif
-
 #include "sh.h"
 #include "ksh_time.h"
 #include "ksh_limval.h"
 #include "ksh_stat.h"
-#include "expand.h"
 #include <ctype.h>
 
 /*
@@ -18,11 +13,11 @@ static char *RCSid = "$Id: var.c,v 1.2 1994/05/19 18:32:40 michael Exp michael $
  * otherwise, (val.s + type) contains string value.
  * if (flag&EXPORT), val.s contains "name=value" for E-Z exporting.
  */
-char	null []	= "";
 static	struct tbl vtemp;
+static	struct table specials;
 static char	*formatstr	ARGS((struct tbl *vp, char *s));
 static void	export		ARGS((struct tbl *vp, char *val));
-static int	special		ARGS((char *name));
+static int	special		ARGS((const char *name));
 static void	getspec		ARGS((struct tbl *vp));
 static void	setspec		ARGS((struct tbl *vp));
 static void	unsetspec	ARGS((struct tbl *vp));
@@ -36,15 +31,20 @@ void
 newblock()
 {
 	register struct block *l;
-	static char *empty[] = {""};
+	static char *empty[] = {null};
 
 	l = (struct block *) alloc(sizeof(struct block), ATEMP);
 	ainit(&l->area);
-	l->argc = 0;
-	l->argv = empty;
+	if (!e->loc) {
+		l->argc = 0;
+		l->argv = empty;
+	} else {
+		l->argc = e->loc->argc;
+		l->argv = e->loc->argv;
+	}
 	l->exit = l->error = NULL;
-	tinit(&l->vars, &l->area);
-	tinit(&l->funs, &l->area);
+	tinit(&l->vars, &l->area, 0);
+	tinit(&l->funs, &l->area, 0);
 	l->next = e->loc;
 	e->loc = l;
 }
@@ -70,24 +70,64 @@ popblock()
 	afree(l, ATEMP);
 }
 
+/* called by main() to initialize variable data structures */
+void
+initvar()
+{
+	static struct {
+		char *name;
+		int v;
+	} names[] = {
+			{ "COLUMNS",		V_COLUMNS },
+			{ "IFS",		V_IFS },
+			{ "MAIL",		V_MAIL },
+			{ "MAILCHECK",		V_MAILCHECK },
+			{ "MAILPATH",		V_MAILPATH },
+			{ "OPTIND",		V_OPTIND },
+			{ "PATH",		V_PATH },
+			{ "POSIXLY_CORRECT",	V_POSIXLY_CORRECT },
+			{ "TMPDIR",		V_TMPDIR },
+#ifdef KSH
+			{ "EDITOR",		V_EDITOR },
+			{ "HISTFILE",		V_HISTFILE },
+			{ "HISTSIZE",		V_HISTSIZE },
+			{ "RANDOM",		V_RANDOM },
+			{ "SECONDS",		V_SECONDS },
+			{ "TMOUT",		V_TMOUT },
+			{ "VISUAL",		V_VISUAL },
+#endif /* KSH */
+			{ (char *) 0,	0 }
+		};
+	int i;
+	struct tbl *tp;
+
+	tinit(&specials, APERM, 32); /* must be 2^n (currently 16 speciasl) */
+	for (i = 0; names[i].name; i++) {
+		tp = tenter(&specials, names[i].name, hash(names[i].name));
+		tp->flag = DEFINED|ISSET;
+		tp->type = names[i].v;
+	}
+}
+
 /*
  * Search for variable, if not found create globally.
  */
 struct tbl *
 global(n)
-	register char *n;
+	register const char *n;
 {
 	register struct block *l = e->loc;
 	register struct tbl *vp;
 	register int c;
 	unsigned h; 
 	int	 array = 0, UNINITIALIZED(val), len;
-	char	 *p;
+	char	*p;
 
 	/* Check to see if this is an array */
 	p = skip_varname(n, FALSE);
 	if (p != n && *p == '[' && (len = array_ref_len(p))) {
 		char *sub, *tmp;
+		long rval;
 
 		/* Calculate the value of the subscript */
 		array = 1;
@@ -95,16 +135,17 @@ global(n)
 		sub = substitute(tmp, 0);
 		afree(tmp, ATEMP);
 		n = strnsave(n, p - n, ATEMP);
-		val = evaluate(sub);
+		evaluate(sub, &rval, FALSE);
+		val = rval;
 		if (val < 0 || val > ARRAYMAX)
-			errorf("%s: subscript out of range\n", n);
+			errorf("%s: subscript out of range", n);
 		afree(sub, ATEMP);
 	}
 	h = hash(n);
 	c = n[0];
 	if (digit(c)) {
 		if (array)
-			errorf("bad substitution\n");
+			errorf("bad substitution");
 		vp = &vtemp;
 		vp->flag = (DEFINED|RDONLY);
 		vp->type = 0;
@@ -118,7 +159,7 @@ global(n)
 	}
 	if (!letter(c)) {
 		if (array)
-			errorf("bad substitution\n");
+			errorf("bad substitution");
 		vp = &vtemp;
 		vp->flag = (DEFINED|RDONLY);
 		vp->type = 0;
@@ -175,18 +216,19 @@ global(n)
  */
 struct tbl *
 local(n)
-	register char *n;
+	register const char *n;
 {
 	register struct block *l = e->loc;
 	register struct tbl *vp;
 	unsigned h;
 	int	 array = 0, UNINITIALIZED(val), len;
-	char	 *p;
+	char	*p;
 
 	/* Check to see if this is an array */
 	p = skip_varname(n, FALSE);
 	if (p != n && *p == '[' && (len = array_ref_len(p))) {
 		char *sub, *tmp;
+		long rval;
 
 		/* Calculate the value of the subscript */
 		array = 1;
@@ -194,9 +236,10 @@ local(n)
 		sub = substitute(tmp, 0);
 		afree(tmp, ATEMP);
 		n = strnsave(n, p - n, ATEMP);
-		val = evaluate(sub);
+		evaluate(sub, &rval, FALSE);
+		val = rval;
 		if (val < 0 || val > ARRAYMAX)
-			errorf("%s: subscript out of range\n", n);
+			errorf("%s: subscript out of range", n);
 		afree(sub, ATEMP);
 	}
 	h = hash(n);
@@ -226,8 +269,8 @@ strval(vp)
 	if ((vp->flag&SPECIAL))
 		getspec(vp);
 	if (!(vp->flag&ISSET))
-		return null;	/* special to dollar() */
-	if (!(vp->flag&INTEGER))	/* string source */
+		s = null;		/* special to dollar() */
+	else if (!(vp->flag&INTEGER))	/* string source */
 		s = vp->val.s + vp->type;
 	else {				/* integer source */
 		/* worst case number length is when base=2, so use BITS(long) */
@@ -275,7 +318,8 @@ intval(vp)
 
 	base = getint(vp, &num);
 	if (base == -1)
-		errorf("%s: bad number\n", strval(vp));
+		/* XXX check calls - is error here ok by POSIX? */
+		errorf("%s: bad number", strval(vp));
 	return num;
 }
 
@@ -286,8 +330,14 @@ setstr(vq, s)
 	char *s;
 {
 	if (!(vq->flag&INTEGER)) { /* string dest */
-		if ((vq->flag&ALLOC))
+		if ((vq->flag&ALLOC)) {
+			/* debugging */
+			if (s >= vq->val.s
+			    && s <= vq->val.s + strlen(vq->val.s))
+				internal_errorf(TRUE,
+				    "setstr: assigning to self");
 			afree((void*)vq->val.s, vq->areap);
+		}
 		vq->flag &= ~(ISSET|ALLOC);
 		vq->type = 0;
 		if (s && (vq->flag & (UCASEV_AL|LCASEV|LJUST|RJUST)))
@@ -300,7 +350,8 @@ setstr(vq, s)
 				vq->flag |= ALLOC;
 		}
 	} else			/* integer dest */
-		v_evaluate(vq, s);
+		/* XXX is this correct? */
+		v_evaluate(vq, s, FALSE);
 	vq->flag |= ISSET;
 	if ((vq->flag&SPECIAL))
 		setspec(vq);
@@ -464,28 +515,6 @@ formatstr(vp, s)
 	return p;
 }
 
-/* set variable from enviroment */
-int
-import(thing)
-	char *thing;
-{
-	register struct tbl *vp;
-	register char *tvar, *val;
-
-	val = strchr(thing, '=');
-	if (val == NULL)
-		return 0;
-	tvar = strnsave(thing, val++ - thing, ATEMP);
-	vp = local(tvar);
-	afree(tvar, ATEMP);
-	vp->flag |= DEFINED|ISSET|EXPORT;
-	vp->val.s = thing;
-	vp->type = val - thing;
-	if ((vp->flag&SPECIAL))
-		setspec(vp);
-	return 1;
-}
-
 /*
  * make vp->val.s be "name=value" for quick exporting.
  */
@@ -530,53 +559,80 @@ typeset(var, set, clr, field, base)
 	if (val == var)
 		return NULL;
 	if (*val == '[') {
-		int len = array_ref_len(val);
-
+		int len;
+		
+		len = array_ref_len(val);
 		if (len == 0)
 			return NULL;
+		/* IMPORT is only used when the shell starts up and is
+		 * setting up its environment.  Allow only simple array
+		 * references at this time since parameter/command substitution
+		 * is preformed on the [expression], which would be a major
+		 * security hole.
+		 */
+		if (set & IMPORT) {
+			int i;
+			for (i = 1; i < len - 1; i++)
+				if (!digit(val[i]))
+					return NULL;
+		}
 		val += len;
 	}
 	if (*val == '=')
 		tvar = strnsave(var, val++ - var, ATEMP);
 	else {
+		/* Importing from original envirnment: must have an = */
+		if (set & IMPORT)
+			return NULL;
 		tvar = var;
 		val = NULL;
 	}
+
+	/* Prevent typeset from creating a local PATH/ENV/SHELL */
+	if (Flag(FRESTRICTED) && (strcmp(tvar, "PATH") == 0
+				  || strcmp(tvar, "ENV") == 0
+				  || strcmp(tvar, "SHELL") == 0))
+		errorf("%s: restricted", tvar);
+
 	vp = (set&LOCAL) ? local(tvar) : global(tvar);
 	set &= ~LOCAL;
-	if (val)
-		afree(tvar, ATEMP);
 
-	vpbase = (vp->flag & ARRAY) ? global(basename(var)) : vp;
+	vpbase = (vp->flag & ARRAY) ? global(arrayname(var)) : vp;
 
-	/* only allow export flag to be changed (debatable if export should
-	 * be clearable).  at&t ksh allows any attribute to be changed, which
-	 * means it can be truncated or modified (-L/-R/-Z/-i).
+	/* only allow export flag to be set.  at&t ksh allows any attribute to
+	 * be changed, which means it can be truncated or modified
+	 * (-L/-R/-Z/-i).
 	 */
 	if ((vpbase->flag&RDONLY)
-	    && (val || (clr & ~EXPORT) || (set & ~EXPORT)))
-		errorf("cannot set readonly %s\n", var);
+	    && (val || clr || (set & ~EXPORT)))
+		/* XXX check calls - is error here ok by POSIX? */
+		errorf("%s: is read only", tvar);
+	if (val)
+		afree(tvar, ATEMP);
 
 	/* most calls are with set/clr == 0 */
 	if (set | clr) {
 		/* XXX if x[0] isn't set, there will be problems: need to have
 		 * one copy of attributes for arrays...
 		 */
-		for (t = vpbase; t; t = t->array) {
+		for (t = vpbase; t; t = t->u.array) {
 			int fake_assign;
 			char UNINITIALIZED(*s);
-			int UNINITIALIZED(aflag);
+			char UNINITIALIZED(*free_me);
 
 			fake_assign = (t->flag & ISSET) && (!val || t != vp)
 				      && ((set & (UCASEV_AL|LCASEV|LJUST|RJUST|ZEROFIL))
 					  || ((t->flag & INTEGER) && (clr & INTEGER))
 					  || (!(t->flag & INTEGER) && (set & INTEGER)));
 			if (fake_assign) {
-				if (t->flag & INTEGER)
+				if (t->flag & INTEGER) {
 					s = strval(t);
-				else
+					free_me = (char *) 0;
+				} else {
 					s = t->val.s + t->type;
-				aflag = t->flag & ALLOC;
+					free_me = (t->flag & ALLOC) ? t->val.s
+								  : (char *) 0;
+				}
 				t->flag &= ~ALLOC;
 			}
 			if (!(t->flag & INTEGER) && (set & INTEGER)) {
@@ -593,8 +649,8 @@ typeset(var, set, clr, field, base)
 				t->field = field;
 			if (fake_assign) {
 				setstr(t, s);
-				if (aflag)
-					afree((void *) s, t->areap);
+				if (free_me)
+					afree((void *) free_me, t->areap);
 			}
 		}
 	}
@@ -618,12 +674,29 @@ typeset(var, set, clr, field, base)
 	return vp;
 }
 
+/* Unset a variable.  array_ref is set if there was an array reference in
+ * the name lookup (eg, x[2]).
+ */
 void
-unset(vp)
+unset(vp, array_ref)
 	register struct tbl *vp;
+	int array_ref;
 {
-	if ((vp->flag&ALLOC))
+	if (vp->flag & ALLOC)
 		afree((void*)vp->val.s, vp->areap);
+	if ((vp->flag & ARRAY) && !array_ref) {
+		struct tbl *a, *tmp;
+
+		/* Free up entire array */
+		for (a = vp->u.array; a; ) {
+			tmp = a;
+			a = a->u.array;
+			if (tmp->flag & ALLOC)
+				afree((void *) tmp->val.s, tmp->areap);
+			afree(tmp, tmp->areap);
+		}
+		vp->u.array = (struct tbl *) 0;
+	}
 	vp->flag &= SPECIAL;	/* Should ``unspecial'' some vars */
 	if (vp->flag & SPECIAL)
 		unsetspec(vp);
@@ -635,18 +708,18 @@ unset(vp)
  */
 char *
 skip_varname(s, aok)
-	char *s;
+	const char *s;
 	int aok;
 {
 	int alen;
 
 	if (!s || !letter(*s))
-		return s;
+		return (char *) s;
 	while (*++s && letnum(*s))
 		;
 	if (aok && *s == '[' && (alen = array_ref_len(s)))
 		s += alen;
-	return s;
+	return (char *) s;
 }
 
 /* Return a pointer to the first character past any legal variable name.  */
@@ -745,48 +818,28 @@ makenv()
 /*
  * handle special variables with side effects - PATH, SECONDS.
  */
-#define STREQ(a, b) ((*a) == (*b) && strcmp((a), (b)) == 0)
+
+/* Test if name is a special parameter */
 static int
 special(name)
-	register char * name;
+	register const char * name;
 {
-	static struct {
-		char *name;
-		int v;
-	} names[] = {
-			{ "PATH",		V_PATH },
-			{ "IFS",		V_IFS },
-			{ "SECONDS",		V_SECONDS },
-			{ "OPTIND",		V_OPTIND },
-			{ "MAIL",		V_MAIL },
-			{ "MAILPATH",		V_MAILPATH },
-			{ "MAILCHECK",		V_MAILCHECK },
-			{ "RANDOM",		V_RANDOM },
-			{ "HISTSIZE",		V_HISTSIZE },
-			{ "HISTFILE",		V_HISTFILE },
-			{ "VISUAL",		V_VISUAL },
-			{ "EDITOR",		V_EDITOR },
-			{ "COLUMNS",		V_COLUMNS },
-			{ "POSIXLY_CORRECT",	V_POSIXLY_CORRECT },
-			{ "TMOUT",		V_TMOUT },
-			{ "TMPDIR",		V_TMPDIR },
-			{ (char *) 0,	0 }
-		};
-	int i;
+	register struct tbl *tp;
 
-	for (i = 0; names[i].name; i++)
-		if (STREQ(names[i].name, name))
-			return names[i].v;
-	return V_NONE;
+	tp = tsearch(&specials, name, hash(name));
+	return tp ? tp->type : V_NONE;
 }
 
+#ifdef KSH
 static	time_t	seconds;		/* time SECONDS last set */
+#endif /* KSH */
 
 static void
 getspec(vp)
 	register struct tbl *vp;
 {
 	switch (special(vp->name)) {
+#ifdef KSH
 	  case V_SECONDS:
 		vp->flag &= ~SPECIAL;
 		setint(vp, (long) (time((time_t *)0) - seconds));
@@ -802,6 +855,7 @@ getspec(vp)
 		setint(vp, (long) histsize);
 		vp->flag |= SPECIAL;
 		break;
+#endif /* KSH */
 	}
 }
 
@@ -821,9 +875,6 @@ setspec(vp)
 		setctypes(s = strval(vp), C_IFS);
 		ifs0 = *s;
 		break;
-	  case V_SECONDS:
-		seconds = time((time_t *)0);
-		break;
 	  case V_OPTIND:
 		getopts_reset((int) intval(vp));
 		break;
@@ -836,39 +887,8 @@ setspec(vp)
 	  case V_MAILCHECK:
 		/* mail_check_set(intval(vp)); */
 		break;
-	  case V_RANDOM:
-		vp->flag &= ~SPECIAL;
-		srand((unsigned int)intval(vp));
-		vp->flag |= SPECIAL;
-		break;
-	  case V_HISTSIZE:
-		vp->flag &= ~SPECIAL;
-		sethistsize((int) intval(vp));
-		vp->flag |= SPECIAL;
-		break;
-	  case V_HISTFILE:
-		sethistfile(strval(vp));
-		break;
-	  case V_VISUAL:
-		set_editmode(strval(vp));
-		break;
-	  case V_EDITOR:
-		if (!(global("VISUAL")->flag & ISSET))
-			set_editmode(strval(vp));
-		break;
-	  case V_COLUMNS:
-#ifdef EDIT
-		if ((x_cols = intval(vp)) <= 0)
-			x_cols = 16;
-#endif /* EDIT */
-		break;
 	  case V_POSIXLY_CORRECT:
 		change_flag(FPOSIX, OF_SPECIAL, 1);
-		break;
-	  case V_TMOUT:
-		/* at&t ksh seems to do this (only listen if integer) */
-		if (vp->flag & INTEGER)
-			ksh_tmout = vp->val.i >= 0 ? vp->val.i : 0;
 		break;
 	  case V_TMPDIR:
 		if (tmpdir) {
@@ -880,12 +900,50 @@ setspec(vp)
 		 */
 		{
 			struct stat statb;
-			if ((s = strval(vp))[0] == '/'
-			    && eaccess(s, W_OK|X_OK) == 0
+			s = strval(vp);
+			if (ISABSPATH(s) && eaccess(s, W_OK|X_OK) == 0
 			    && stat(s, &statb) == 0 && S_ISDIR(statb.st_mode))
 				tmpdir = strsave(s, APERM);
 		}
 		break;
+#ifdef KSH
+	  case V_RANDOM:
+		vp->flag &= ~SPECIAL;
+		srand((unsigned int)intval(vp));
+		vp->flag |= SPECIAL;
+		break;
+	  case V_SECONDS:
+		vp->flag &= ~SPECIAL;
+		seconds = time((time_t*) 0) - intval(vp);
+		vp->flag |= SPECIAL;
+		break;
+	  case V_HISTSIZE:
+		vp->flag &= ~SPECIAL;
+		sethistsize((int) intval(vp));
+		vp->flag |= SPECIAL;
+		break;
+	  case V_HISTFILE:
+		sethistfile(strval(vp));
+		break;
+# ifdef EDIT
+	  case V_VISUAL:
+		set_editmode(strval(vp));
+		break;
+	  case V_EDITOR:
+		if (!(global("VISUAL")->flag & ISSET))
+			set_editmode(strval(vp));
+		break;
+	  case V_COLUMNS:
+		if ((x_cols = intval(vp)) <= MIN_COLS)
+			x_cols = MIN_COLS;
+		break;
+# endif /* EDIT */
+	  case V_TMOUT:
+		/* at&t ksh seems to do this (only listen if integer) */
+		if (vp->flag & INTEGER)
+			ksh_tmout = vp->val.i >= 0 ? vp->val.i : 0;
+		break;
+#endif /* KSH */
 	}
 }
 
@@ -910,6 +968,14 @@ unsetspec(vp)
 	  case V_MAILPATH:
 		mpset((char *) 0);
 		break;
+	  case V_TMPDIR:
+		/* should not become unspecial */
+		if (tmpdir) {
+			afree(tmpdir, APERM);
+			tmpdir = (char *) 0;
+		}
+		break;
+#ifdef KSH
 	  case V_TMOUT:
 		/* at&t ksh doesn't do this. TMOUT becomes unspecial so
 		 * future assignments don't have effect.  Could be
@@ -919,13 +985,7 @@ unsetspec(vp)
 		 */
 		ksh_tmout = 0;
 		break;
-	  case V_TMPDIR:
-		/* should not become unspecial */
-		if (tmpdir) {
-			afree(tmpdir, APERM);
-			tmpdir = (char *) 0;
-		}
-		break;
+#endif /* KSH */
 	  /* todo: generic action for specials (at&t says variables
 	   * loose their special meaning when unset but global() checks
 	   * the name of new vars to see if they are special)
@@ -956,10 +1016,10 @@ arraysearch(vp, val)
 		return vp;
 	}
 	prev = vp;
-	curr = vp->array;
+	curr = vp->u.array;
 	while (curr && curr->index < val) {
 		prev = curr;
-		curr = curr->array;
+		curr = curr->u.array;
 	}
 	if (curr && curr->index == val) {
 		if (curr->flag&ISSET)
@@ -975,8 +1035,8 @@ arraysearch(vp, val)
 	new->field = vp->field;
 	new->index = val;
 	if (curr != new) {		/* not reusing old array entry */
-		prev->array = new;
-		new->array = curr;
+		prev->u.array = new;
+		new->u.array = curr;
 	}
 	return new;
 }
@@ -1005,7 +1065,7 @@ array_ref_len(cp)
  * Make a copy of the base of an array name
  */
 char *
-basename(str)
+arrayname(str)
 	char	*str;
 {
 	char	*p;
@@ -1033,11 +1093,11 @@ set_array(var, reset, vals)
 
 	/* Note: at&t ksh allows set -A but not set +A of a read-only var */
 	if ((vp->flag&RDONLY))
-		errorf("cannot set readonly %s\n", var);
+		errorf("%s: is read only", var);
 	/* This code is quite non-optimal */
-	if (reset)
+	if (reset > 0)
 		/* trash existing values and attributes */
-		unset(vp);
+		unset(vp, 0);
 	for (i = 0; vals[i]; i++) {
 		vq = arraysearch(vp, i);
 		setstr(vq, vals[i]);

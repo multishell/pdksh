@@ -47,6 +47,7 @@ struct op {
 #define	TFUNCT		19	/* function name { command; } */
 #define	TTIME		20	/* time pipeline */
 #define	TEXEC		21	/* fork/exec eval'd TCOM */
+#define TCOPROC		22	/* coprocess |& */
 
 /*
  * prefix codes for words in command tree
@@ -67,7 +68,8 @@ struct op {
 struct ioword {
 	int	unit;	/* unit affected */
 	int	flag;	/* action (below) */
-	char   *name;	/* file name */
+	char	*name;	/* file name */
+	char	*delim;	/* delimiter for <<,<<- */
 };
 
 /* ioword.flag - type of redirection */
@@ -80,7 +82,8 @@ struct ioword {
 #define	IODUP	0x6		/* <&/>& */
 #define	IOEVAL	BIT(4)		/* expand in << */
 #define	IOSKIP	BIT(5)		/* <<-, skip ^\t* */
-#define	IOCLOB	BIT(6)		/* >!, override -o noclobber */
+#define	IOCLOB	BIT(6)		/* >|, override -o noclobber */
+#define IORDUP	BIT(7)		/* x<&y (as opposed to x>&y) */
 
 /* execute/exchild flags */
 #define	XEXEC	BIT(0)		/* execute without forking */
@@ -93,17 +96,23 @@ struct ioword {
 #define	XPCLOSE	BIT(6)		/* exchild: close close_fd in parent */
 #define	XCCLOSE	BIT(7)		/* exchild: close close_fd in child */
 #define XERROK	BIT(8)		/* non-zero exit ok (for set -e) */
+#define XCOPROC BIT(9)		/* starting a co-process */
 
 /*
  * flags to control expansion of words (assumed by t->evalflags to fit
  * in a short)
  */
-#define	DOBLANK	BIT(1)		/* perform blank interpretation */
-#define	DOGLOB	BIT(2)		/* expand [?* */
-#define	DOPAT	BIT(3)		/* quote *?[ */
-#define	DOTILDE	BIT(4)		/* normal ~ expansion (first char) */
-#define DONTRUNCOMMAND BIT(5)	/* do not run $(command) things */
-#define DOASNTILDE BIT(6)	/* assignment ~ expansion (after =, :) */
+#define	DOBLANK	BIT(0)		/* perform blank interpretation */
+#define	DOGLOB	BIT(1)		/* expand [?* */
+#define	DOPAT	BIT(2)		/* quote *?[ */
+#define	DOTILDE	BIT(3)		/* normal ~ expansion (first char) */
+#define DONTRUNCOMMAND BIT(4)	/* do not run $(command) things */
+#define DOASNTILDE BIT(5)	/* assignment ~ expansion (after =, :) */
+#define DOBRACE_ BIT(6)		/* used by expand(): do brace expansion */
+#define DOMAGIC_ BIT(7)		/* used by expand(): string contains MAGIC */
+#define DOTEMP_	BIT(8)		/* ditto : in word part of ${..[%#=?]..} */
+#define DODIRSWP BIT(9)		/* map / to \ (OS2 only) */
+#define DOVACHECK BIT(10)	/* var assign check (for typeset, set, etc) */
 
 /*
  * The arguments of [[ .. ]] expressions are kept in t->args[] and flags

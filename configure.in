@@ -8,54 +8,73 @@ dnl
 AC_INIT(c_ksh.c)
 AC_CONFIG_HEADER(config.h)
 dnl
-dnl
-dnl If LDSTATIC set in environment, pass it on to the Makefile
-AC_SUBST(LDSTATIC) LDSTATIC=${LDSTATIC-}
-dnl
 AC_PROG_CC
 AC_PROG_CPP
-AC_GCC_TRADITIONAL
-  dnl A hack to turn on warning messages for gcc - Warn-flags is not in
-  dnl the distribution since not everyone wants to see this stuff and it
-  dnl compiles out the RCSid's
-  dnl (Warn-flags contains: -Wall -Wno-comments -Dno_RCSids)
-  AC_SUBST(GCC_WARNFLAGS) GCC_WARNFLAGS=
-  if test -n "$GCC" && test -f $srcdir/Warn-flags; then
-    GCC_WARNFLAGS="`cat $srcdir/Warn-flags`"
-  fi
-AC_ISC_POSIX
-AC_MINIX
+AC_PROG_GCC_TRADITIONAL
+dnl A hack to turn on warning messages for gcc - Warn-flags is not in
+dnl the distribution since not everyone wants to see this stuff.
+dnl (Warn-flags contains: -Wall -Wno-comments)
+if test X"$GCC" = Xyes && test -f $srcdir/Warn-flags; then
+  CFLAGS="${CFLAGS+$CFLAGS }`cat $srcdir/Warn-flags`"
+fi
+
+dnl
+dnl If LDSTATIC set in environment, pass it on to the Makefile and use it when
+dnl doing compile checks to ensure we are checking the right thing.
+AC_SUBST(LDSTATIC)LDSTATIC=${LDSTATIC-}
+test X"$LDSTATIC" != X && LDFLAGS="${LDFLAGS+$LDFLAGS }$LDSTATIC"
+dnl
+dnl Executable suffix - normally empty; .exe on os2.
+AC_SUBST(ac_exe_suffix)dnl
+
+dnl this incorperates AC_AIX, AC_ISC_POSIX and AC_MINIX tests and does others
+KSH_OS_TYPE
+dnl
+AC_C_CROSS
 dnl
 dnl
 dnl Headers
 dnl
-AC_DIR_HEADER
-AC_XENIX_DIR
+AC_HEADER_DIRENT
 KSH_UNISTD_H
 KSH_TERM_CHECK
-AC_HAVE_HEADERS(stddef.h stdlib.h string.h memory.h \
-    fcntl.h limits.h paths.h values.h ulimit.h sys/time.h sys/wait.h)
-AC_TIME_WITH_SYS_TIME
+AC_CHECK_HEADERS(stddef.h stdlib.h string.h memory.h fcntl.h limits.h paths.h \
+	sys/param.h sys/resource.h values.h ulimit.h sys/time.h)
+AC_HEADER_TIME
+KSH_HEADER_SYS_WAIT
 dnl
 dnl
 dnl Typedefs
 dnl
-AC_OFF_T
-AC_MODE_T
-AC_PID_T
-AC_UID_T
-KSH_INT32
-KSH_CLOCK_T
-KSH_TIME_T
-KSH_SIGSET_T
-AC_RETSIGTYPE
+dnl (don't use AC_TYPE_XXX() 'cause it doesn't check word boundaries)
+KSH_CHECK_H_TYPE(off_t, for off_t in sys/types.h, , long)
+KSH_CHECK_H_TYPE(mode_t, for mode_t in sys/types.h, , short)
+KSH_CHECK_H_TYPE(pid_t, for pid_t in sys/types.h, , int)
+KSH_CHECK_H_TYPE(uid_t, for uid_t in sys/types.h, , int)
+if test $ac_cv_type_uid_t = no; then
+  AC_DEFINE(gid_t, int)
+fi
+dnl this to fake out AC_TYPE_GETGROUPS.... (uid_t configured above)
+define([AC_PROVIDE_AC_TYPE_UID_T],)
+AC_TYPE_GETGROUPS
+AC_TYPE_SIGNAL
+AC_CHECK_SIZEOF(int)
+AC_CHECK_SIZEOF(long)
+dnl sh.h sets INT32 to int or long as appropriate
+KSH_CHECK_H_TYPE(clock_t, for clock_t in <sys/types.h> and <sys/times.h>,
+  [#include <sys/times.h>], INT32)
+KSH_CHECK_H_TYPE(sigset_t, for sigset_t in <sys/types.h> and <signal.h>,
+  [#include <signal.h>], unsigned)
+KSH_RLIM_CHECK
 dnl
 dnl
 dnl Library functions
 dnl
-AC_HAVE_FUNCS(bcopy confstr getcwd killpg memset memmove strerror tcsetpgrp \
-	strcasecmp strstr sysconf ulimit waitpid wait3)
-AC_MMAP
+KSH_MEMMOVE
+KSH_MEMSET
+AC_CHECK_FUNCS(confstr flock getwd killpg lstat nice setrlimit strerror \
+	strcasecmp strstr sysconf tcsetpgrp ulimit waitpid wait3)
+AC_FUNC_MMAP
 KSH_SYS_ERRLIST
 KSH_SYS_SIGLIST
 KSH_TIME_DECLARED
@@ -64,22 +83,25 @@ dnl
 dnl
 dnl Structures
 dnl
-AC_STAT_MACROS_BROKEN
-AC_ST_RDEV
+AC_HEADER_STAT
+AC_STRUCT_ST_RDEV
 dnl
 dnl
 dnl Compiler characteristics
 dnl
-AC_CONST
-KSH_VOID
-KSH_VOLATILE
-KSH_PROTOTYPES
+AC_C_CONST
+KSH_C_VOID
+KSH_C_VOLATILE
+KSH_C_PROTOTYPES
+KSH_C_FUNC_ATTR
 dnl
 dnl
 dnl System services
 dnl
-AC_HAVE_POUNDBANG(AC_VERBOSE(it does),
-	AC_VERBOSE(it doesn't)AC_DEFINE(SHARPBANG))dnl
+AC_SYS_INTERPRETER
+if test $ac_cv_sys_interpreter = no;
+  then AC_DEFINE(SHARPBANG)
+fi
 AC_PROG_INSTALL
 dnl
 dnl
@@ -89,9 +111,13 @@ KSH_DUP2_CLEXEC_CHECK
 KSH_SIGNAL_CHECK
 KSH_PGRP_CHECK
 KSH_PGRP_SYNC
-KSH_GCC_FUNC_ATTR
 KSH_OPENDIR_CHECK
-AC_UNION_WAIT
+KSH_DEV_FD
 dnl
+dnl
+dnl Take replace value of LDSTATIC in LDFLAGS with reference to make variable
+if test X"$LDSTATIC" != X; then
+  LDFLAGS=`echo -- "$LDFLAGS" | sed -e s/^-- //' -e 's?$LDSTATIC?\$(LDSTATIC)?'`
+fi
 dnl
 AC_OUTPUT(Makefile)

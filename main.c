@@ -2,10 +2,6 @@
  * startup, main loop, enviroments and error handling
  */
 
-#if !defined(lint) && !defined(no_RCSids)
-static char *RCSid = "$Id: main.c,v 1.5 1994/05/31 13:34:34 michael Exp $";
-#endif
-
 #define	EXTERN				/* define EXTERNs in sh.h */
 
 #include "sh.h"
@@ -18,6 +14,7 @@ static char *RCSid = "$Id: main.c,v 1.5 1994/05/31 13:34:34 michael Exp $";
 
 static	void	reclaim ARGS((void));
 static	void	remove_temps ARGS((struct temp *tp));
+static	int	is_restricted ARGS((char *name));
 
 /*
  * shell initialization
@@ -26,32 +23,47 @@ static	void	remove_temps ARGS((struct temp *tp));
 static	char	initifs [] = "IFS= \t\n"; /* must be R/W */
 
 static	const	char   initsubs [] = 
-  "${SHELL=/bin/sh} ${PS1=$ } ${PS2=> } ${PS3=#? }";
+  "${PS2=> } ${PS3=#? } ${PS4=+ }";
+
+static const char version_param[] =
+#ifdef KSH
+	"KSH_VERSION"
+#else /* KSH */
+	"SH_VERSION"
+#endif /* KSH */
+	;
 
 static	const	char *initcoms [] = {
 	"typeset", "-x", "SHELL", "PATH", "HOME", NULL,
-	"typeset", "-r", "KSH_VERSION", "PWD", "OLDPWD", NULL,
+	"typeset", "-r", version_param, NULL,
 	"typeset", "-ri", "PPID", NULL,
-	"typeset", "-i", "SECONDS=0", "OPTIND=1", "RANDOM", "MAILCHECK=600",
-	  "TMOUT=0", NULL,
+	"typeset", "-i", "OPTIND=1", "MAILCHECK=600",
+#ifdef KSH
+	    "SECONDS=0", "RANDOM", "TMOUT=0",
+#endif /* KSH */
+	    NULL,
 	"alias",
 	 /* Standard ksh aliases */
-	  "autoload=typeset -fu",
-	  "functions=typeset -f",
-	  "hash=alias -t -",
-	  "history=fc -l",
-	  "integer=typeset -i",
-	  "nohup=nohup ",
-	  "r=fc -e -",
+	  "hash=alias -t --",
 #ifdef JOBS
 	  "stop=kill -STOP",
 	  "suspend=kill -STOP $$",
 #endif
+#ifdef KSH
+	  "autoload=typeset -fu",
+	  "functions=typeset -f",
+	  "history=fc -l",
+	  "integer=typeset -i",
+	  "nohup=nohup ",
+	  "local=typeset",
+	  "r=fc -e -",
 	  "type=whence -v",
+#endif /* KSH */
+#ifdef KSH
 	 /* Aliases that are builtin commands in at&t */
-	  "pwd=print -r - \"$PWD\"",
 	  "login=exec login",
 	  "newgrp=exec newgrp",
+#endif /* KSH */
 	  NULL,
 	/* this is what at&t ksh seems to track, with the addition of emacs */
 	"alias", "-tU",
@@ -68,15 +80,11 @@ main(argc, argv, envp)
 	char **envp;
 {
 	register int i;
-	int pwd_allocated;
-	char *arg;
 	int argi;
-	char *name;
 	Source *s;
 	struct block *l;
+	int restricted;
 	char **wp;
-	struct stat s1, s2;
-	extern char ksh_version [];
 	struct env env;
 
 #ifdef MEM_DEBUG
@@ -91,7 +99,7 @@ main(argc, argv, envp)
 		argv = empty_argv;
 		argc = 1;
 	}
-	name = *argv;
+	kshname = *argv;
 
 	ainit(&aperm);		/* initialize permanent Area */
 
@@ -104,23 +112,27 @@ main(argc, argv, envp)
 	e = &env;
 	newblock();		/* set up global l->vars and l->funs */
 
+	/* Do this first so output routines (eg, errorf, shellf) can work */
+	initio();
+
+	initvar();
+
 	initctypes();
 
 	inittraps();
 
-	initio();
+	coproc_init();
 
 	/* set up variable and command dictionaries */
-	tinit(&taliases, APERM);
-	tinit(&builtins, APERM);
-	tinit(&aliases, APERM);
-	tinit(&keywords, APERM);
-	tinit(&homedirs, APERM);
+	tinit(&taliases, APERM, 0);
+	tinit(&aliases, APERM, 0);
+	tinit(&homedirs, APERM, 0);
 
 	/* define shell keywords */
 	initkeywords();
 
 	/* define built-in commands */
+	tinit(&builtins, APERM, 64); /* must be 2^n (currently 40 builtins) */
 	for (i = 0; shbuiltins[i].name != NULL; i++)
 		builtin(shbuiltins[i].name, shbuiltins[i].func);
 	for (i = 0; kshbuiltins[i].name != NULL; i++)
@@ -141,6 +153,23 @@ main(argc, argv, envp)
 #endif /* HAVE_CONFSTR && _CS_PATH */
 	path = def_path;
 
+
+	/* Turn on nohup by default for how - will change to off
+	 * by default once people are aware of its existance
+	 * (at&t ksh does not have a nohup option - it always sends
+	 * the hup).
+	 */
+	Flag(FNOHUP) = 1;
+
+	/* Turn on brace expansion by default.  At&t ksh's that have
+	 * alternation always have it on.  BUT, posix doesn't have
+	 * brace expansion, so set this before setting up FPOSIX
+	 * (change_flag() clears FBRACEEXPAND when FPOSIX is set).
+	 */
+#ifdef BRACEEXPAND
+	Flag(FBRACEEXPAND) = 1;
+#endif /* BRACEEXPAND */
+
 	/* set posix flag just before environment so that it will have
 	 * exactly the same effect as the POSIXLY_CORRECT environment
 	 * variable.  If this needs to be done sooner to ensure correct posix
@@ -148,13 +177,13 @@ main(argc, argv, envp)
 	 * done sooner.
 	 */
 #ifdef POSIXLY_CORRECT
-	Flag(FPOSIX) = 1;
+	change_flag(FPOSIX, OF_SPECIAL, 1);
 #endif /* POSIXLY_CORRECT */
 
 	/* import enviroment */
 	if (envp != NULL)
 		for (wp = envp; *wp != NULL; wp++)
-			import(*wp);
+			typeset(*wp, IMPORT|EXPORT, 0, 0, 0);
 
 	kshpid = procpid = getpid();
 	typeset(initifs, 0, 0, 0, 0);	/* for security */
@@ -162,34 +191,33 @@ main(argc, argv, envp)
 	/* assign default shell variable values */
 	substitute(initsubs, 0);
 
-	/* assign PWD (using enviroment PWD if it passes test below) */
-	arg = strval(global("PWD"));
-	pwd_allocated = 0;
-	if (*arg == '\0'
-		|| stat(arg, &s1) < 0 || stat(".", &s2) < 0
-		|| s1.st_dev != s2.st_dev || s1.st_ino != s2.st_ino)
+	/* Figure out the current working directory and set $PWD */
 	{
-		/* Ignore imported PWD - its wrong */
-		if ((arg = alloc(PATH, ATEMP)) == (char *) 0
-			|| getcwd(arg, PATH) == (char *) 0)
-		{
-			shellf(
-		    "%s: Can't find current directory (%s), changing to /\n",
-				name, strerror(errno));
-			shf_flush(shl_out);
-			if (arg)
-				afree(arg, ATEMP);
-			arg = "/";
-			(void) chdir(arg);
-		} else
-			pwd_allocated = 1;
+		struct stat s_pwd, s_dot;
+		struct tbl *pwd_v = global("PWD");
+		char *pwd = strval(pwd_v);
+		char *pwdx = pwd;
+
+		/* Try to use existing $PWD if it is valid */
+		if (!ISABSPATH(pwd)
+		    || stat(pwd, &s_pwd) < 0 || stat(".", &s_dot) < 0
+		    || s_pwd.st_dev != s_dot.st_dev
+		    || s_pwd.st_ino != s_dot.st_ino)
+			pwdx = (char *) 0;
+		set_current_wd(pwdx);
+		if (current_wd[0])
+			simplify_path(current_wd);
+		/* Only set pwd if we know where we are or if it had a
+		 * bogus value
+		 */
+		if (current_wd[0] || pwd != null)
+			setstr(pwd_v, current_wd);
 	}
-	setstr(global("PWD"), arg);
-	if (pwd_allocated)
-		afree(arg, ATEMP);
 	setint(global("PPID"), (long) getppid());
+#ifdef KSH
 	setint(global("RANDOM"), (long) time((time_t *)0));
-	setstr(global("KSH_VERSION"), ksh_version);
+#endif /* KSH */
+	setstr(global(version_param), ksh_version);
 
 	/* execute initialization statements */
 	for (wp = (char**) initcoms; *wp != NULL; wp++) {
@@ -199,9 +227,10 @@ main(argc, argv, envp)
 	}
 
 	if (geteuid() == 0)
-		setstr(global("PS1"), "# ");
-
-	s = pushs(SFILE);
+		safe_prompt = "# ";
+	else
+		safe_prompt = "$ ";
+	setstr(global("PS1"), safe_prompt);
 
 	/* Set this before parsing arguments */
 	Flag(FPRIVILEGED) = getuid() != geteuid() || getgid() != getegid();
@@ -209,29 +238,48 @@ main(argc, argv, envp)
 	/* this to note if monitor is set on command line (see below) */
 	Flag(FMONITOR) = 127;
 
-	argi = parse_args(argv, OF_CMDLINE, &s->str, (int *) 0);
+	argi = parse_args(argv, OF_CMDLINE, (int *) 0);
+	if (argi < 0)
+		exit(1);
 
 	if (Flag(FCOMMAND)) {
-		s->type = SSTRING;
+		s = pushs(SSTRING, ATEMP);
+		if (!(s->str = argv[argi++]))
+			errorf("-c requires an argument");
 		if (argv[argi])
-			name = argv[argi++];
+			kshname = argv[argi++];
 	} else if (argi < argc && !Flag(FSTDIN)) {
-		s->file = name = argv[argi++];
-		s->u.shf = shf_open(name, O_RDONLY, 0, SHF_MAPHI|SHF_CLEXEC);
-		if (s->u.shf == NULL)
-			errorf("%s: cannot open\n", name);
+		s = pushs(SFILE, ATEMP);
+		s->file = argv[argi++];
+		s->u.shf = shf_open(s->file, O_RDONLY, 0, SHF_MAPHI|SHF_CLEXEC);
+		if (s->u.shf == NULL) {
+			exstat = 127; /* POSIX */
+			errorf("%s: %s", s->file, strerror(errno));
+		}
+		kshname = s->file;
 	} else {
 		Flag(FSTDIN) = 1;
 		if (isatty(0) && isatty(2))
 			Flag(FTALKING) = 1;
 		if (Flag(FTALKING)) {
-			s->type = STTY;
+			s = pushs(STTY, ATEMP);
 #ifdef EDIT
 			x_init();
 #endif
-		} else
+		} else {
+			s = pushs(SSTDIN, ATEMP);
+			s->file = "<stdin>";
 			s->u.shf = shf_fdopen(0, SHF_RD | can_seek(0),
 				(struct shf *) 0);
+		}
+	}
+
+	/* This bizarreness is mandated by POSIX */
+	{
+		struct stat s_stdin;
+
+		if (fstat(0, &s_stdin) >= 0 && S_ISCHR(s_stdin.st_mode))
+			reset_nonblock(0);
 	}
 
 	/* initialize job control */
@@ -242,23 +290,76 @@ main(argc, argv, envp)
 	l = e->loc;
 	l->argv = &argv[argi - 1];
 	l->argc = argc - argi;
-	l->argv[0] = name;
+	l->argv[0] = kshname;
 	getopts_reset(1);
 
-	if (name[0] == '-' || ((arg = strrchr(name, '/')) && *++arg == '-')) {
-		(void) include("/etc/profile", 0, (char **) 0);
+	/* Disable during .profile/ENV reading */
+	restricted = Flag(FRESTRICTED);
+	Flag(FRESTRICTED) = 0;
+
+	/* Do this before profile/$ENV so that if it causes problems in them,
+	 * user will know why things broke.
+	 */
+	if (!current_wd[0] && Flag(FTALKING))
+		warningf(FALSE, "Cannot determine current working directory");
+
+	if (Flag(FLOGIN)) {
+#ifdef OS2
+		char *profile;
+
+		/* Try to find a profile - first see if $INIT has a value,
+		 * then try /etc/profile.ksh, then c:/usr/etc/profile.ksh.
+		 */
+		if (!Flag(FPRIVILEGED)
+		    && strcmp(profile = substitute("$INIT/profile.ksh", 0),
+			      "/profile.ksh"))
+			include(profile, 0, (char **) 0);
+		else if (include("/etc/profile.ksh", 0, (char **) 0) < 0)
+			include("c:/usr/etc/profile.ksh", 0, (char **) 0);
 		if (!Flag(FPRIVILEGED))
-			(void) include(substitute("$HOME/.profile", 0), 0,
+			include(substitute("$HOME/profile.ksh", 0), 0,
 				(char **) 0);
+#else /* OS2 */
+		include("/etc/profile", 0, (char **) 0);
+		if (!Flag(FPRIVILEGED))
+			include(substitute("$HOME/.profile", 0), 0,
+				(char **) 0);
+#endif /* OS2 */
 	}
 
 	if (Flag(FPRIVILEGED))
-		(void) include("/etc/suid_profile", 0, (char **) 0);
+		include("/etc/suid_profile", 0, (char **) 0);
 	else {
+		char *env_file;
+
 		/* include $ENV */
-		arg = substitute(strval(global("ENV")), DOTILDE);
-		if (*arg != '\0')
-			(void) include(arg, 0, (char **) 0);
+		env_file = strval(global("ENV"));
+#ifdef DEFAULT_ENV
+		/* If env isn't set, include default environment */
+		if (env_file == null)
+			env_file = DEFAULT_ENV;
+#endif /* DEFAULT_ENV */
+		env_file = substitute(env_file, DOTILDE);
+		if (*env_file != '\0')
+			include(env_file, 0, (char **) 0);
+#ifdef OS2
+		else if (Flag(FTALKING))
+			include(substitute("$HOME/kshrc.ksh", 0), 0,
+				(char **) 0);
+#endif /* OS2 */
+	}
+
+	if (is_restricted(argv[0]) || is_restricted(strval(global("SHELL"))))
+		restricted = 1;
+	if (restricted) {
+		static const char *restr_com[] = {
+						"typeset", "-r", "PATH",
+						    "ENV", "SHELL",
+						(char *) 0
+					    };
+		shcomexec((char **) restr_com);
+		/* After typeset command... */
+		Flag(FRESTRICTED) = 1;
 	}
 
 	if (Flag(FTALKING)) {
@@ -278,6 +379,7 @@ include(name, argc, argv)
 	char **argv;
 {
 	register Source *volatile s = NULL;
+	Source *volatile sold;
 	struct shf *shf;
 	char **volatile old_argv;
 	volatile int old_argc;
@@ -285,7 +387,7 @@ include(name, argc, argv)
 
 	shf = shf_open(name, O_RDONLY, 0, SHF_MAPHI|SHF_CLEXEC);
 	if (shf == NULL)
-		return 0;
+		return -1;
 
 	if (argv) {
 		old_argv = e->loc->argv;
@@ -294,9 +396,11 @@ include(name, argc, argv)
 		old_argv = (char **) 0;
 		old_argc = 0;
 	}
+	sold = source;
 	newenv(E_INCL);
 	if ((i = setjmp(e->jbuf))) {
 		quitenv();
+		source = sold;
 		if (s)
 			shf_close(s->u.shf);
 		if (old_argv) {
@@ -306,7 +410,7 @@ include(name, argc, argv)
 		switch (i) {
 		  case LRETURN:
 		  case LERROR:
-			return 1;
+			return exstat & 0xff; /* see below */
 		  case LINTR:
 		  case LEXIT:
 		  case LLEAVE:
@@ -314,7 +418,7 @@ include(name, argc, argv)
 			unwind(i);
 			/*NOREACHED*/
 		  default:
-			errorf("internal error: E_INCL %d\n", i);
+			internal_errorf(1, "include: %d", i);
 			/*NOREACHED*/
 		}
 	}
@@ -322,17 +426,18 @@ include(name, argc, argv)
 		e->loc->argv = argv;
 		e->loc->argc = argc;
 	}
-	s = pushs(SFILE);
+	s = pushs(SFILE, ATEMP);
 	s->u.shf = shf;
 	s->file = strsave(name, ATEMP);
-	shell(s, FALSE);
+	i = shell(s, FALSE);
 	quitenv();
+	source = sold;
 	shf_close(s->u.shf);
 	if (old_argv) {
 		e->loc->argv = old_argv;
 		e->loc->argc = old_argc;
 	}
-	return 1;
+	return i & 0xff;	/* & 0xff to ensure value not -1 */
 }
 
 int
@@ -341,7 +446,7 @@ command(comm)
 {
 	register Source *s;
 
-	s = pushs(SSTRING);
+	s = pushs(SSTRING, ATEMP);
 	s->str = comm;
 	return shell(s, FALSE);
 }
@@ -357,22 +462,27 @@ shell(s, exit_atend)
 	struct op *t;
 	int wastty;
 	volatile int attempts = 13;
-#ifdef JOBS
 	volatile int interactive = Flag(FTALKING) && s->type == STTY;
-#endif /* JOBS */
 	int i;
 
 	newenv(E_PARSE);
 	exstat = 0;
-#ifdef JOBS
 	if (interactive)
 		really_exit = 0;
-#endif /* JOBS */
 	if ((i = setjmp(e->jbuf))) {
 		s->str = null;
 		switch (i) {
+		  case LINTR: /* we get here if SIGINT not caught or ignored */
+		  case LERROR:
 		  case LSHELL:
 			if (interactive) {
+				if (i == LINTR)
+					shellf(newline);
+				/* Reset any eof that was read as part of a
+				 * multiline command.
+				 */
+				if (Flag(FIGNOREEOF) && s->type == SEOF)
+					s->type = STTY;
 				/* Used by exit command to get back to
 				 * top level shell.  Kind of strange since
 				 * interactive is set if we are reading from
@@ -388,21 +498,15 @@ shell(s, exit_atend)
 			quitenv();
 			unwind(i);	/* keep on going */
 			/*NOREACHED*/
-		  case LERROR:
-			break;
-		  case LINTR:
-			/* we get here if SIGINT not caught or ignored */
-			shellf("\n");
-			break;
 		  default:
-			errorf("internal error: E_PARSE %d\n", i);
+			internal_errorf(1, "shell: %d", i);
 			/*NOREACHED*/
 		}
 	}
 
 	while (1) {
 		if (trap)
-			runtraps(FALSE);
+			runtraps(0);
 
 		if (s->next == NULL)
 			if (Flag(FVERBOSE))
@@ -410,10 +514,11 @@ shell(s, exit_atend)
 			else
 				s->flags &= ~SF_ECHO;
 
-		j_notify();
+		if (interactive)
+			j_notify();
 
-		if ((wastty = (s->type == STTY)) || s->type == SHIST) {
-			set_prompt(PS1);
+		if ((wastty = (s->type == STTY))) {
+			set_prompt(PS1, s);
 			mcheck();
 		}
 
@@ -422,14 +527,14 @@ shell(s, exit_atend)
 			if (wastty && Flag(FIGNOREEOF) && --attempts > 0) {
 				shellf("Use `exit' to leave ksh\n");
 				s->type = STTY;
-#ifdef	JOBS
-			} else if (wastty && !really_exit && j_stopped()) {
+			} else if (wastty && !really_exit
+				   && j_stopped_running())
+			{
 				really_exit = 1;
 				s->type = STTY;
-#endif	/* JOBS */
 			} else {
 				/* this for POSIX, which says EXIT traps
-				 * shell be taken in the environment
+				 * shall be taken in the environment
 				 * immediately after the last command
 				 * executed.
 				 */
@@ -438,15 +543,12 @@ shell(s, exit_atend)
 				break;
 			}
 		}
-		/* no longer needed? shf_flush(shl_out); flush -v output */
 
-		if (!Flag(FNOEXEC) || s->type == STTY)
+		if (t && (!Flag(FNOEXEC) || s->type == STTY))
 			exstat = execute(t, 0);
 
-#ifdef JOBS
 		if (t != NULL && t->type != TEOF && interactive && really_exit)
 			really_exit = 0;
-#endif	/* JOBS */
 
 		reclaim();
 	}
@@ -532,13 +634,14 @@ quitenv()
 	register struct env *ep = e;
 	register int fd;
 
-	if (ep->oenv == NULL)
+	if (ep->oenv == NULL) /* cleanup_parents_env() was called */
 		exit(exstat);	/* exit child */
 	if (ep->oenv->loc != ep->loc)
 		popblock();
 	if (ep->savefd != NULL) {
 		for (fd = 0; fd < NUFILE; fd++)
-			if (ep->savefd[fd] > 0)
+			/* if ep->savefd[fd] < 0, means fd was closed */
+			if (ep->savefd[fd])
 				restfd(fd, ep->savefd[fd]);
 		if (ep->savefd[2]) /* Clear any write errors */
 			shf_reopen(2, SHF_WR, shl_out);
@@ -546,6 +649,28 @@ quitenv()
 	reclaim();
 	e = e->oenv;
 	afree(ep, ATEMP);
+}
+
+/* Called after a fork to cleanup stuff left over from parents environment */
+void
+cleanup_parents_env()
+{
+	struct env *ep;
+	int fd;
+
+	/* Don't clean up temporary files - parent will probably need them.
+	 * Also, can't easily reclaim memory since variables, etc. could be
+	 * anywyere.
+	 */
+
+	/* close all file descriptors hiding in savefd */
+	for (ep = e; ep; ep = ep->oenv) {
+		if (ep->savefd)
+			for (fd = 0; fd < NUFILE; fd++)
+				if (ep->savefd[fd] > 0)
+					close(ep->savefd[fd]);
+	}
+	e->oenv = (struct env *) 0;
 }
 
 /* remove temp files and free ATEMP Area */
@@ -566,11 +691,25 @@ remove_temps(tp)
 			unlink(tp->name);
 }
 
+/* Returns true if name refers to a restricted shell */
+static int
+is_restricted(name)
+	char *name;
+{
+	char *p;
+
+	if ((p = strrchr_dirsep(name)))
+		name = p;
+	/* accepts rsh, rksh, rpdksh, pdrksh, etc. */
+	return (p = strchr(name, 'r')) && strstr(p, "sh");
+}
+
 void
 aerror(ap, msg)
 	Area *ap;
 	const char *msg;
 {
-	errorf("alloc internal error: %s\n", msg);
+	internal_errorf(1, "alloc: %s", msg);
+	errorf((char *) 0); /* this is never executed - keeps gcc quiet */
+	/*NOTREACHED*/
 }
-

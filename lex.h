@@ -20,6 +20,8 @@ struct source {
 	int	errline;	/* line the error occured on (0 if not set) */
 	char   *file;		/* input file name */
 	int	flags;		/* SF_* */
+	Area	*areap;
+	XString	xs;		/* input buffer */
 	Source *next;		/* stacked source */
 };
 
@@ -27,12 +29,12 @@ struct source {
 #define	SEOF	0		/* input EOF */
 #define	STTY	1		/* terminal input */
 #define	SFILE	2		/* file input */
-#define	SSTRING	3		/* string */
-#define	SWSTR	4		/* string without \n */
-#define	SWORDS	5		/* string[] */
-#define	SWORDSEP 6		/* string[] seperator */
-#define	SALIAS	7		/* alias expansion */
-#define	SHIST	8		/* history expansion */
+#define SSTDIN	3		/* read stdin */
+#define	SSTRING	4		/* string */
+#define	SWSTR	5		/* string without \n */
+#define	SWORDS	6		/* string[] */
+#define	SWORDSEP 7		/* string[] seperator */
+#define	SALIAS	8		/* alias expansion */
 #define SREREAD	9		/* read ahead to be re-scanned */
 
 /* Source.flags values */
@@ -52,6 +54,8 @@ struct source {
 #define	SPAREN	6		/* inside $() */
 #define	SBQUOTE	7		/* inside `` */
 #define	SDDPAREN 8		/* inside $(( )) */
+#define SHEREDELIM 9		/* parsing <<,<<- delimiter */
+#define SHEREDQUOTE 10		/* parsing " in <<,<<- delimiter */
 
 typedef union {
 	int	i;
@@ -86,6 +90,7 @@ typedef union {
 #define MDPAREN	277		/* (( )) */
 #define BANG	278		/* ! */
 #define DBRACKET 279		/* [[ .. ]] */
+#define COPROC	280		/* |& */
 #define	YYERRCODE 300
 
 /* flags to yylex */
@@ -97,19 +102,21 @@ typedef union {
 #define VARASN	BIT(5)		/* check for var=word */
 #define ARRAYVAR BIT(6)		/* parse x[1 & 2] as one word */
 #define ESACONLY BIT(7)		/* only accept esac keyword */
+#define CMDWORD BIT(8)		/* parsing simple command (alias related) */
+#define HEREDELIM BIT(9)	/* parsing <<,<<- delimiter */
 
 #define	HERES	10		/* max << in line */
 
-EXTERN	char	line [LINE+1];	/* input line */
 EXTERN	Source *source;		/* yyparse/yylex source */
 EXTERN	YYSTYPE	yylval;		/* result from yylex */
 EXTERN	int	yynerrs;
 EXTERN	struct ioword *heres [HERES], **herep;
 EXTERN	char	ident [IDENT+1];
 
-#define	HISTORY	128		/* size of saved history */
+#ifdef HISTORY
+# define HISTORYSIZE	128	/* size of saved history */
 
 EXTERN	char  **history;	/* saved commands */
 EXTERN	char  **histptr;	/* last history item */
 EXTERN	int	histsize;	/* history size */
-EXTERN	int	histpush;	/* number of pushed fc commands */
+#endif /* HISTORY */

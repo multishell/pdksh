@@ -23,7 +23,10 @@ struct tbl {			/* table item */
 	} val;			/* value */
 	int	index;		/* index for an array */
 	int	field;		/* field with for -L/-R/-Z */
-	struct tbl *array;	/* array values */
+	union {
+		struct tbl *array;	/* array values */
+		char *fpath;		/* temporary path to undef function */
+	} u;
 	char	name[4];	/* name -- variable length */
 };
 
@@ -47,6 +50,7 @@ struct tbl {			/* table item */
 #define UCASEV_AL BIT(18)	/* convert to upper case / autoload function */
 #define INT_U	BIT(19)		/* unsigned integer */
 #define INT_L	BIT(20)		/* long integer (no-op) */
+#define IMPORT	BIT(21)		/* flag to typeset(): no arrays, must have = */
 /* flag bits used for taliases/builtins/aliases/keywords/functions */
 #define KEEPASN	BIT(8)		/* keep command assignments (eg, var=x cmd) */
 #define FINUSE	BIT(9)		/* function being executed */
@@ -62,6 +66,15 @@ struct tbl {			/* table item */
 #define	CALIAS	5		/* alias */
 #define	CKEYWD	6		/* keyword */
 #define CTALIAS	7		/* tracked alias */
+
+/* Flags for findcom()/comexec() */
+#define FC_SPECBI	BIT(0)	/* special builtin */
+#define FC_FUNC		BIT(1)	/* function builtin */
+#define FC_REGBI	BIT(2)	/* regular builtin */
+#define FC_UNREGBI	BIT(3)	/* un-regular builtin (!special,!regular) */
+#define FC_BI		(FC_SPECBI|FC_REGBI|FC_UNREGBI)
+#define FC_PATH		BIT(4)	/* do path search */
+#define FC_DEFPATH	BIT(5)	/* use default path in path search */
 
 /*
  * activation record for function blocks

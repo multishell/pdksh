@@ -6,11 +6,11 @@ THIS_KSH=$1
 shift
 
 echo 'The following tests are known to fail:
-	2 6 10 27 30 39'
+	39'
 
-tbase=bug-t.$$
+tbase=bug-t$$
 tfile=/tmp/$tbase
-sfile=/tmp/bug-s.$$
+sfile=/tmp/bug-s$$
 
 #   1. Everywhere
 #   	lex array code has problems....
@@ -151,7 +151,7 @@ done
 #   		set -- `false`
 #   		echo $?
 #   	shoud not print 0. (according to /bin/sh, at&t ksh, and the
-#   	getopt(1) man page)
+#   	getopt(1) man page - not according to POSIX)
 set -- `false`
 if [ $? != 1 ] ; then
 	echo 'Bug 10 present: set exit code overrides exit code of command subst'
@@ -227,7 +227,7 @@ rm -f $tfile
 #   		$ whence foobar cat
 #   	generates no output under at&t ksh (pdksh generates a blank line
 #   	and /bin/cat).
-echo "  [There are three bug 15's: 15a, 15b, 15c]"
+echo "  [Note that there are three bug 15 tests: 15a, 15b, 15c]"
 cat > $tfile << 'EOF'
     whence does/not/exist > /dev/null
     echo $?
@@ -395,7 +395,7 @@ cat > $sfile << 'EOF'
     while [ "$a" != xxx ] ; do
 	last=$x
 	read x
-	/bin/cat < /dev/null | sed 's/x/y/'
+	/bin/cat /dev/null | sed 's/x/y/'
 	a=x$a
     done
     if [ "$last" != b ] ; then

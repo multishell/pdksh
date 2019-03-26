@@ -8,7 +8,7 @@
 	XString xs;
 	char *xp;
 
-	Xinit(xs, xp, 128);	/* allocate initial string */
+	Xinit(xs, xp, 128, ATEMP); /* allocate initial string */
 	while ((c = generate()) {
 		Xcheck(xs, xp);	/* expand string if neccessary */
 		Xput(xs, xp, c); /* add character */
@@ -25,14 +25,16 @@
 typedef struct XString {
 	char   *end, *beg;	/* end, begin of string */
 	size_t	len;		/* length */
+	Area	*areap;		/* area to allocate/free from */
 } XString;
 
 typedef char * XStringP;
 
 /* initialize expandable string */
-#define	Xinit(xs, xp, length) do { \
+#define	Xinit(xs, xp, length, area) do { \
 			(xs).len = length; \
-			(xs).beg = alloc((xs).len + 8, ATEMP); \
+			(xs).areap = (area); \
+			(xs).beg = alloc((xs).len + 8, (xs).areap); \
 			(xs).end = (xs).beg + (xs).len; \
 			xp = (xs).beg; \
 		} while (0)
@@ -40,29 +42,32 @@ typedef char * XStringP;
 /* stuff char into string */
 #define	Xput(xs, xp, c)	(*xp++ = (c))
 
-/* check for overflow, expand string */
-#define	Xcheck(xs, xp) do { \
-		    if (xp >= (xs).end) { \
-			char *old_beg = (xs).beg; \
-			(xs).len += (xs).len; /* double size */ \
-			(xs).beg = aresize((xs).beg, (xs).len + 8, ATEMP); \
-			(xs).end = (xs).beg + (xs).len; \
-			xp = (xs).beg + (xp - old_beg); /* adjust pointer */ \
-		    } \
+/* check if there are at least n bytes left */
+#define	XcheckN(xs, xp, n) do { \
+		    int more = ((xp) + (n)) - (xs).end; \
+		    if (more > 0) \
+			xp = Xcheck_grow_(&xs, xp, more); \
 		} while (0)
 
+/* check for overflow, expand string */
+#define Xcheck(xs, xp)	XcheckN(xs, xp, 1)
+
 /* free string */
-#define	Xfree(xs, xp)	afree((void*) (xs).beg, ATEMP)
+#define	Xfree(xs, xp)	afree((void*) (xs).beg, (xs).areap)
 
 /* close, return string */
 #define	Xclose(xs, xp)	(char*) aresize((void*)(xs).beg, \
-					(size_t)(xp - (xs).beg), ATEMP)
+					(size_t)((xp) - (xs).beg), (xs).areap)
 /* begin of string */
 #define	Xstring(xs, xp)	((xs).beg)
 
-#define	Xlength(xs, xp) (xp - (xs).beg)
-#define	Xsavepos(xs, xp) (xp - (xs).beg)
+#define Xnleft(xs, xp) ((xs).end - (xp))	/* may be less than 0 */
+#define	Xlength(xs, xp) ((xp) - (xs).beg)
+#define Xsize(xs, xp) ((xs).end - (xs).beg)
+#define	Xsavepos(xs, xp) ((xp) - (xs).beg)
 #define	Xrestpos(xs, xp, n) ((xs).beg + (n))
+
+char *	Xcheck_grow_	ARGS((XString *xsp, char *xp, int more));
 
 /*
  * expandable vector of generic pointers
