@@ -1,27 +1,1964 @@
-Sun May  3 17:50:03 1992  Simon J. Gerraty  (sjg@zen)
+Tue Sep 13 11:01:47 NDT 1994 Michael Rendell (michael@panda.cs.mun.ca)
 
-	* Updated MACHINES.
-	* Placed source under CVS.  This should help with processing fixes
-	from the field.
+	* made pdksh-5.0.6 distribution
 
-Sat Apr 25 10:53:20 1992  Simon J. Gerraty  (sjg@zen)
+Mon Sep 12 11:39:07 NDT 1994 Michael Rendell (michael@panda.cs.mun.ca)
 
-	* Getting ready for 4.3 release.  
+	* exec.c(scriptexec): changed so it will compile if SHARPBANG is
+	  defined; fixed error message; shell argument is everything up to
+	  a newline; don't listen to #! line unless it ends in a newline.
 
-Fri Nov 22 22:24:29 1991  Simon J. Gerraty  (sjg at zen)
+	* syn.c(get_command): case FOR: changed VARASN to ARRAYVAR.
 
-	* Cleaned up the build process slightly.  Makefiles in ./std tree
-	now maintain objects within the libraries rather than simply
-	building the .o's and archiving them.  Of course the make(1) used
-	must know how to maintain libraries :-)
+	* jobs.c(waitfor): restore signal mask before returning if named job
+	  isn't own own; when waiting for unspecified jobs, only consider
+	  running jobs; don't pass JW_STOPPEDWAIT flag to j_wait.
 
-	* Added bug.report as a template for bug reporting.
+	* table.h(V_TMPDIR,tmpdir): new define/variable.
+	* var.c(setspec, unsetspec): added case for V_TMPDIR.
+	* io.c(maketemp): use tmpdir variable if it is set, else use /tmp.
 
-	* Source in ./sh can be built independently of ./std tree if
-	desired.  See comments in ./sh/Makefile.
+	* var.c(popblock): if poping a variable that wasn't set in the old
+	  environment, call unsetspec().
 
-	* As originally distributed some of libstdc.a was not used and
-	libposix.a was not used at all.  On Sun's this highlighted a bug
-	(incompatibility) in the times() call.  Now the ./std/libs are
-	used fully, and the supplied times() call functions as expected.
+Fri Sep  9 10:37:18 NDT 1994 Michael Rendell (michael@panda.cs.mun.ca)
 
+	* sh.h(PATHMAX): increased value from 256 to 1024.
+
+	* main.c(main): moved initialization of name to start of main;
+	  if getcwd() fails, use name in error message and call shf_flush().
+
+	* io.c(maketemp): check/use TMPDIR variable instead of /tmp; allocate
+	  temp structure and path in one chunk.
+
+	* c_ksh.c(c_cd): when checking for no home directory, compare
+	  against null, not (char *) 0.
+
+Thu Sep  8 10:52:59 NDT 1994 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* lex.c(yylex): case SHIST: flush shl_out after printing command.
+
+	* jobs.c(check_job): when notifing, do not remove job if it is stopped.
+
+Wed Sep  7 10:55:35 NDT 1994 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* made pdksh-5.0.5 distribution
+
+	* main.c(shell): commented out shf_flush(shl_out) - shouldn't be
+	  needed since -v flushes itself.
+
+Tue Sep  6 09:30:57 NDT 1994 Michael Rendell (michael@arlene.cs.mun.ca)
+
+	* sh.h(LSHELL,really_exit): new define/variable.
+	* c_sh.c(c_exitreturn): if how is LEXIT, check if there are stopped
+	  jobs and, if so, unwind with LSHELL (also check/set really_exit).
+	* main.c(shell): added case for LSHELL - stop unwinding if shell
+	  is interactive; changed local reallyquit to global really_exit.
+	* main.c(include),exec.c(comexec): added case for LSHELL.
+
+	* c_sh.c(c_exitreturn): quitenv() for LRETURN as well as LEXIT.
+
+	* sh.h(TF_CHANGED): new define.
+	* trap.c(runtrap): default EXIT/ERR trap during execution and restore
+	  original if TF_CHANGED not set.
+	* trap.c(settrap): set TF_CHANGED when setting trap.
+
+	* jobs.c(j_stopped): check that job created by current process; print
+	  "You have stopped jobs" message.
+	* main.c(shell): don't print you have stopped jobs message.
+
+	* main.c(initcoms): removed echo alias.
+	* c_ksh.c(kshbuiltins): added echo as a builtin.
+	* c_ksh.c(c_print): if wp[0] is echo, act like strict sysv echo;
+	  added \a (BEL) escape sequence.
+
+	* syn.c(function_body): new function; calls get_command() to get
+	  the body of a function (old code did nested { } block which
+	  caused problems with how redirections after the block were
+	  handled).
+	* syn.c(get_command): call function body to deal with foo() and
+	  function foo.
+
+	* jobs.c(restore_ttypgrp): new variable.
+	* jobs.c(j_change): set restore_ttypgrp if process group is set.
+	* jobs.c(j_exit): if necessary, restore tty process group for main
+	  shell.
+
+Fri Sep  2 21:32:03 NDT 1994 Michael Rendell (michael@arlene.cs.mun.ca)
+
+	* main.c(main): set FPRIVILEGED if uid (gid) doesn't match euid (egid);
+	  don't include $HOME/.profile if FPRIVILEGED; include
+	  /etc/suid_profile instead of $ENV if FPRIVILEGED.
+	* misc.c(change_flag): if clearing FPRIVILEGED flag, set euid (egid)
+	  to uid (gid).
+
+Fri Sep  2 21:10:23 NDT 1994 Michael Rendell (michael@arlene.cs.mun.ca)
+
+	* main.c(main): don't include $ENV if uid (gid) doesn't match
+	  euid (egid) (from J.T.Conklin).
+
+Fri Sep  2 12:07:14 NDT 1994 Michael Rendell (michael@arlene.cs.mun.ca)
+
+	* syn.c(get_command): removed MPAREN case, taken care of in '(' case,
+	  as per POSIX.2 which says () is two operators, not one.
+	* lex.c(yylex): don't check for/return MPAREN.
+	* lex.h(MPAREN): deleted define.
+
+	* configure.in: add test for library routine confstr(); add
+	  header test for paths.h.
+	* sh.h: include paths.h if available; define DEFAULT__PATH.
+	* table.h(def_path): new variable.
+	* options.h(DEFAULT_PATH): new define.
+	* main.c(main): initialize value of def_path; set path to def_path;
+	  remove PATH initalization from initsubs; do not set value of HOME
+	  variable (POSIX); allow SHELL, PS1, PS2, PS3 to have empty values
+	  (at&t ksh).
+	* var.c(unsetspec): when unsetting PATH, set path to def_path.
+
+	* jobs.c(j_waitj): restore proc mask before calling error if
+	  1st tcsetpgrp() fails.
+
+Thu Sep  1 10:28:03 NDT 1994 Michael Rendell (michael@arlene.cs.mun.ca)
+
+	* Makefile.in: added check-sig.c, check-fd.c and check-pgrp.c
+	  to RCSFILES; added rules for compiling the above; added debugtools
+	  target to compile them all.
+
+	* c_test.c(arg0,t_error,T_ERR_EXIT): new variables/defines.
+	* c_test.c(c_test): set arg0 to wp[0], t_error to 0; after
+	  calling eval_binop() or oexpr() check t_error and if set,
+	  return T_ERR_EXIT.
+	* c_test.c(syntax): set t_error exit; use shellf() instead of
+	  errorf(); use arg0 instead of "test"; delete GCC_FA_NORETURN
+	  attribute; changed all calls to return after calling.
+	* c_test.c(oexpr,aexpr,primary): check terror after calling
+	  oexpr(), aexpr(), nexpr().
+
+	* c_test.c(primary): if unary operator is -t and there is no
+	  argument, don't increment t_wp; if missing closing parenthesis,
+	  show next operand (if any) in error message.
+	* c_test.c(eval_unop): default case, print t_wp[-2] (was -1).
+	* c_test.c(c_test): set t_wp before calling eval_binop() incase
+	  there is an erorr.
+	* c_test.c(syntax): print first message even if op is an empty string.
+
+Wed Aug 31 11:48:51 NDT 1994 Michael Rendell (michael@arlene.cs.mun.ca)
+
+	* expr.c(O_LT, O_GT): reverse order of enums to match opinfo table.
+
+	* c_test.c(nexpr): always call !nexpr() (never !primary()).
+	* c_test.c(c_test): switch on argc-1 to make code match POSIX
+	  description; make 4 arg case fall into 3 arg case, and 3 arg case
+	  fall into 2 arg case.
+	* c_test.c(is_not,is_and,is_or): new defines.
+	* c_test.c(c_test,oexpr,aexpr,nexpr): use is_not,is_and and is_or.
+	* c_test.c(primary): don't decrement t_wp in final string case.
+
+	* c_test.c(eval_unop): change S_ISIFO to S_ISFIFO and S_ISFITO
+	  to S_ISFIFO.
+
+	* misc.c(parse_args): use OF_SET when initializing set_opts.
+
+Wed Aug 31 09:32:39 NDT 1994 Michael Rendell (michael@arlene.cs.mun.ca)
+
+	* made pdksh-5.0.4 distribution
+
+	* jobs.c(j_change): do not restore tty process group when turning
+	  off job control; no need to save original tty process group;
+	  deleted orig_ttypgrp variable. (fixes bug in which turning off
+	  job control causes an interactive shell to exit)
+
+Tue Aug 30 14:43:48 NDT 1994 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* aclocal.m4(KSH_OPENDIR_CHECK): always include sys/types.h;
+	  set return value according to what failed.
+
+Tue Aug 30 11:17:09 NDT 1994 Michael Rendell (michael@arlene.cs.mun.ca)
+
+	* missing.c(strerror): for systems without sys_errlist[], report
+	  error number if unknown.
+
+	* Makefile.in: added BUG-REPORTS to DISTFILES.
+
+	* jobs.c(exchild): do tcsetpgrp() in both parent and child after
+	  the first process is created (may need to change to every child).
+
+	* aclocal.m4(KSH_PGRP_SYNC): new test - defines NEED_PGRP_SYNC.
+	* acconfig.h: added define for NEED_PGRP_SYNC.
+	* configure.in: use KSH_PGRP_SYNC test.
+	* jobs.c(exchild,j_startjob,j_sync_open,j_sync_pipe): if NEED_PGRP_SYNC
+	  is defined, use a pipe to block the first process in a pipeline
+	  until the whole pipeline is set up.
+
+Mon Aug 29 09:15:00 NDT 1994 Michael Rendell (michael@arlene.cs.mun.ca)
+
+	* jobs.c(exchild): for background, unmonitored jobs, don't open
+	  /dev/null if input is a pipe.
+
+	* jobs.c(exchild): for background, unmonitored jobs, use setsig()
+	  instead of setexecsig() to set up SIGQUIT and SIGINT; changed
+	  restoration of SIGTSTP,SIGTTIN,SIGTTOU - set them to DFL if
+	  monitoring and not a `..` command, otherwise leave them alone.
+	* jobs.c(j_init): only use SIGTSTP,SIGTTIN,SIGTTOU if talking
+	  or monitoring - if just talking leave signals ignored.
+	* jobs.c(j_change): if going into job control, set TF_SHELL_USES
+	  flag for sigtraps[SIGTSTP,SIGTTIN,SIGTTOU]; if leaving job control
+	  ignore signals if interactive, else restore original signals.
+
+	* table.h(SPEC_BI, REG_BI): new defines.
+	* exec.c(builtin): check for * or + in front of builtin names and set
+	  SPEC_BI or REG_BI if found.
+	* exec.c(findcom): search for special builtins first, then functions,
+	  then regular builtins, then PATH search.
+	* c_sh.c(shbuiltins[]),c_ksh(kshbuiltins[]): add */+ in front of POSIX
+	  special/regular builtins; add = infront of unset;
+	  remove = from alias.
+	* c_sh.c(c_label): set exit value according to name (for true/false).
+	* c_sh.c(shbuiltins[]): add entries for true and false.
+	* main.c(initcoms[]): deleted true/false aliases.
+
+	* aclocal.m4(KSH_OPENDIR_CHECK): new test - see if opendir() will
+	  open non-directories.
+	* configure.in,acconfig.h: added KSH_OPENDIR_CHECK.
+	* missing.c,ksh_dir.h(ksh_opendir): new define/function.
+	* eval.c(globit),emacs.c(compl_file): use ksh_opendir() instead of
+	  opendir().
+
+	* main.c(include): save source filename since search() uses line[]
+	  for the filename and shell() trashes line[].
+
+	* table.h(FINUSE,FDELETE) new defines.
+	* exec.c(execute): case CFUNC: re-arranged code so normal return goes
+	  through setjmp() switch; use FDELETE/FINUSE flags to avoid problems
+	  with a function being undefined or redefined during its execution.
+	* exec.c(define): if FINUSE is set, set FDELETED and find a new table
+	  entry.
+
+Fri Aug 26 21:58:25 NDT 1994 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* lex.c(getsc_): flush output after write when echoing.
+
+	* Makefile.in(dist): after creating distrubution, use pathchk -p 
+	  to check file names.
+
+Fri Aug 26 10:28:20 NDT 1994 Michael Rendell (michael@arlene.cs.mun.ca)
+
+	* made pdksh-5.0.3 distribution
+
+	* expr.c(IS_ASSIGNOP): new define.
+	* expr.c(evalexpr): use IS_ASSIGNOP (bug fix).
+
+	* exec.c(execute): case TFOR,TSELECT: change e->type just
+	  before setjmp() to avoid problems with bad jmpbufs.
+
+	* jobs.c(startlast): new function.
+	* jobs.c(waitlast): print error if job not started.
+	* eval.c(comsub): call startlast() after execute().
+	* jobs.c(exchild,j_startjob,j_sync_pipe): when starting a pipeline
+	  use a pipe to ensure the first process doesn't die before
+	  the last process is started.
+
+	* exec.c(execute): case TFUNC: set/clear FXTRACE according to
+	  tp->flag & TRACE, and restore old value when function completes.
+
+	* c_test.c,exec.c,io.c,mail.c,vi.c: changed all uses of
+	  (x&S_IFMT) == S_IF* to the equivilent S_IS* (for ISC unix).
+	* c_test.c(eval_unop): if system doesn't have symlinks or sockets
+	  (S_ISLNK,S_ISSOCK), return 0 (used to cause internal error).
+	* ksh_stat.h(S_ISVTX): define if sys/stat.h doesn't.
+
+	* sigaction.c(Signal,signal): ifdef'd Signal() and signal() out as
+	  they cause header file conflicts on some systems (eg, signal()
+	  in ISC unix); also ifdef'd out other routines not used by ksh
+	  (ie, sigdelset, sigfillset, sigismember, sigpending).
+
+Thu Aug 25 11:50:03 NDT 1994 Michael Rendell (michael@arlene.cs.mun.ca)
+
+	* c_test.c(primary): always check that *t_wp isn't 0 before using it.
+
+	* eval.c(homedir): cache home directory values.
+
+	* exec.c(findcom): search builtins before tracked aliases.
+
+	* table.h(commands,taliases): changed name of commands to taliases.
+
+	* c_ksh.c(c_unalias): changed to use ksh_getopt(); added -t and -a
+	  options; exit with non-zero value if non-alias name unaliased
+	  (POSIX).
+
+	* main.c(initcoms[]): alias hash to 'alias -t -'; added autoload alias
+	  as well; set selected comands to be tracked aliases (eg, grep,
+	  ls, who, vi, emacs, etc.).
+
+	* c_ksh.c(c_alias): when printing aliases, check ISSET, not DEFINED
+	  flag (so unset tracked aliases won't cause problems); changed
+	  to use ksh_getopt(); added -t flag; added -x flag (does nothing).
+	* c_ksh.c(c_hash): deleted function; removed all references.
+
+	* table.h(CTALIAS): new define.
+	* exec.c(findcom): added search argument for whence -p; fixed
+	  introduced bug preventing tracking of commands when insert set;
+	  changed all calls; when creating tracked aliases, set type to CTALIAS
+	  (was CEXEC).
+	* exec.c(findcom,flushcom): when freeing old tracked aliases, use
+	  APERM, not commands.areap.
+	* c_ksh.c(c_whence): changed to use ksh_getopt(); assume findcom()
+	  never returns 0 and never returns tp->type == CNONE; made output
+	  closer to at&t ksh output; combined vflag/!vflag switch statements;
+	  added case for CTALIAS.
+	* exec.c(findcom): set tracked alias type to CTALIAS.
+
+	* c_ksh.c(c_print): added -s option; changed to use Xstring() routines
+	  and write() instead of shf routines; returns non-zero if there
+	  was a write error.
+
+	* jobs.c(struct job): changed pid_t lpid field to Proc *last_proc;
+	  changed all uses.
+	* jobs.c(check_job): use j->last_proc instead of lp.
+	* jobs.c(j_waitj): when checking for fake ^C, test j->last_proc
+	  status to see if it was signaled and use WTERMSIG to get signal.
+
+	* main.c: initialize integer TMOUT parameter to 0; call alarm_init()
+	  if FTALKING.
+	* trap.c(alarm_init,alarm_catcher): new functions.
+	* trap.c(runtraps): if ksh_tmout_leave is set, exit.
+	* sh.h(TMOUT_EXECUTING,TMOUT_READING,TMOUT_LEAVING,ksh_tmout,
+	  ksh_tmout_state): new enum values/variables.
+	* table.h(V_TMOUT): new define.
+	* var.c(special,setspec,unsetspec): added V_TMOUT entry.
+	* edit.c(x_getc): call intrcheck() if read interrupted.
+
+Thu Aug 25 09:36:54 NDT 1994 Michael Rendell (michael@arlene.cs.mun.ca)
+
+	* c_test.c(c_test): for argc cases 4 and 5, return the complement
+	  of the expressioin result; for [[ .. ]] expressions, don't parse
+	  based on argc; deleted struct t_op.op_flags field and related
+	  defines UNOP,BINOP,ACCEPT_BE,ISTEST,ISDBRACKET,ISBOTH - changed all
+	  uses to test the value of isdbracket.
+	* c_test.c(filstat): moved body of filstat() into eval_unop(), deleted
+	  filstat().
+
+	* c_test.c: incorperated changes from J.T. Conlin (jtc@cygnus.com)
+	  for POSIXization of test builtin.
+
+Wed Aug 24 12:16:25 NDT 1994 Michael Rendell (michael@arlene.cs.mun.ca)
+
+	* new-version.sh: new file - updates date in version.c
+	* Makefile.in: added new-version.sh to RCSFILES; call new-version.sh
+	  in dist: target.
+
+Tue Aug 23 09:28:10 NDT 1994 Michael Rendell (michael@arlene.cs.mun.ca)
+
+	* made pdksh-5.0.2 distribution
+
+	* jobs.c(exchild): don't call restoresigs().
+	* exec.c(execute): do call restoresigs() (just before execve()).
+
+	* c_sh.c(c_trap): ifdef'd out code to print default traps.  Too ugly
+	  and it isn't clear POSIX needs it.
+
+	* c_ksh.c(c_print): put -e option back in for echo emulation (-R).
+
+	* c_sh.c(c_shift): generate error if n < 0.
+
+	* c_sh.c(c_trap): use shellf instead of errorf to report errors
+	  (so we can return a value instead of unwinding - POSIX).
+
+	* exec.c(execute): if command fails and !FERREXIT, call
+	  trapsig(SIGERR_).
+
+	* c_sh.c(c_exit,c_return,c_exitreturn): combined c_exit and c_return
+	  functions.
+
+Mon Aug 22 09:39:54 NDT 1994 Michael Rendell (michael@arlene.cs.mun.ca)
+
+	* eval.c(expand): case XARG: set word to IFS_WORD to force null
+	  words to be created.
+
+	* lex.c(yylex): added indquotes flag and code for `...` parsing
+	  (to deal with "`...`" the way sh/at&t-ksh does).
+
+	* trap.c(runtrap): don't reset ERR trap.
+
+	* sh.h: combnied SS_USER/SS_FORCE flags with RESTORE_CURR et. al.
+	  flags; changed RESTORE_* to SS_RESTORE_*.
+	* trap.c(setsig): combined restore, force and user flags; changed
+	  all calls.
+	* trap.c(setexecsig): use SS_RESTORE_* values as argument.
+
+	* table.h: changed LCASE to LCASEV (and UCASE_AL to UCASEV_AL) to
+	  avoid problems with ioctl/tty LCASE define.
+
+	* sh.h(struct env): deleted interactive field.
+	* main.c(shell),exec.c(iopsetup): deleted e->interactive assignment.
+
+	* sh.h: made e a struct env * (was struct env); changed all references.
+	* main.c(newenv): copy loc, flags and interactive fields explicitly.
+
+	* var.c(newblock): allocate block structure, don't assume already
+	  exists.
+	* var.c(popblock): free old block structure.
+	* main.c(main): set e->loc to 0 before calling newblock().
+	* exec.c(comexec): let newblock() allocate new structure; deleted
+	  l variable (changed references to e->loc).
+	* table.h: deleted globals variable.
+
+	* c_ksh.c(c_print): treat a lone - like --.
+
+	* main.c(main),trap.c(inittraps): move SIGINT,SIGQUIT,SIGTERM signal
+	  initialization to inittraps() and do it regardless of FTALKING.
+
+	* trap.c(settrap): deleted force trap since probably will never
+	  add -f flag to trap.
+
+	* main.c(unwind): if we are dieing of SIGINT or SIGTERM, kill
+	  ourselves with a signal.
+
+	* vi.c(x_vi),emacs(x_emacs): if ^C read, call trapsig()/runtraps();
+	  don't return -2.
+	* edit.c(x_read): don't check for -2 return value.
+	* vi.c(x_vi): check for quit char (^\) and fake SIGQUIT.
+
+	* exec.c(comexec): made flags argument volatile.
+
+	* misc.c(getn_): new function.
+	* c_sh.c(c_exit,c_return): call quitenv() before unwind()ing;
+	  moved c_exit() next to c_return(); use getn_() instead of getn().
+
+	* main.c(shell): added exit_atend argument to deal with POSIX trap exit
+	  semantics; changed all calls.
+	* sh.h: added STOP_RETURN macro.
+	* c_sh.c(c_return): determine if we are returning or exiting before
+	  unwind()ing so POSIX trap exit semantics are honored.
+
+	* jobs.c(j_sigchld): call trapsig() instead of messing with sigtraps[].
+	* trap.c(trapsig): don't restore signal handler if it wasn't set to
+	  trapsig.
+
+	* sh.h: added TF_TTY_INTR flag.
+	* trap.c(inittrap): set TF_TTY_INTR for SIGINT.
+	* jobs.c(j_waitj): if 
+
+	* jobs.c,sh.h: deleted SA_RESTART ifdefs; moved SIGCLD->SIGCHLD ifdefs
+	  from jobs.c to sh.h.
+
+Sat Aug 20 15:26:24 NDT 1994 Michael Rendell (michael@arlene.cs.mun.ca)
+
+	* sh.h: added KSH_SA_FLAGS define.
+	* trap.c(inittrap,setsig): set sa_flags field to KSH_SA_FLAGS.
+	* sigact.c(sigaction): if using BSD42_SIGNALS, set the SV_INTERRUPT
+	  flag.
+	* configure.in: deleted AC_RESTARTABLE_SYSCALLS.
+	* config.h.bot: add error message to prevent compilation if using
+	  BSD41 signals.
+
+	* shf.h: added SHF_INTERRUPT flag.
+	* shf.c(shf_fillbuf,shf_putchar,shf_write,shf_emptybuf): call
+	  intrcheck() if read()/write() interrupted and SHF_INTERRUPT set.
+	* c_sh.c(c_read): use SHF_INTERRUPT flag.
+	* lex.c(getsc_): call intrcheck() if read() interrupted.
+
+	* main.c(main),trap.c(inittrap): moved Sigact* initialization
+	  from main() to inittrap(); made Sigact_trap/Sigact_ign static;
+	  deleted Sigact and Sigact_dfl.
+	* sh.h: deleted declarations of Sigact*.
+
+	* main.c(shell): deleted sigaction call - no longer needed.
+
+	* sh.h: added RESTORE_CURR, RESTORE_ORIG, RESTORE_DFL and RESTORE_IGN
+	  defines.
+
+	* trap.c(intrcheck): new function.
+	* trap.c(runtraps): added intr argument; clear trap/intrsig
+	  before running traps; changed all calls.
+	* trap.c(runtrap): save/restore exstat when running trap.
+	* jobs.c(j_waitj): changed interrupt test to check intrsig
+	  and return -1.
+	* jobs.c(waitfor): if j_waitj() returns -1, call intrcheck().
+	* jobs.c(j_change): use setsig() instead of sigaction() to
+	  set up SIGTTIN,SIGTTOU,SIGTSTP.
+
+	* trap.c(inittraps): initialize flags for INT/QUIT/TERM.
+	* sh.h(intrsig): new variable.
+	* trap.c(trapsig): set intrsig if signal has TF_DFL_INTR flag set;
+	  deleted longjmp().
+	* trap.c(runtraps): clear intrsig.
+	* trap.c(runtrap): if signal is defaulted and TF_DFL_INTR is
+	  set, set exstat and call unwind(); return if signal ignored;
+	  reset an ERR trap before executing it.
+	* trap.c(cleartraps): deleted special case for EXIT; reset
+	  command traps using settrap(); clear intrsig.
+	* trap.c(restoresigs): only deal with traps that have the TF_EXEC_IGN
+	  flag set (others take care of themselves).
+
+	* trap.c(sigtraps[]): added ERR trap.
+	* trap.c(gettrap): deleted #if 0'd ERR/EXIT check.
+	* trap.c(gettrap,runtrap,cleartraps,restoresigs): use SIGNAL+1 to
+	  go through trap table.
+	* sh.h(SIGEXIT_,SIGERR_): new defines.
+	* c_kill.c(c_kill): test for signals > 128 (was >= 128)
+	* c_sh.c(c_trap): when printing traps, use SIGNALS+1.
+
+	* sh.h(struct trap): replaced ourtrap and sig_dfl fields with
+	  flags field; defined TF_SHELL_USES, etc. for flags field; added
+	  cursig field.
+	* sh.h(struct env): replaced func_parse field with
+	  flags field; defined EF_FUNC_PARSE, EF_BRKCONT_PASS for flags
+	  field; defined STOP_BRKCONT(); changed uses of func_parse
+	  (get_command()/readhere()).
+	* c_sh.c(c_brkcont): use STOP_BRKCONT(), EF_BRKCONT_PASS; call
+	  unwind() to do the work.
+
+Fri Aug 19 09:59:43 NDT 1994 Michael Rendell (michael@arlene.cs.mun.ca)
+
+	* trap.c(settrap): new function - does most of what c_trap did.
+	* c_sh.c(c_trap): changed to use settrap(); print out default
+	  actions as well as caught/ignored actions.
+	* trap.c,c_sh.c(setsig): moved setsig from c_sh.c to trap.c and
+	  made it static; added force and user arguments; don't do anything
+	  for EXIT and ERR.
+	* main.c(main): use sigtrap() instead of ignoresig().
+	* trap.c(ignoresig): deleted function.
+
+	* exec.c(execute): case TSELECT: don't change SIGINT signal handler.
+
+	* proto.h: use GCC_FA_NORETURN on aerror().
+	* syn.c(yyparse): made function static and void.
+
+	* exec.c(herein): changed error() calls to errorf()s; use error()
+	  in error handler; call shf_close() instead of shf_fdclose().
+
+	* tree.h,sh.h: moved LBREAK/LCONTIN from tree.h to sh.h;
+	  added LEXIT, LRETURN, LERROR, and LINTR defines; changed values
+	  of LBREAK/LCONTIN; changed all calls to longjmp() and setjmp().
+	* exec.c(execute): put Break: label after main switch, changed
+	  goto Break[0-9] to Break; deleted Break[0-9] labels.
+	* exec.c(execute): changed FOR, SELECT, WHILE, DO loop setjmps
+	  to explicitly check for LBREAK/LCONTIN, otherwise call unwind().
+	* exec.c(execute): case TFUNC: added setjmp switch statement to take
+	  care of various L* values.
+	* main.c(include,shell): added setjmp switch statement to take care of
+	  various L* values.
+	* main.c(unwind): added L* parameter to pass on to longjmp();
+	  changed all calls.
+	* c_sh.c(c_return): just call unwind(LRETURN);
+	* main.c(unwind): put code from leave() in E_NONE case.
+	* main.c(error,leave): deleted functions; replace all calls with
+	  unwind(LLEAVE or LERROR).
+	* *.c(longjmp): replaced all calls with unwind(L..) (except the
+	  call in unwind()).
+
+	* shf.h: add areap field to struct shf.
+	* shf.c(shf_fdopen,shf_sopen): initialize areap
+	* shf.c(shf_emptybuf,shf_close,shf_sclose,shf_finish): use areap
+	  instead of ATEMP.
+
+	* shf.c(shf_sopen): if buf is 0 and writing and DYNMAIC, allocate
+	  a buffer; if writing, save room for a trailing null. 
+	* shf.c(shf_sclose): new function.
+	* shf.c(shf_snprintf),tree.c(snptreef): use shf_sclose().
+	* tree.c(snptreef): changed return type to char *; if buffer
+	  is null, pass SHF_DYNAMIC to shf_sopen(); return (possibly
+	  allocated) string.
+	* syn.c(syntaxerr): use snptreef() instead of ident.
+
+	* tree.h: new define TDBRACKET; new defines DB_NORM,DB_OR,DB_AND,
+	  DB_BE,DB_PAT.
+	* tree.c(ptree): added case for TDBRACKET.
+	* syn.c(get_command): case DBRACKET: make TDBRACKET command;
+	  at end of function, null terminate args/vars if TDBRACKET.
+	* c_test.c(is_db_patop): new function.
+	* syn.c(db_primary): set type of arg to DB_PAT if is_db_patop()
+	  returns true.
+	* exec.c(execute): added case for TDBRACKET.
+
+	* syn.c(get_command): case MDPAREN: make arg[0] an allocated stuffed
+	  string (was a literal string).
+
+Thu Aug 18 11:06:49 NDT 1994 Michael Rendell (michael@arlene.cs.mun.ca)
+
+	* c_test.c(is_op,is_binop,is_unop): new functions to test for
+	  unary/binary operators.
+	* c_test.c(oexpr,aexpr,nexpr,primary): no longer take argument - 
+	  call is_unop/is_binop directly.
+	* c_test.c(ISDBRACKET,ISTEST,ISBOTH,ACCEPT_BE): new defines.
+	* c_test.c(struct t_op): changed op_type field to op_flags.
+	* c_test.c(ops[]): broke into two arrays: u_ops and b_ops;
+	  set flag field to ISDBRACKET/ISTEST/ISBOTH as appropriate.
+	* c_test.c(t_lex): deleted function.
+	* c_test.c(primary): before checking for unary operator, check
+	  for -BE (binary expression next) if appropriate.
+
+	* c_test.c: made operator type an enum to make it easier to add
+	  operators; changed oexpr/aexpr/nexpr/primary/filstat/t_lex
+	  operand/return types.
+	* c_test.c(struct t_op): changed op_text from char * to char [4].
+	* c_test.c(primary): case FILTT: using digit(**t_wp) causes core dump
+	  when there is no arg - just test if *t_wp is 0; move test into
+	  filstat().
+	* c_test.c(primary): use *opnd1 != 0 instead of strlen(opnd1) (3
+	  instances).
+
+	* tree.c(wdscan,wdcopy): changed string argument to const; changed
+	  return type of wdscan to const.
+
+	* eval.c(expand): case CSUBST: case '?': use st->var->anme instead
+	  of cp to allow proper nesting.
+	* eval.c(expand): case OSUBST: don't change cp - declare local
+	  variable.
+	* eval.c(expand): case COMSUB: deleted Xsavepos() call; XCOM: deleted
+	  Xrestpos() call.
+	* eval.c(expand): save the position of the first unquoted = for tilde
+	  expansion.
+	* eval.c(expand): case '~': use sp == (cp+2) instead of dp == Xstring
+	  so we aren't fooled by ''~ or ${foo}~; sp[-1]/sp[-2] and firsteq
+	  for the DOASNTILDE after first = or unquoted : test.
+
+	* tree.h(struct op): changed noexpand field to evalflags; changed
+	  all uses.
+	* exec.c(execute): if t->evalflags is non-zero, pass them to eval().
+
+	* lex.h: added DBRACKET define for [[ keyword.
+	* syn.c(get_command): added case for DBRACKET.
+	* syn.c(db_parse,db_oaexpr,db_nexpr,db_primary): new functions
+	  to parse [[ .. ]] expressions.
+	* syn.c(tokentab[]): added [[/DBRACKET keyword.
+	* c_test.c(is_db_unop,is_db_binop): new functions to test if arg
+	  is [[ .. ]] unary/binary operator.
+
+	* syn.c(syntaxerr): call REJECT; before token; removed REJECT
+	  before all calls to syntaxerr().
+	* syn.c(get_command): removed syntax error kludge.
+
+Wed Aug 17 11:07:40 NDT 1994 Michael Rendell (michael@arlene.cs.mun.ca)
+
+	* c_test.c(struct ops): changed -U to -O.
+
+	* tree.h: added new defined DOASNTILDE.
+	* eval.c(expand): case '~': changed !(f&DOBLANK) to f&DOASNTILDE.
+	* exec.c(execute): case TCOM: pass DOASNTILDE when evaluating vars
+	  and when expanding args when t->noexpand is set.
+
+	* exec.c(execute): case TCASE: pass DOTILDE to both evalstr() calls
+	  (POSIX).
+
+	* syn.c(get_command): don't check for redirections before determining
+	  command type; handle REDIR where LWORD are handled; default case
+	  always returns; pass ARRAYVAR flag to tpeek() if t->noexpand;
+	  don't allow redirections before "x()" function; don't allow
+	  redirection before keywords; allow a '(' in the case LWORD/REDIR:
+	  if no variables or arguments (POSIX doesn't allow this, but
+	  at&t ksh/bourne sh do).
+	* lex.h(ARRAYVAR): new define.
+	* lex.c(yylex): parse x[1 & 2] as one word if VARASN|ARRAYVAR.
+
+	* var.c(is_wdvarname): added aok argument; changed all calls.
+	* syn.c(get_command): case FOR/SELECT: check identifier is valid.
+
+	* c_sh.c(c_trap): use print_value_quoted() to print traps;
+	  use ksh_getopt() to skip possible --.
+	* trap.c(gettrap): allow digits only if signal numbers match
+	  POSIX values (ie, HUP=1,INT=2,QUIT=3,ABRT=6,KILL=9,ALRM=14,TERM=15).
+
+	* misc.c(print_value_quoted): new function to print strings with
+	  appropriate quoting.
+	* c_ksh.c(c_typeset,c_alias): use print_value_quoted() when printing
+	  values.
+
+	* lex.h: added new ESACONLY flag - only accept ESAC keyword.
+	* lex.c(yylex): check for ESACONLY flag when doing keyword search.
+	* syn.c(caselist): pass ESACONLY flag to tpeek().
+
+Tue Aug 16 10:17:47 NDT 1994 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* lex.h(struct source); changed echo field to generic flags field;
+	  defined SF_ECHO and SF_ALIASEND.
+	* lex.c(_getsc): case SALIAS: use isspace() to check for trailing
+	  space in alias; if alias does not end in a space, return a fake
+	  space to keep the current alias in the source list - this allows
+	  recursive alias detection; set SF_ALIAS in next source if alias
+	  does end if space.
+	* lex.c(yylex): deleted expanding_alias, rec_alias_cnt and
+	  rec_alias_table variables; check for recursive aliases by checking
+	  the source list; don't use EXPALIAS flag; if SF_ALIAS is set in
+	  current source, set ALIAS flag and clear SF_ALAIS; deleted global
+	  alias variable.
+	* table.h: deleted EXPALIAS define.
+	* main.c(shell): changed s->echo to set/clr of SF_ECHO in s->flags.
+
+	* table.h: added aliases and keywords tables; deleted lexicals table
+	  (POSIX says they are seperate).
+	* syn.c(keywords,initkeywords): changed name of keywords() function
+	  to initkeywords(); changed all calls; add to keywords table instead
+	  of lexicals table.
+	* main.c(main): initialized aliases/keywords tables; deleted
+	  initialization of lexicals table.
+	* c_ksh.c(c_whence,c_alias,c_unalias),lex.c(yylex): use
+	  keywords/aliases tables instead of lexicals table; removed unneeded
+	  type == CALIAS checks.
+
+	* var.c(getint): new function, largely take from strint().
+	* var.c(strint): call getint() to do most of the work; if vq
+	  was an allocated string, free the string and clear the alloc
+	  flag.
+	* var.c(intval): call getint() instead of strint().
+
+	* mail.c(mcheck): use getint() instead of strint() when getting
+	  value of MAILCHECK.
+
+	* var.c(skip_varname): added argument to allow array references;
+	  changed all calls.
+	* var.c(set_array): remove valid variable name check - done in
+	  parse_args().
+
+	* var.c(strint): check if getspec()/setspec() need to be called.
+	* var.c(intval): remove getspec()/INTEGER checks - let strint() do it.
+
+	* var.c(skip_wdvarname,is_wdvarname,is_wdvarassign): new
+	  functions.
+	* lex.h(VARASN): new define indicating variable assignment expected,
+	  currently used to parse "x[1 & 2]" as one token - may be used
+	  in future in returning AWORD (assignment word) to the parser.
+	* lex.c(yylex): Subst: case '[': use is_wdvarname() in determining
+	  whether to parse an array dereference; do not require an = after the
+	  dereference (typeset -r x[1 & 2] is legal).
+	* syn.c(many functions): pass VARASN to token/musthave/tpeek/synio
+	  when ever the next token might be the first word of a simple
+	  command.
+	* syn.c(get_command): case LWORD: use is_wdvarassign() to distinguish
+	  variable assignments from normal arguments; allow aliases after
+	  redirections and variable assignments; generate syntax error
+	  for "foo=bar bogusfunction()"; allow array variables in for
+	  and select statements.
+	* lex.c: make global alias variable static (no longer used by
+	  get_command()).
+
+	* syn.c(get_command): put MDPAREN into its own case.
+
+	* lex.c(yylex): deleted place holder for tilde expansion.
+
+	* tree.h(struct tree): added noexpand field for
+	  alias/export/readonly/typeset.
+	* syn.c(newtp),tree.c(tcopy): initialize/copy noexpand field.
+	* syn.c(get_command): case LWORD: set noexpand if assign_command()
+	  returns true.
+	* syn.c(assign_command): new function - returns true if command
+	  is alias, export, readonly or typeset.
+	* exec.c(execute): case TCOM: don't pass DOTILDE flag when
+	  expanding t->vars; don't do field splitting/globbing/tilde expansion
+	  of t->args if t->noexpand is set.
+
+	* table.h: re-grouped the struct tbl flags into common, variable,
+	  funtion, builtin/alias, etc (some values overlap); new flag
+	  names: KEEPASN (was overloaded with TRACE) and NOEXPAND.
+	* exec.c(comexec,builtin): changed TRACE to KEEPASN.
+
+	* tree.c(tcopy): when copying t->str, use strsave(), not wdcopy()
+	  if not copying a TCASE.
+
+	* c_ksh.c(c_typeset): added -p flag for POSIX export/readonly.
+
+	* eval.c(expand): expand tilde in place; don't do tilde expansion
+	  on results of substitution (POSIX); only do tilde expansion
+	  if login name is unquoted (POSIX); don't check for fdo&DOTILDE 
+	  when a word is completed.
+	* eval.c(tilde): changed to return home directory of a given login name
+	  (taking care of null/+/-) (old version copied string, scanning
+	  for, and replacing, magic tildes).
+
+	* exec.c(findcom): don't create commands table entries when
+	  not inserting; when doing access test of tracked alias,
+	  check for ISSET, not ALLOC (but test ALLOC before calling afree).
+	* exec.c(search): use strcpy() instead of loop.
+
+Mon Aug 15 14:46:58 NDT 1994 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* c_ksh.c(c_print): added at&t ksh -R flag; deleted -e flag;
+	  changed to use ksh_getopt().
+	* main.c(initcoms[]): changed echo alias from 'print -' to 'print -R'.
+
+	* sh.h: new variable procpid; added pid field to struct temp.
+	* jobs.c: changed references to my_pid to procpid; deleted my_pid
+	  variable.
+	* io.c(maketemp): initialize pid field from procpid.
+	* main.c(remove_temps): only remove temporary files created by
+	  the current process.
+
+Sun Aug 14 11:47:05 NDT 1994 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* var.c: added var field to struct Expand and struct SubType; deleted
+	  struct SubType.name field.
+	* var.c(expand): case OSUBST: use x.var/st->var field to save result
+	  of global() for use in case CSUBST - this avoids problems with
+	  x[i+=1] being evaluated twice; check to see if value is being
+	  assigned to non-variable (eg, ${*:=aja}) or read-only variable.
+	* var.c(varsub): set value of xp->var; possibly generate error if
+	  FNOUNSET set when expanding ${#*}, ${#var}, or ${#array[*]}.
+
+	* table.h: added struct tbl.areap field to get rid of lastarea
+	  problems; deleted lastarea variable; changted all refernces
+	  to lastarea to var->areap.
+	* table.c(tenter): initialize areap field.
+	* var.c(arraysearch): deleted area parameter; initialize areap field.
+	* var.c(global,local,intval,setint): initialize areap field of vtemp.
+
+Fri Aug 12 10:54:51 NDT 1994 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* expr.c: re-wrote e*() functions using single function and table;
+	  token() now does table lookup; added full C expressions (sans
+	  pre/post increment, sizeof).
+
+	* table.h(INT_U,INT_L): new flags.
+	* var.c(strval): handle INT_U.
+	* c_ksh.c(c_typeset): add exclusions for INT_U/INT_L;
+	  add -U option for unsigned (non-at&t ksh).
+
+	* var.c(set_array): use global() instead of local();
+
+	* var.c(global): when parsing $123, don't limit number to 1000.
+
+	* expr.c(v_evaluate): like old evaluate, but assigns result to
+	  specified variable.
+	* expr.c(evaluate): changed to use v_evaluate().
+	* expr.c(e0): when parsing literals, use strint() instead of setstr().
+
+	* var.c(setstr): when assigning to integers, use v_evaluate() instead
+	  of strint().
+
+Thu Aug 11 11:33:17 NDT 1994 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* var.c(strint): don't change anything until number completely
+	  parsed; don't clear ISSET flag if parsing fails; fail parse
+	  if non-integer/non-letter found; default base if copying from
+	  integer variable; set ISSET if parsing succeeds.
+
+	* expr.c(tempvar): set vp->val.i to 0.
+	* expr.c(token): when skipping a literal number, don't allow _;
+	  use isspace() to skip.
+	* expr.c(asn): use strint()/setstr() instead of setint().
+	* expr.c(e0): added unary ~ and + (posix).
+
+	* var.c(global,local): always call substitute on contents of [..];
+	  free sub when finished eval.
+
+	* ksh_limval.h: new file.
+	* shf.c: use ksh_limval.h.
+	* Makefile.in: added ksh_limval.h to HDRS.
+
+Wed Aug 10 10:57:01 NDT 1994 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* c_ksh.c(c_whence): case CFUNC: print exported/traced/undefined,
+	  do not print function definition.
+	* exec.c(findcom): new argument indicated if functions to be
+	  autoloaded; changed all calls.
+
+	* misc.c(ksh_getopt): added # option modifier for typeset.
+	* c_ksh.c(c_typeset): changed to use ksh_getopt(); added
+	  -L, -R, -Z, -l, -u flags; quote variable values when printing;
+	  generally re-arranged function.
+	* table.h: added LJUST,RJUST,ZEROFIL,LCASE,RCASE; deleted FUNCT.
+	* exec.c(findfunc): new function.
+	* exec.c(define,findcom): use findfunc(); skeleton autoload code.
+	* var.c(typeset): added two arguments for initial field width and
+	  base; changed all calls; deal with LJUST,.. flags; re-arrange to
+	  have one loop iterating over array; do readonly check before
+	  changing attributes.
+	* var.c(strval): deal with LJUST,.. flags when getting integers.
+	* var.c(setstr): deal with LJUST,.. flags when setting strings.
+	* var.c(setstr): deal with LJUST,.. flags when setting strings.
+	* var.c(arraysearch,tenter): initialize {new,p}->field to 0.
+	* table.h: added struct tbl.field.
+
+	* siglist.in: changed signal messages to be more or less the
+	  same as sys_siglist[]; moved SIGUNUSED before SIGBUS.
+	* jobs.c(j_print): assume sigtrap[].mess always valid; use
+	  sigtrap[].mess directly for stopped processes.
+
+	* aclocal.m4(KSH_SYS_SIGLIST): new macro like KSH_SYS_ERRLIST.
+	* configure.in: use KSH_SYS_SIGLIST instead of AC_SYS_SIGLIST_DECLARED.
+
+Tue Aug  9 10:28:45 NDT 1994 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* version.c: removed RCS logs since version numbers don't match
+	  release numbers.
+
+	* configure.in: added AC_PROG_CPP
+	* Makefile.in: added rules for generating siglist.out
+	* siglist.in,siglist.sh: new files.
+	* trap.c(inittraps,deftraps[]): deleted deftraps[]; initialize
+	  sigtraps[] directly by including siglist.out.
+
+	* tree.h: added EXPRSUB for $((..)), re-numbered defines.
+	* tree.c(tputS,wdscan): added case for EXPRSUB.
+	* eval.c(expand,alt_count,alt_scan): added case for EXPRSUB.
+	* lex.h: added SDDPAREN for $((..)).
+	* lex.c(yylex): added case for SDDPAREN.
+
+	* lex.c(yylex): case SPAREN: match parenthesis using counter instead
+	  of pushing/poping states.
+
+	* lex.h: re-numbered S* defines to be sequential; added SREREAD.
+	* lex.c(yyerror): pop SREREADs.
+	* lex.c(getsc_): added case for SREREAD.
+	* lex.c(arraysub): changed to save whatever is read and return a value
+	  indicating if brackets matched; changed all calls.
+	* lex.c(yylex): if brackets in array reference are not balanced,
+	  or if array reference not followed by an =, re-read the input.
+
+Mon Aug  8 21:20:08 NDT 1994 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* sh.h: fix lseek prototype (from sjg@zen.void.oz.au)
+
+	* configure.in,jobs.c: added HAVE_SYSCONF; don't use sysconf() unless
+	  HAVE_SYSCONF defined (for NetBSD-Feb12 from sjg@zen.void.oz.au).
+
+	* jobs.c(put_job): removed PJ_ON_END case and define (not used).
+
+Wed Jul 27 10:19:42 NDT 1994 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* made pdksh-5.0.1 distribution
+
+	* exec.c(comexec): when doing exec has no command, fall through
+	  and do variable assignments.
+
+	* c_ksh.c(c_let): complain if there are no arguments.
+
+	* exec.c(comexec): if XEXEC is set, exit after executing
+	  (builtin/function) command; deleted FERREXIT code; don't set
+	  exstat.
+	* exec.c(execute): handle FERREXIT; set exstat to rv for all
+	  cases.
+
+	* lex.c,syn.c: changed calls to errorf to yyerror (except the
+	  on in yyerror()).
+	* lex.h(struct source): added errline field.
+	* lex.c(yyerror): now a varargs function; if source->errline field is
+	  non-zero, print it instead of source->line.
+	* syn.c(syntaxerr): set source->errline if read EOF in a multiline
+	  command.
+
+Tue Jul 26 11:22:06 NDT 1994 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* lex.h(SYNTAXERR,INP): deleted macros.
+	* lex.h(HISTORY): upped to 128 as per POSIX.
+	* lex.h,syn.c(multiline): moved from lex.h to syn.c.
+	* tree.c(vfptreef): added %R to format I/O redirections.
+	* tree.c(pioact): don't output unit more than once; print unit
+	  only if it isn't the default for the action; print only
+	  one opening quote for quoted here documents; print <> for
+	  read-write (was ><).
+	* syn.c(zzerr, syntaxerr): replaced zzerr function with new syntaxerr
+	  function; changed uses of SYNTAXERR to syntaxerr() calls; print
+	  out the last unused token; if in a multiline command when EOF
+	  encountered, print token that was unmatched.
+
+	* tree.h(TBANG),lex.h(BANG): for POSIX ! keyword
+	* tree.c(ptree),exec.c(execute): added case for TBANG.
+	* syn.c(restab[]): added ! keyword.
+	* syn.c(get_command): added case for BANG (!).
+
+	* tree.h(XERROK): new define to allow non-zero exits to be
+	  ignored in certian circumstances (set -e).
+	* exec.c(execute): pass XERROK to recursive execute() calls; set
+	  XERROK when evaluating conditional part of if/while/until/&&/||.
+	* exec.c(comexec): pass XERROK on to functions; don't exit if
+	  XERROK is set.
+
+	* jobs.c(async_pid): new variable needed since async_job may go
+	  away, but $! should still be expanded.
+	* jobs.c(j_async): return async_pid.
+	* jobs.c(j_set_async): set async_pid.
+
+Mon Jul 25 14:15:25 NDT 1994 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* misc.c(parse_args): changed to use ksh_getopt().
+
+	* c_sh(c_set): deleted call to resetopts() - neither POSIX nor
+	  at&t ksh touch OPTIND when positional parameters are changed.
+	* exec.c(comexec): changed resetopts() call to getopts_reset(1) - this
+	  is not a proper fix - should declare a local optind.
+
+	* misc.c(builtin_getopt,ksh_getopt): renamed builtin_getopt to
+	  ksh_getopt (shorter); changed to use state structure instead
+	  of static variables; changed all calls; optionally allow + to
+	  introduce an option; don't skip lone - (or +) in arguments - set
+	  optind to point to it.
+	* misc.c(ksh_getopt_reset): changed to use state structure instead
+	  of static variables.
+	* sh.h(Getopt): new structure for ksh_getopt() state.
+	* exec.c(call_builtin): call ksh_getopt_reset().
+	* c_ksh.c(c_getopts,getopts_reset): new getopts implementation that is
+	  POSIX complient and uses ksh_getopt() routine.
+	* var.c(setspec): call getopts_reset() when OPTIND set.
+	* getopts.c: deleted file.
+	* Makefile.in: deleted getopts.c and getopts.o.
+	* options.h(FASCIST): deleted option.
+
+Thu Jul 21 09:52:03 NDT 1994 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* made pdksh-4.9+mun.5 distribution
+
+	* syn.c(get_command),shf.c(shf_fdopen,shf_sopen,shf_emptybuf):
+	  added cast to alloc()/aresize() calls.
+	* sh.h: changed enum flags_enum to enum flags.
+	* misc.c(change_flag): changed type of first argument to enum flag.
+	* edit.c(set_editmode): change type of static array to enum flag.
+
+	* edit.c(x_init): initialize tty chars to -1, except for werase,
+	  which is set to ^W.
+	* edit(x_mode): split oldedchars structure declaration and
+	  initalization (some old compilers don't like them combined).
+
+	* c_test.c: made -h work like -L.
+
+Wed Jul 20 11:12:52 NDT 1994 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* config.h.top: moved compile options into options.h; include
+	  options.h.
+	* options.h: new file.
+
+	* c_ksh.c(c_fgbg): if !FPOSIX, set return job exit status.
+
+	* jobs.c(j_jobs,j_notify): use JF_REMOVE to flag jobs to delete
+	  after all notification done (to prevent multiple + or - jobs).
+
+	* jobs.c(put_job): new funtion, takes argument to specify where
+	  to put job; changed all calls to put_job_on_front and
+	  put_job_on_end to use this; put background processes just
+	  after stopped jobs (instead of at end) (POSIX).
+	* jobs.c(put_job_on_front,put_job_on_end): deleted.
+
+Tue Jul 19 10:33:55 NDT 1994 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* aclocal.m4(AC_MMAP): copied from autoconf's acspecific.m4 and
+	  modified to use the MAP_FILE flag if available.
+
+	* misc.c(change_flag): ifdef use of FVI/FEMACS/FGMACS.
+
+Mon Jul 18 13:19:29 NDT 1994 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* sh.h(async): deleted.
+	* var.c(global): call j_async() instead of using async global.
+	* jobs.c(j_async,j_set_async()): new functions.
+	* jobs.c(j_startjob): new function.
+	* jobs.c(exchild,j_waitlast): call j_startjob() to start job.
+	* jobs.c(j_sigchld): if any jobs aren't started, note signal
+	  occured and return without calling wait.
+	* jobs.c(j_resume): allow un-reported dead jobs to be fg'd/bg'd;
+	  if backgrounding, set async job.
+	* jobs.c(j_jobs,j_notify,j_waitj,check_job,remove_job): re-wrote to
+	  deal with posix `known processes'.
+	* jobs.c(j_lookup()): if number specified, see if it is a lpid first,
+	  then check for pgrp.
+	* jobs.c(new_job): added functionality of j_newjob().
+	* jobs.c(j_newjob): deleted function and all calls.
+
+	* tty.c(tty_init,tty_close): new functions which initialize
+	  tty_fd, tty_state and tty_devtty.
+	* jobs.c(j_init,j_change): use tty_init()/tty_close(); changed
+	  references of ttyfd to tty_fd; moved tty_fd, tty_state and
+	  tty_devtty to tty.h; call tty_init() if !FMONITOR; save/restore
+	  tty modes on foreground job completion if FTALKING (was FMONITOR).
+	* edit.h(X_chars): new structure for tty driver characters (replaces
+	  ed_erase, ed_kill, ed_werase, ed_intr, ed_quit); moved prototypes
+	  for emacs.c and vi.c from proto.h to edit.h; changed all references
+	  to ed_* to edchars.*.
+	* edit.c(x_mode): use tty_state instead of cborig; re-initialize
+	  tty state from tty_state whenever entering xmode; save tty characters
+	  in edchars structure.
+	* edit.c(x_init): now called from main(); initializes edchars, x_cols,
+	  and calls x_init_emacs.
+	* emacs.c(x_init_emacs): changed erase,kill,werase,intr,quit arguments
+	  to X_chars argument.
+
+Fri Jul 15 10:35:13 NDT 1994 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* io.c(restfd): only flush if fd is 2; use dup2() instead of
+	  fcntl(F_DUPFD) (2 system calls instead of 3).
+
+	* ksh_wait.h(WEXITSTATUS): changed mask from 0x7f to 0xff.
+
+	* tty.h: added TTY_state structure.
+	* tty.c: new file - contains get_tty() and set_tty().
+	* edit.c(x_init,x_mode): use get_tty() and set_tty().
+	* jobs.c(j_waitj,j_resume): save/restore tty modes of stopped
+	  jobs, as per POSIX.1, B.2, job control; for foreground jobs,
+	  save tty state after successful completion, restore tty state
+	  after non-successful completion (signaled, non-0 exit, stopped).
+
+	* misc.c(options): changed "alternations" to "braceexpand" (this
+	  is what bash uses - no need to invent new option names); changed
+	  ALTERNATIONS define to BRACEEXPAND, same for FALTERNATIONS to
+	  FBRACEEXPAND.
+
+	* jobs.c(check_job): if process died of SIGINT or SIGPIPE, leave
+	  job state as PEXITED (not PSIGNALLED).
+	* jobs.c(j_print): if printing short notice, ignore SIGPIPE the
+	  way SIGINT is ignored.
+
+	* exec.c(comexec): flush shl_out after 'not found' message.
+
+	* c_ksh(c_kill): re-wrote function (again) to handle posix
+	  options (-s, --, etc.) and posix -l output.
+
+	* configure.in: added strcasecmp function check.
+	* missing.c(strcasecmp): define strcasecmp function if not available.
+	* trap.c(gettrap): use strcasecmp when comparing signal names.
+
+	* var.c(global): expand $! to nothing if there haven't been any
+	  asynchronous processes started yet.
+
+	* misc.c(options): added posix option (set automatically if
+	  POSIXLY_CORRECT env variable is set or if POSIXLY_CORRECT config
+	  define is defined)
+	* var.c(special,setspec): added POSIXLY_CORRECT.
+	* config.h.top: added POSIXLY_CORRECT define.
+	* main.c(main): set FPOSIX if POSIXLY_CORRECT is defined.
+	* POSIX: new file describing what the posix flag controls.
+
+Thu Jul 14 10:53:15 NDT 1994 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* jobs.c,sh.h(killpg): moved killpg define to sh.h.
+
+	* jobs.c(exchild): set async variable when starting background
+	  processes.
+	* jobs.c(j_resume): print [job-num] before command when backgrounding;
+	  print to stdout instead of stderr.
+	* c_ksh.c(c_fgbg): call builtin_getopt to skip possible --, complain
+	  about unknown options.
+
+	* jobs.c(held_sigchld): new global variable.
+	* jobs.c(j_sigchld): if any jobs aren't started, set held_sigchld and
+	  return.
+	* jobs.c(exchild,waitlast): after setting JF_START, if held_sigchld
+	  set, call j_sigchld().
+
+	* jobs.c(exchild): added/initialized ppid field to struct job; deleted
+	  global is_child.
+	* jobs.c(waitfor): don't wait for a process that isn't a child of
+	  the current process.
+	* jobs.c(j_exit): kill stopped jobs owned by current process only.
+
+	* jobs.c(check_job): don't do monitor stuff for XXCOM jobs, but do
+	  set up notification.
+	* jobs.c(j_waitj): added JW_NOTIFY flag to print job notification
+	  messages.
+
+	* jobs.c(exchild): remove !XPIPEI condition - we now close pipe so
+	  pipeline doesn't have to call waitlast().
+	* exec.c(execute): case TPIPE: no need to restore 0 or call waitlast()
+	  since exchild() handles everything.
+
+	* jobs.c(remove_job): set last_job to 0 if we are removing it.
+	* jobs.c(waitlast): check if last_job is 0.
+
+	* jobs.c(struct job): combined started, waiting, interactive
+	  field into flags field; added JF_* flags; changed JW_NONOTIFY
+	  to JW_NOTIFY and changed all calls to j_waitj() to reverse
+	  this flag.
+
+	* jobs.c(exchild): ignore SIGTSTP, TTIN, TTOU for `command` jobs.
+
+Wed Jul 13 09:28:34 NDT 1994 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* main.c(main): when checking if FMONITOR set on command line,
+	  use 127 instead of -1 (signed vs unsigned char problem).
+
+	* tree.h: renumbered, XEXEC, XFORK, ... and DOBLANK, DOGLOB, ...
+	  to use bits in order (instead of 0 5 2 4...).
+	* jobs.c(j_init): don't set sigtrap[SIGCHLD].sig_dfl = 1 as a
+	  forked child may be a shell that needs to trap SIGCHLD.
+
+	* tree.h(XPCLOSE,XCCLOSE): flags for close in parent, close in child.
+	* jobs.c(exchild): added third argument - a file descriptor - if
+	  flags has XPCLOSE, close fd in parent, if flags has XCCLOSE, close
+	  in child.
+	* exec.c(execute): pass input side of pipe to exchild() so it can
+	  be closed in the child.
+
+Tue Jul 12 10:21:57 NDT 1994 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* main.c(main): let ignoresig() handle SIGTERM.
+	* jobs.c(exchild): let restoresigs handle SIGTERM.
+
+	* lex.c(yylex): don't parse array references inside double quotes
+	  (partial fix).
+
+	* emacs.c(x_print): use shprintf instead of shellf so the output
+	  of bind can be redirected.
+
+	* trap.c(deftraps): added SIGINFO (from jconklin@netcom.com).
+
+Fri Jul  8 09:37:51 NDT 1994 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* made pdksh-4.9+mun.4 distribution
+
+	* Makefine.in: added $(LDSTATIC) to LDFALGS to make static
+	  linking easier (suggested by sjg); use cp -p when creating
+	  distributions to preserve file dates.
+	* configure.in: set LDSTATIC in Makefile if present in environ
+	  when configure is run.
+
+	* sigact.c(sigsuspend): when calling 4.2bsd sigpause, pass *mask,
+	  not mask.
+
+	* main.c(main): fixed up initialization of PWD (free memory, print
+	  more informative message).
+
+	* misc.c(getcwd): range check backwards.
+
+	* c_sh.c(setsig): set sa_flags/sa_mask.
+
+	* edit.c(init_editmode),main.c,proto.h: deleted function - not needed
+	  since VISUAL/EDITOR are special.
+
+	* lex.c(set_prompt),table.h: take out PS3.
+
+	* c_sh.c(c_umask): handle multiple actions in symbolic mode clauses
+	  (eg, u+r-w); handle X (eg, o+X); ignore s (eg, u+s).
+
+	* shf.c(shf_fillbuf): continue reading if we get an EINTR.
+	* shf.c(shf_emptybuf,shf_write,shf_putchar): continue writing if we
+	  get an EINTR.
+
+Thu Jul  7 10:19:24 NDT 1994 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* sigaction,sigprocmask: changed NULL third argument to
+	  (struct sigaction *) 0.
+	* sh.h(kshpid): changed type from int to pid_t.
+	* proto.h(do_ulimit): removed do_ulimit() declaration.
+	* vi.c(complete_word): removed unused variable pos.
+	* syn.c(pipeline,elsepart): removed unused variable c.
+	* jobs.c(exchild): deleted variable s (assigned but not used).
+	* history(hist_init),shf.c(shf_gets): changed variable e to end
+	  because there is a global e.
+	* exec.c(do_selectargs): removed secondarg argument; changed return
+	  (char *) 1 to (char *) 0; changed all calls.
+
+	* io.c(canseek): use fd argument instead of 0.
+
+	* lex.c(readhere): don't use fixed sized buffer (line).
+
+	* expand.h: changed multi-statement macros to use do {..} while (0);
+	  changed temporary variable vp to vp__ to avoid lint complaints.
+
+	* aclocal.m4(KSH_DUP2_CHECK): define F_GETFD/F_SETFD if not
+	  already defined.
+
+	* etc/profile, etc/ksh.kshrc: replaced with new versions from
+	  Simon J. Gerraty (sjg@zen.void.oz.au).
+
+Wed Jul  6 10:09:55 NDT 1994 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* jobs.c(killpg),configure.in: restored use of killpg() - some
+	  systems don't understand kill(-pgrp, signal) (ultrix 2.2);
+	  added test for killpg() in configure.in.
+
+	* trap.c(inittraps): changed initialization of sigtraps - was
+	  using -1 in deftraps[] as end of table marker but some systems
+	  (eg, ultrix 2.2) define signals with -1 values (SIGPWR).
+
+	* Makefile.in(mandir,install): fixed mandir value; added /
+	  in man installation; prefixed ksh.1 with $(srcdir).
+
+	* jobs.c(j_init): Ignore failure of TIOCSETD.
+
+	* misc.c(options[]): changed "vicomplete" to "vitabcomplete".
+
+	* emacs.c(x_e_putc,x_e_puts,x_debug_info): x_e_putc()/x_e_puts() are
+	  the x_putc()/x_puts() functions from ksh4.9 edit.c (they got lost
+	  in the merge); same for x_debug_info(); changed x_e_putc/x_e_puts
+	  to call x_putc/x_puts.
+
+Mon Jul  4 09:29:05 NDT 1994 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* made pdksh-4.9+mun.3 distribution
+
+	* main.c(remove_temps): use unlink() instead of remove(); delete
+	  remove() define.
+
+	* sh.h(func_heredocs, struct env): added func_heredocs for here
+	  documents in functions; added func_parse field to struct env
+	  - set when a function is being parsed.
+	* lex.c(readhere): if e.func_parse, save temp file in func_heredocs.
+	* syn.c(get_command): increment/decrement func_parse when parsing
+	  functions.
+	* main.c(remove_temps,reclaim,leave): added remove_temps(); make
+	  reclaim() call remove_temps(); make leave() clean up function
+	  here documents.
+
+	* aclocal.m4(KSH_TIMES_CHECK): new test - define TIMES_BROKEN
+	  if times() doesn't exist or if it always returns 0.
+	* acconfig.h(TIMES_BROKEN): new define.
+	* missing.c(ksh_times): new function.
+	* ksh_times.h: new file.
+	* c_sh.c,jobs.c: changed <sys/times.h> to "ksh_times.h"
+	* c_sh.c,ksh_time.h(CLK_TCK): moved CLK_TCK define from c_sh.c
+	  to ksh_time.h (needed in missing.c).
+
+	* syn.c(get_command): case TIME: don't call pipeline() with CONTIN
+	  flag.
+
+	* c_sh.c(c_times): combined some printfs().
+
+	* jobs.c(j_jobs,j_kill,j_resume,waitfor): block SIGCHLD before
+	  calling j_lookup() or looking at jobs list - avoids potential
+	  problems with remove_job() being called in signal handler.
+
+Sun Jul  3 11:09:01 NDT 1994 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* exec.c(do_selectargs, selread, pr_menu): re-wrote do_selectargs to
+	  let c_read() to most of the work; deleted selread; make pr_menu
+	  calculate width/ncolumns each call so select can be used recursively.
+
+	* configure.in, aclocal.m4(KSH_TERMIOS_H, KSH_TERM_CHECK): replaced
+	  KSH_TERMIOS_H with KSH_TERM_CHECK; removed calls to
+	  tcgetpgrp/tcsetpgrp - there is a seperate test for this.
+
+	* main.c(main), sh.h: move getcwd() declaration to sh.h.
+
+	* eval.c(expand,varsub): added XNULLSUB case to deal with "$@"
+	  (and "${foo[@]}") when $# (or ${#foo}) is 0.
+
+	* eval.c(expand,varsub): removed free_me field - let reclaim() take
+	  care of it.
+
+Wed Mar  9 00:50:12 1994  Simon J. Gerraty  (sjg@zen.void.oz.au)
+
+	* var.c (setstr): don't set ALLOC flag if vp.s is NULL.
+
+Thu Jun 30 10:16:44 NDT 1994 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* c_sh.c(c_read): ignore null characters; use builtin_getopt()
+	  instead of explicit parsing; removed -e option (neither at&t ksh
+	  nor POSIX have this); added -s option (put line in history, at&t ksh);
+	  if no variable specified, use REPLY (at&t ksh).
+
+	* exec.c(do_selectargs): use Xstring macros to deal with saving
+	  input (was static, growing, buffers); flush shl_out after
+	  shellf().
+
+	* vi.c(expand_word,complete_word): deleted call to free_edstate
+	  since already done by restore_edstate().
+	* var.c(global): in 'if !letter(c)' block, deleted !c from
+	  'if (!c || !n[1])' - don't know why it was added since it makes
+	  no difference to what is returned.
+
+	* syn.c(dogroup): removed onlydone argument since it is only
+	  used in the while/until statements, where "while command; done"
+	  is not allowed anyway; Changed all calls.
+
+	* misc.c(options[]): allow -i to be specified on the command
+	  line.
+
+	* exec.c(iosetup): if stderr (fd 2) is being re-directed,
+	  re-open shl_out to clear any errors.
+	* main.c(quitenv): if restoring fd 2, clear any write errors
+	* io.c(initio): initialize shl_out, shl_spare for writing
+	  (was SHF_GETFL).
+
+	* main.c(main): ignore SIGQUIT if talking.
+
+Wed Jun 29 11:11:34 NDT 1994 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* c_sh.c(c_exit): removed jobs/really quit stuff - exit should
+	  always exit.
+	* main.c(shell): made reallyquit a local variable.
+	* sh.h(reallyquit): deleted reallyquit
+
+	* exec.c(comexec), main.c(main), misc.c(change_flag), jobs.c:
+	  ifdef'd use of FMONITOR.
+	* sh.h, misc.c: define FMONITOR option only if JOBS defined.
+
+	* c_sh.c(c_wait): POSIXized: option parsing (of no options);
+	  return 0 if not given any arguments; deal with multiple arguments.
+	* jobs.c(j_lookup): changed second argument to return an integer
+	  error code, added defines for error codes, added error message
+	  array; changed all calls to use new conventions.
+	* jobs.c(waitfor): returns -1 if job not found; added argument
+	  to specify if notification messages should be suppressed.
+	* jobs.c(j_waitj): added flags argument instead of intr argument;
+	  added JW_STOPPEDWAIT flag to wait for stopped jobs to complete;
+	  added JW_NONOTIFY flag to suppress notification of normal
+	  job termination.
+
+Tue Jun 28 16:13:10 NDT 1994 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* c_ksh.c(c_jobs): added -n and -p options, allow job ids to be
+	  specified for -l option.
+	* jobs.c(j_jobs): added new arguments to deal with -n and -p options.
+
+	* shf.h(SHF_BSIZE): reduced size to 512 to reduce memory requirements
+	  (I/O is used mostly for one line messages).
+
+	* config.h.bot: removed necessity for tty process groups to define
+	  JOBS, added necessity of signal blocking/pausing.
+
+Mon Jun 27 21:49:52 NDT 1994 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* jobs.c(exchild,j_print,j_waitj,j_jobs,check_job): exchild() - removed
+	  commented out shf_flush() calls; j_print() - print a space between
+	  status reports when lflag < 0, changed flag argument to use
+	  long/medium/short defines; Changed Job.notify field to use
+	  long/medium/short defines; j_waitj() - instead of calling j_print(),
+	  set j->notify to print the job; j_jobs() - clear j->notify so user
+	  won't be notified twice if a job finishes before a jobs command;
+	  check_job() - put job on front of list only if it is stopped.
+
+	* main.c(main): pass flag to j_init() indicating if -m flag set/cleared
+	  on command line; don't initialize ttyfd.
+	* sh.h: delete ttyfd.
+	* jobs.c(j_init,ttyfd,check_job): made ttyfd static; re-worked j_init()
+	  to initialize ttyfd, initialize FMONITOR if not set by command line,
+	  initialize shl_j for asynchronous job notification;
+	  check_job() - use shl_j, look through saved fds to find real
+	  standard-error.
+
+	* jobs.c(TTY_PGRP, ttypgrps_ok): modified conditions so job control
+	  is useful without tty process groups; added ttypgrps_ok flag that
+	  indicates if tty process groups should be set up; modifications so
+	  job control useful if ttypgrps_ok not set.
+
+	* main.c(main): set FTALKING if 0 and 2 are tty as specified in POSIX
+	  (was 0 and 1).
+
+	* misc.c(parse_args): do POSIX option processing for -A, -c and -o
+	  (allow -onoglob, -ctrue).
+	* main.c(main): don't set up shl_stdout before/after parse_args() since
+	  lone -o on command line no longer accepted; remove code to allow
+	  -c with no options to read from stdin (at&t khs does this but POSIX
+	  requires an option to -c).
+
+Thu Jun 23 17:46:54 NDT 1994 John Rochester (jr@panda.cs.mun.ca)
+
+	* trap.c(cleartraps): added special case for clearing trap 0 from
+	  ksh-4.9 sources.
+
+Thu Jun 23 10:17:03 NDT 1994 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* misc.c(builtin_getopt): print error messages for unknown option,
+	  missing option; reset state if argv is 0.
+	* c_ulimit.c(c_ulimit): let builtin_getopt() print error messages.
+	* exec.c(call_builtin): call builtin_getopt() with 0 argv.
+
+	* c_sh.c(c_unset): added -v option (POSIX); use builtin_getopt() to
+	  parse arguments; removed bogus comment about global() and special
+	  variables; don't allow read-only variables to be unset (POSIX).
+
+	* var.c(unset, unsetspec): when unsetting a special variable, call
+	  unsetspec(); unsetspec() new function.
+	* mail.c(mbset, mcheck): check that path is not 0 before calling stat
+	  (so mbset() can be called with 0 when MAIL is unset); deleted #if 0'd
+	  declarations of munset, mballoc and maddmsg.
+
+	* misc.c(parse_args): pass argv+i+1 to set_array (not argv+i); when
+	  skipping arguments, leave i just before the NULL.
+
+	* exec.c(echo): flush shl_out when done.
+
+	* shf.c(shf_close): always used to return EOF.
+
+	* trap.c(trapsig): skip error handlers when checking for PARSE or LOOP.
+
+Wed Jun 22 10:24:09 NDT 1994 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* sh.h(C_IFSWS), misc.c(initctypes): added and initialized C_IFSWS
+	  (IFS white space).
+	* c_sh.c(c_read): print continuation prompt if line ends in backslash;
+	  multiple non-white-space IFS chars delimit fields; strip trailing
+	  IFS-white-space from last variable; watch out for backslash followed
+	  by EOF.
+	* eval.c(expand): only do field splitting on the results of
+	  parameter/command substition (POSIX, !v7-sh);  multiple
+	  non-white-space IFS chars delimit fields.
+
+	* eval.c(expand,alt_expand): removed NOALT tests since it could
+	  never be set; added return after call to alt_expand() in expand().
+
+Mon Jun  6 10:12:41 NDT 1994 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* misc.c(setctypes, initctypes): setctypes - don't allow leading null
+	  in IFS (IFS="" could cause problems, 0 is already added);
+	  initctypes - don't use a leading null.
+
+	* sh.h, eval.c: move definition of ifs0 from eval.c to sh.h; handle
+	  null ifs0.
+	* var.c(setspec): set ifs0 to first character of IFS.
+
+	* lex.c(yylex): when parsing ${..}, array references were not being
+	  null terminated.
+
+Fri Jun  3 12:28:06 NDT 1994 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* var.c(export): changed to use memcpy() instead of loops.
+
+	* eval.c(varsub, expand): check for #foo[@] in addition to #foo[*];
+	  handle ${foo[*]} and ${foo[@]} - added free_me field to struct Expand
+	  so pointer vector can get freed.
+
+	* c_sh.c(c_dot), main.c(include): set up positional parameters if
+	  any are specified; Added argc,argv args to include(); changed all
+	  calls to include(); change include() to return 0 or 1 - caller
+	  can check exstat if desired; c_dot() should return 1 if can't open
+	  file (was -1).
+
+	* c_sh.c(c_brkcont): warning message could call getn() with NULL - save
+	  original number and print it.
+
+	* main.c(main): set $0 to first argument when -c used, ie,
+	  "sh -c cmd-string this-is-$0 argumernts..."
+
+	* exec.c(iosetup): print "cannot open" if IOHERE fails.
+
+	* io.c(errorf): set exstat to 1.
+
+	* exec.c(search): assume mode is R_OK or X_OK (not 0/1 - 0 is F_OK, we
+	  want R_OK); changed all calls to pass R_OK/X_OK.  
+	  sh.h: define R_OK,W_OK,X_OK,F_OK if not defined.
+	  eaccess(): changed all calls to use [RWXF]_OK.
+
+	* sh.h(flag[], shell_flags[], Flag()): Renamed flag[] array to
+	  shell_flags[] to avoid conflicts with other uses of flag; Changed
+	  all references to flag[] to Flag(); defined Flag() to cast its arg
+	  to an int (for old pcc based C compilers).
+
+	* vi.c(iswordch): use letnum() instead of isalnum || _.
+
+	* misc.c(parse_args): call set_array() to deal with -A flag.
+	* var.c(set_array): new function.
+
+
+Fri Jun  3 10:22:26 NDT 1994 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* eval.c(substitute): afree(s).
+
+	* var.c(global,local), sh.h: ARRAYMAX: new define - max index of an
+	  array; changed 511 constants to this; changed global() and local()
+	  to use array_ref_len() instead of arraysub().
+
+	* expr.c(token): deleted unneeded arraysub() decl.
+
+	* lex.c(arraysub), proto.h: made static, removed unused arguments,
+	  changed callers; removed prototype from proto.h.
+
+	* ChangeLog: changed descriptions from func(file) to file(func).
+
+Wed Jun  1 09:17:50 NDT 1994 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* made pdksh-4.9+mun.2 distribution
+
+	* Makefile.in: added RCSFILES macro and rcs-ci target.
+
+	* configure.in: add termio.h to the AC_HAVE_HEADERS() call.
+
+	* sh.h, main.c, edit.c, misc.c: use EXTERN for aperm, x_cols,
+	  builtin_optind and builtin_optarg in sh.h, delete definitions
+	  in main.c, edit.c and misc.c.
+
+	* io.c(maketemp): changed sizeof(PATH) to sizeof(path).
+
+	* aclocal.m4(KSH_VOID,KSH_DUP2_CHECK): test that a void * variable
+	  can be used (Ultrix 2.2 compiler doesn't do this); added ifdef
+	  HAVE_FCNTL_H to dup2 test.
+
+	* aclocal.m4, configure.in, sh.h, tree.c, io.c, shf.c: added
+	  new config test KSH_PROTOTYPES to check for function prototypes
+	  (MIPS RICS/os 5.0 C compiler isn't STDC and it can't mix <stddef.h>
+	  with <varargs.h>).  Removed stdarg.h test (now redundent).  Changed
+	  all varargs functions to use HAVE_PROTOTYPES instead of
+	  HAVE_STDARG_H && STDC.
+
+	* eval.c(alt_scan): changed type of endc param from char to int to
+	  avoid problems with mixing prototype declarations and K&R
+	  definitions.
+
+	* main.c(main), sh.h: added plain getcwd() decl to main(), removed
+	  ARGS() version from sh.h (some systems have getcwd() but don't
+	  declare it, some have getcwd() with a size_t arg 2, some have
+	  an int arg 2).
+
+	* misc.c(memset,memmove): changed the second memset() to memmove().
+
+	* c_sh.c(clocktos): changed #if CLK_TCK ... to if (CLK_TCK.. since
+	  CLK_TCK is not always defined to a number (may be a _sysconf())).
+
+Tue May 31 10:49:16 NDT 1994 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* configure.in, Makefile.in: added code to set GCC_WARNFLAGS from
+	  $(srcdir)/Warn-flags if gcc is being used;  Took -Wall, etc. 
+	  out of CFLAGS, took -Dno_RCSids out of DEFS.  Added install.sh to
+	  DISTFILES, grabbed copy of install.sh from autoconf (who grabbed
+	  it from X11R5).
+
+	* io.c(errorf,shellf,shprintf),shf.c(shf_fprintf,shf_snprintf),
+	  tree.c(fptreef,snptreef): don't use ansi decls with old style
+	  varargs; changed ifdef __STDC__ to ifdef HAVE_STDARG_H.
+
+	* jobs.c(j_init): changed getpgrp() call to getpgID(), defined getpgID()
+	  appropriately for BSD vs POSIX/SYSV getpgrp.
+
+	* expand.h, ksh_dir.h, ksh_stat.h, ksh_time.h, ksh_wait.h, shf.h,
+	  tty.h: added RCS $Id$'s.
+
+	* acconfig.h: updated SIGSET_T comment: unisgned int -> unsigned.
+
+	* aclocal.m4(KSH_CLOCK_T,KSH_TIME_T,KSH_SIGSET_T): make sure
+	  type is a word (same fix as was done for more_t, et.al.).
+
+	* aclocal.m4(KSH_VOLATILE): check that the compiler can deal with
+	  volatile pointers (dec/pmax ultrix 4.2 compiler can't).
+
+	* misc.c(parse_args): added skelatal code for dealing with -A.
+
+	* var.c,proto.h(skip_varname): new function; deleted isassign()
+	  function, which is no longer called.  Changed typeset(var.c)
+	  to use skip_varname().
+
+	* var.c(strint): fail if base is not in the range 2..36; set variable
+	  base according to first base seen; generate an error if a non-alnum
+	  char is seen (1^A was the same as 11).
+
+	* var.c(strval): for integer variables, output base if != 10.
+
+	* sh.h: fixed typo in x_cols define (#defined -> #define).
+
+Fri May 27 16:49:29 NDT 1994 Micharl Rendell (michael@panda.cs.mun.ca)
+
+	* made pdksh-4.9+mun.1 distribution
+
+	* finished autoconf'ing source code.
+
+Fri May 20 16:47:06 NDT 1994 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* c_ulimit.c(c_ulimit) (was do_ulimit.c(do_ulimit)): major rework;
+	  deal with combinations of getrusage and ulimit, use options at&t
+	  ksh uses (-SHa..).
+	* misc.c(builtin_getopt): yet another getopt routine for builtin
+	  commands
+	* misc.c(parse_args), c_sh.c(c_set), main.c(main): custom option
+	  parsing routine for command line/set options.  Lots of changes
+	  to main() to incorporate this (easier to follow).
+	* c_test.c(c_test): added -e (file exists) test.
+
+Fri May 5 12:16:46 NDT 1994 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* numerous changes from old Notes.4-9 file:
+	  - c_ksh.c:
+	      - calls to errorf identify what function the error is in
+		(eg, errorf("print: bad -u option");)
+	  - added array stuff (lots of places)
+	      - table.c
+	      - lex.c
+	      - var.c: +arraysearch(), +basename()
+	  - c_sh.c(c_exit), main.c(shell), sh.h:
+	      - added reallyquit flag to deal with stopped jobs at exit time;
+		only two exit commands (or eofs) in a row will work.  in
+		shell(), set exstat from execute value.
+	  - c_ksh.c(c_print):
+	      - handle \\ at end of string better (don't skip the null)
+	  - c_ksh.c(c_whence):
+	      - stop looking as soon as we get a failure
+	      - pass flag[FTRACKALL] to findcom() instead of 0
+	  - c_ksh.c(c_alias):
+	      - print '%s alias not found' if not found
+	  - c_ksh.c(c_jobs):
+	      - handle -l option (list pid)
+	  - c_ksh.c(c_kill):
+	      - two column -l output to try to keep it on one screen
+	  - c_sh.c(c_read):
+	      - skip IFS at start of line "echo ' a b' |(read a b; echo $a)"
+		should print a, not nothing.
+	      - changed EOF check to set all vars to null (same way \n is
+	        handled)
+	  - eval.c(comsub):
+	      - after compile(), return if t is NULL
+	      - use setfileno() instead of fileno(x) = .. (see sh.h changes);
+	  - exec.c(iosetup):
+	      - set exstat if redirect fails
+	  - exec.c(fd_clexec):
+	      - check that fd >= 0
+	  - exec.c:
+	      - change SHARPBANG ifdef code - everyone uses scriptexec().
+		ifdef is put around open/read/parse code in scriptexec().
+		[code cleanup]
+	  - exec.c(search):
+	      - eaccess test out side of loop: must be regular file to exec it
+		(like test in loop)
+	  - eval.c(expand):
+	      - added while getc() == 0 in XCOM
+		[a null in the output of a file would be treated as eof and
+		 waitlast would not be called]
+	  - eval.c(trimsub):
+	      - '%' subst: use ATEMP, not APERM
+	  - eval.c(tilde): use Xinit et. al., instead of fixed length buffer
+	  - getopts.c(getopt): rename getopt() to ksh_getopt() to avoid
+	    problems with prototypes in system #include files.
+	  - io.c(fopenshf):
+	      - call clearerr(fd) if already open
+	      - use F_GETFL to determine appropriate mode for fdopen() call
+		instead of opening everything for read/write
+	      - use ifdef _FSTDIO instead of ifdef _BSDI (_FSTDIO is used in
+		4.4bsd, NetBSD, FreeBSD and other non BSDI environs)
+	  - lex.c(ungetsc): don't decrement if str == null, remove nullstr hack
+	  - lex.c(yylex):
+	      - \ at eol: call Xfree before goto Again
+	      - use memset() to clear ident, instead of while loop
+	  - syn.c(get_command): renamed from command() to get_command() to
+	    avoid conflicts with command(main.c).
+	  - sym.c(get_command):
+	      - allow A=B <alias-name> to work (alias was not being expanded)
+	      - allow `if .. if .. fi fi' to work (no ; after group terminator
+		(fi , esac, done, ), })
+	      - allow `alias FI=fi ; if .. if .. fi FI' to work (alias
+		expansion after group terminator)
+	      - do not assume resize returns same pointer
+	  - tree.c(pioact):
+	      - handle IORDWR case
+	      - added leading quote for file in IOHERE case
+	  - var.c(special):
+	      - add MAILCHECK check
+	  - var.c(setspec):
+	      - add MAILCHECK case (doesn't do anything yet)
+	  - var.c(strint):
+	      - handle null vp->val.s
+	  - eval.c(sh.h, expand), misc.c(options[]):
+	      - enable alternations only if alternations flag set
+		(set -o alternations).  This is so (att ksh) scripts that don't
+		expect alternations won't break.
+	      - added notify option (asynchronous job completion notification)
+	      - added vicomplete to enable tab char as file name completion
+		char in vi (this is likely to go away - exits for historical
+		reasons)
+	  - jobs.c, main.c, sh.c, trap.c:
+	      - define/use SIG_HDLR instead of void
+	  - eval.c(expand): alt_expand() does not return a value so don't test
+	    it, just return.  Also changed decl of alt_expand() to reflect
+	    reality.
+	  - emacs.c(x_emacs): first return returns random value (i); change to
+	    return 0.  Also changed the way interrupts are returned to called
+	    (return -2 means interrupt).
+	  - c_sh.c(c_brkcont): at&t ksh allows breaks/continues outside of
+	    loops, 4.9 prints an error and breaks out of all env's (if, case,
+	    etc.). Fixed to act like at&t (ie, allow bogus continues), except
+	    a warning message is printed.  (Some HP-UX shell scripts actually
+	    have continues outside of loops...)
+	  - main.c(shell): parameter s should be volatile as it is used after a
+	    setjmp.
+	  - edit.c(promptlen): handle tabs, backspaces...
+	  - cleaner fix to the ^C/source->line problem: in pprompt(lex.c),
+	    convert ! to source->line+1 (same in promptlen(edit.c)), increment
+	    source->line after a (non-empty, non-eof) line has been read
+	    (before call to histsave()).  To be pedantic, also adjust
+	    position of source->line++ in SHIST in case PS9 is ever used.
+	    Remove code in shell(main.c) that does the source->line--,
+	    remove the source->line-- for eof and empty line in from
+	    getsc_(lex.c).
+	  - trap.c(sigtrap[]): do not depend on signal number matching position
+	    in initialization array.  Use second table in which order does not
+	    matter to initialize sigtrap[] array.  Easier to read/port, and
+	    generally less fragile.  requires call to inittraps() in main.c.
+	  - trap.c(cleartraps): need to clear Sigact flags/mask after use
+	    (actually, declare a local struct sigact and use that instead of
+	    Sigact)
+	  - exec.c(execute): case TSELECT: no USE_SIGACT code for call to
+	    signal(); case TPIPE: don't call waitlast() if XXCOM since
+	    waitlast() will be called in expand(); 4.9 code that set and
+	    then cleared the XEXEC flag in the TPIPE case not added since
+	    it was ifdef'd out, also the code to not exit if XPIPEI flag
+	    set was not added; 4.9 XXWHL flag not added (don't flush stdin
+	    if in a while loop) since this problem fixed (I hope) by shf stuff.
+	  - ttyfd{sh.h/lex.c}: use EXTERN/_I_ to initialize ttyfd. Remove from
+	    lex.c
+	  - interrupted reads: instead of testing sigchld_caught after reads
+	    fail, continue them if errno == EINTR.
+	      - edit.c(x_getc): check for EINTR, and continue reading if so.
+	      - lex.c(getsc_): check for EINTR, and continue reading if so.
+		(don't check return of x_read() - check has already been done)
+	      - exec.c(selread): check for EINTR, and continue reading if so.
+	  - history changes:
+	      - history.c:
+		  - histrpl(): bounds check doesn't take global flag into
+		    account - move check into loop and past loop.
+		  - c_fc(): if pattern is the empty string, histrpl()
+		    goes into infinate loop.  Start searching for = after first
+		    char (this is what at&t ksh seems to do).
+		  - c_fc(): `fc -l first' should list at most 16
+		    commands according to at&t manual.
+		  - findhist(): re-wrote: shorter, easier to follow.  Now
+		    returns an int.  (used only by vi code)
+		  - use COMPLEX_HISTORY's allocated history array in
+		    EASY_HISTORY: common init_histvec(), sethistfile() and
+		    sethistsize() functions.
+		    In the process, hist_open() went away.  Use histsize
+		    instead of HISTORY in hist_init() and hist_finish()
+		    #ifdefs in lex.h, table.h,
+		    var.c disappear, history variable definitions in lex.c
+		    disappear.
+		  - hist_init(COMPLEX_HISTORY): move hstarted = 1 to after the
+		    FTALKING test.
+		  - hist_finish(): don't open hname if its null
+		  - histrpl(): made static, use ARGS in decl
+		  - made current and curpos static
+		  - changes to allow embedded newlines in commands:
+		      - histsave(): trash only trailing newline
+		      - hist_init(): read in null terminated lines instead of
+			newline terminated
+		      - hist_finish(): write null terminated lines
+		  - make multiple line command appear in single history line
+		    (EASY_HISTORY only):
+		      - added histappend() to append new command to last
+			command
+		      - added call to histappend() in getsc_(lex.c) (also: only
+			adjust source->line if not multiline).
+	      - lex.h:
+		  - remove second decl of history if !EASY_HISTORY
+	  - tree.c(ptree): case TCOM: check if t->vars or t->args is 0
+	  - vi.c(x_vi): ^D anywhere in command line is eof ($ foobar^D exits).
+	    at&t ksh ignores ^D in middle of line
+	  - edit.c:
+	      - don't need to include string.h - included in stdh.h
+	      - init_editmode(): in at&t ksh, VISUAL takes precenence over
+		EDITOR, so put it first.  Also, at&t ksh doesn't use FCEDIT so
+		trash it.
+	      - moved initialization of ed_* from x_read() to x_init() since
+		thats where they are set from tty structs.
+	      - x_init(): set ed_intrc, ed_quitc for _BSD & _POSIX_TERM ifdefs
+	      - send output to shlout (instead of stdout - at&t ksh writes to
+	        stderr)
+	      - made x_do_init static.
+	  - exit.c(x_getc), lex.c(yylex): restart interrupted reads in
+	    x_getc(), changed read-restart in yylex() to only effect call
+	    to read().
+	  - syn.c(thenpart): then THEN is not optional - generate a syntax
+	    error if no THEN. (ie, `if true ; fi' is not legal).
+	  - syn.c(get_command): don't accept keywords after re-directory (eg,
+	    `> /dev/null if true ; then echo hi ; fi' is not legal).
+	  - vi.c: handle \ and ^[ in command mode ala at&t ksh (filename
+	    completion)
+	  - syn.c(thenpart), syn.c(elsepart): calling token(0) when they want a
+	    keyword (always worked 'cause tpeek() is always called before, with
+	    the keyword flag).  Fix: call token(KEYWORD|ALIAS) (at&t ksh does
+	    alias expansion here). Question: pass CONTIN as well?
+	  - syn.c(get_command): LWORD/MPAREN case: do alias expansion when
+	    getting open brace ({).  CASE case: ditto for `in' and `esac'.
+	    IF case: ditto for `fi'.  FUNCTION case: dito for open brace ({).
+	  - syn.c(dogroup): alias expansion when getting `do' and `done'.
+	  - syn.c(wordlist): alias expansion when getting `in'.
+	  - syn.c(nested): alias expansion when getting `)', `}'
+	  - syn.c(casepart): alias expansion when getting `esac' or `;;'.
+	    Also removed use of cf variable - it does nothing.
+	  - eval.c(expand): case CSUBST: '#'/'%' - increment st so nested
+	    substitutions work.
+	  - var.c(typeset): INTEGER && no assignment: memory was being freed
+	     and then used (there was even a comment saying it was being
+	     done...)
+	  - lex.c, lex.h, exec.c, main.c:
+	      added shf_{open,fdopen,close,gets}() routines so stdio wasn't
+	      used.  When reading a command file under osf/1, stdio would
+	      mess up the read pointer when a child exited: the exit flushed
+	      all open files and flushing a file open for reading changes the
+	      current read position (does a seek to where the next char would
+	      be read).  This position is then used by the parent process,
+	      who thinks the read position is still at the end of the buffer
+	      it read.
+	  - c_sh.c:
+	      use shf_*() routines avoids two bugs in read:
+		  - on sunos 4.1.3, a read would gobble up a stdio buffer and
+		    never put it back (ie, lseek backwards).  Neither a
+		    fflush() nor a fseek(x, 0L, 1) fixed the problem.
+		    (see Bug 26)
+		  - on linux, stdio knows its current offset and seeks there
+		    before reading a buffer.  This causes grief when the shell
+		    replaces file descriptors behind stdio's back (ie, all the
+		    time).
+		      $ read x << EOF
+		      hi
+		      EOF
+		      $ cat > /dev/tty << EOF
+		      1:abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ
+		      2:abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ
+		      3:abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ
+		      EOF
+		      $ 
+		    the cat picks up reading at the offset where the read
+		    command left off (ie, at bcdefg... - the 1:a are skipped).
+	  - exec.c(comexec): built-in c_exec && no args: close the saved fd's
+	    (were thrown away).  Also, set close-on-exec flag for fd's > 2,
+	    as per at&t manual.
+	  - lex.c(yylex): only accept 1 digit before a redirection (eg, 1> is
+	    ok, 1abc> is not)
+	  - exec.c(iosetup): only accept 1 digit after a dup-redirection
+	    (eg, >&1 is ok, >&1abc is not)
+	  - exec.c(iosetup): use O_APPEND flag for >> redirections; use O_CREAT
+	    flag for <> redirections.  (re-organized to accumulate open() flags
+	    and do one open() call); changed error message to know about dup
+	    failing.
+	  - c_sh.c(c_umask): umask should have leading 0 - doesn't when umask
+	    has 3 digits (eg, `umask 222; umask' prints 222 instead of 0222)
+	  - c_sh.c(setsig): declare local struct sigaction and use it so
+	    sa_flags doesn't have to be cleared (also to try to keep away from
+	    global vars).
+	  - main.c(main):
+	      - don't go set TALKING if name starts with -.
+	      - read $HOME/.profile (not .profile)
+	  - main.c(main): re-wrote option parsing code
+	  - edit.c(init_editmode): don't check FCEDIT
+	  - if set -o vi/emacs/gmacs on command line, don't set edit mode from
+	    FCEDIT/EDITOR/etc.
+	  - var.c(setspec): FCEDIT should not magicly change edit mode; VISUAL
+	    and EDITOR should (EDITOR only if VISUAL is not set)
+	  - changed noclobber char from ! to | (this is what at&t ksh uses)
+	  - exec.c(iosetup): use O_EXCL flag if FNOCLOBBER set and >| not used
+	  - c_sh.c(c_set): don't clear FERREXIT if FTALKING is set; although
+	    some ksh manuals say -e is ignored for interactive shells, they
+	    all seem to honour the -e flag for interactive shells.
+	  - vi.c: reset history position to the end after a line is modified
+	  - `(( 1 + 2 ))' no longer prints `+: bad expression'!
+	  - lex.c(yylex): added parenthesis counting so `(( ((1+2)) ))' no
+	    longer generates a syntax error
+	  - expr.c(intvar): if strint() fails, give bad number error
+	    (`let 1+foo' should fail)
+	  - `echo hi 1abc123> /dev/tty' no longer interpreted as
+	    `echo hi 1> /dev/tty' (is `echo hi 1abc123 > /dev/tty')
+	  - `echo hi 1<> /tmp/does-not-exist' now works (used to say cannot
+	    open)
+	  - c_sh.c(c_umask): umask now takes symbolic arguments (g-r, +w, etc.)
+	  - c_ksh.c(c_whence): pass flag[FTRACKALL] to findcom() instead of 1.
+	  - `echo hi >< bar' now produces an error
+	  - jobs.c(j_lookup): now checks for ambiguous job specifications;
+	    callers now get an error message.
+	  - c_ksh.c(c_fgbg): multiple jobs can be specified
+	  - emacs.c(x_transpose): move past transposed chars like (gnu) emacs
+	    does
+	  - main.c(main): don't copy initcoms (messes up memory allocated for
+	    shf_iob[] in initio(), should not be necessary)
+	  - main.c(main), var.c(import), var.c(typeset), c_ksh.c(c_alias),
+	    expr.c(token), misc.c(strnsave): added strnsave() function; use it
+	    instead of writing nulls in the middle of strings; main() no longer
+	    copies startup commands before executing them.
+	  - vi.c: wbuf[] no longer a fixed size (was hard coded to 80 chars).
+	  - alloc.c(aresize): if passed a null pointer, don't free it
+	  - expand.h: restored usage description and NOTE from previous version
+	  - alloc.c, table.h, table.c:
+	      - changed struct fields named `free' to nfree (struct table) and
+		freelist (struct Block) to allow memory debugging
+		(involves #defining free)
+	  - main.c(main): smart initialization of PWD (ensures it is always
+	    valid).
+	  - lex.h, table.h, tree.h: removed redundent function declarations
+	    (were also in proto.h)
+	  - sh.h: increased LINE from 256 to 1024
+	  - main.c(include), sh.h(E_INC), c_sh.c(c_return): added hack so a
+	    return in a included file returns to the includer instead of
+	    exiting the shell.  Very useful in $ENV scripts and profiles,
+	    eg, so the whole script does not have to be parsed for
+	    non-interactive shells.
+	    This is not compatible with the at&t ksh, whose man page says
+	    return is the same as exit outside of functions.  May be modified
+	    in the future.  (note that at&t ksh parses a .'ed file before
+	    executing anything, so a premature return would not speed its
+	    parsing, which is why the return hack was added to pdksh)
+	  - exec.c(iosetup): don't save fd if already saved (and don't
+	    generate an error)
+	  - exec.c(findcom): in if (..ALLOC && eaccess), test for
+	    ALLOC redundent - always call afree()

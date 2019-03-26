@@ -1,122 +1,111 @@
-		Public Domain Korn Shell
-		      Version 4.5
 
-PD KSH:
+Last updated Sept '94 for pdksh-5.0.6.
 
-This is the latest version of the PD ksh (pdksh).  It is not
-intended to be the ultimate shell but rather a usable ksh work
-alike.  For those of us who have to work on multiple systems it
-is nice to have the same user interface on all.  I resisted
-moving to the ksh on a Bull system at work for nearly a year due
-to the lack of a ksh on my Sun systems.  When I first picked up
-the 3.2 PD KSH a couple of years ago, it took only a few minutes
-to convert a C-shell fan to a ksh fan :-)  Pdksh is not 100%
-compatible with the ksh.  Having said that, I use it daily
-beside a real ksh88 and find them virtually indistinguishable.
+PD-ksh is a mostly complete AT&T ksh look-alike (see NOTES file for a list
+of things not supported).  Work is currently underway to make it fully
+compatible with both POSIX and AT&T ksh (when the two don't conflict).
 
-I only run this shell on sun's and only for interactive use.  I
-use it on sun4c, sun3 and sun386 systems.  The shell itself has
-been compiled on each of these both with and without the
-POSIX/ANSI compatability libraries in ./std.  See the file
-MACHINES for details of systems that the shell has been built
-on.
+Since pdksh is free and compiles and runs on most common unix systems, it
+is very useful in creating a consistent user interface across multiple
+machines.  For example, in the CS dept. of MUN, pdksh is installed on a
+variety of machines including Suns, HPs, DecStations, pcs running Linux,
+etc., and is the login shell of ~2500 users (note that they aren't using the
+current alpha test version, but an older version).
 
-I have released this version of the shell (with the kind
-permission of the previous maintainers and major contributors) to
-ensure that it is available from usenet archive sites.  Of
-course it remains in the Public Domain.  Equally obviously
-neither myself nor any other contributors make any claims of
-suitability etc.  Ie. NO WARRANTY!!!  If you make any changes
-and distribute them, please leave your own finger prints in the
-source.  Its bad enough being flamed for my own bugs let alone
-anyone elses :-)
+PDksh is currently being maintained by Michael Rendell (michael@cs.mun.ca),
+who took over from Simon J. Gerraty (sjg@zen.void.oz.au) at the later's
+suggestion.  A short list of things that have been done since the
+last public pdksh release (4.9) are auto-configuration, arrays, $(( .. )),
+[[ .. ]], variable attributes, many POSIXisms and many bug fixes.  See the
+NEWS and ChangeLog files for other features added and bugs fixed.
 
-WHATS NEW:
+Note that pdksh is provided AS IS, with NO WARRANTY, either expressed or
+implied.  Also note that although the bulk of the code in pdksh is in the
+public domain, some files are copyrighten (but freely distributable) and
+subject to certain conditions (eg, don't remove copyright, document any
+changes, etc.).
 
-This update includes Job Control for System V (POSIX), many bug
-fixes and a simple history file mechanism.  See sh/ChangeLog.
 
-HISTORY:
+Files of interest:
+	NEWS		short list of noticeable changes in various versions
+	CONTRIBUTORS	short history of pdksh
+	POSIX		lists things that change in posix/non-posix modes
+	NOTES		lists of known bugs in pdksh, at&t ksh, and posix
+	PROJECTS	list of things that need to be done in pdksh
+	BUG-REPORTS	list of recently reported bugs that have been fixed
+			and all reported bugs that haven't been fixed.
+	etc/*		system profile and kshrc files used by Simon J. Gerraty
+	misc/README*	readme files from previous versions
+	misc/Changes*	changelog files from previous versions
 
-This shell was written by Eric Gisin.  It is based on Charles
-Forsyth's public domain V7 shell, which he later contributed to
-Minix.  John R MacMillan picked up Eric Gisin's version after
-Eric moved on to other projects (see ReadMe.jrm).
+Compiling/Installing:
+    * edit options.h and define/undef the options therein.
+    * run configure: this is a GNU autoconf configure script that will generate
+      a Makefile and a config.h.  Some of the useful options to configure are:
+	--prefix=PATH	    indicates the directory tree under which the binary
+			    and man page are installed (ie, PATH/bin/ksh and
+			    PATH/man/man1/ksh.1).
+			    The default prefix is /usr/local.
+	--exec-prefix=PATH  overrides --prefix for machine dependent files
+			    (ie, the ksh binary)
+	--verbose	    show what is being defined as script runs
+      Note that you don't have to build in the source directory.  To build
+      in a separate directory, do something like:
+		$ mkdir objs
+		$ cd objs
+		$ ../configure --verbose
+		....
+		$ make
+      See the file INSTALL for a complete description of configure and its
+      options.
+    * miscellaneous configuration notes:
+	* If your make doesn't understand VPATH, you must compile in
+	  the source directory.
+	* On DecStations, MIPS and SONY machines with older C compilers that
+	  can't handle "int * volatile x", you should use gcc or turn off
+	  optimization.  The problem is configure defines volatile to nothing
+	  since the compiler can't handle it properly, but the compiler does
+	  optimizations that the volatile is meant to prevent.   So.  Use gcc.
+	* On MIPS RISC/os 5.0 systems, sysv environment, <signal.h> is
+	  messed up - it defines sigset_t, but not any of the rest of
+	  the posix signals (the sigset_t typedef should be in the
+	  ifdef KERNEL section) - also doesn't have waitpid() or wait3().
+	  Things compile up ok in the svr4 environment, but it dumps core
+	  in __start (perhaps our system doesn't have the full svr4
+	  environ?).  Try compiling in the bsd43 environ instead (still not
+	  perfect - see BUG-REPORTS file).
+    * run make: everything should compile and link without problems.
+    * run make check: this fires up ksh on a script that checks for some
+      known and some fixed bugs.  The script prints the list of tests
+      it expects to fail.
+    * run make install: this installs ksh (in /usr/local/bin/ksh by default,
+      or where ever you told configure to put things).
 
-Since then there have been many contributors to this shell.
-Most have left their fingerprints within the source and various
-ReadMe.xxx and Changes.xxx files reflect their input.
+The following is a list of machines pdksh is known to work on:
+    Sun/sun4 SunOS 4.1.3
+    Sun/sun4 Solaris 2.3
+    Sun/sun386i SunOS 4.0.2
+    Sun/sun3 SunOS 4.0.3
+    Dec/alpha OSF/1 v2.0
+    HP/pa HP-UX 9.01
+    -/PC Linux 0.99.15 (Slackware v 1.?)
+    -/PC NetBSD 0.9a
+    MIPS/m120 RISC/os 5.0 (bsd43 environ)
+    Dec/pmax Ultrix 4.2
+    Dec/vax Ultrix 2.2
+    Dec/vax 4.3BSD+NFS (MtXinu)
 
-This version is basically that known as Eric Gisin's version 3.3
-alpha which I obtained indirectly from John R MacMillan who is
-the most recent maintainer.  This version has much improved
-emacs-mode command line editing (my main contribution) plus
-enough extra emacs-mode features to make it difficult to
-distinguish from ksh88.  Bug fixes from various contributors are
-the only other changes from John MacMillan's version.
+You can send bug reports, fixes, and enchancements to pdksh@cs.mun.ca (please
+don't assume I will see bug reports that are posted to some newsgroup or
+mailing list - I probably won't).
+If you are reporting a bug (with or without a fix), please include
+	* the version of pdksh you are using (see version.c, or, if you are
+	  running pdksh, try echo $KSH_VERSION),
+	* the machine, operating system and compiler you are using,
+	* and a description of how to repeat the bug (a small shell
+	  script that demonstrates the bug is best).
+as well as the following, if relevant (if you aren't sure, include them)
+	* what options you are using (both options.h options and set -o options)
+	* a copy of your config.h (the file generated by the configure script)
 
-I have upped the version number for this release to distinguish
-it from the original 3.3 version.  This version is much improved
-despite the small number of new features.
-
-INSTALLATION:
-
-The file INSTALL contains intructions for building and
-installing the shell.  
-
-The original instructions indicated that a POSIX compliant
-environment and possibly an ANSI compiler are required.  I have
-used both gcc and native Sun and the GreenHills ANSI compiler
-without problems.
-
-The POSIX/STDC compatability stuff in ./std seems to cause lots
-of problems for some systems.  This was at least in part because
-I distributed it with half the librraies disabled :-), in any
-case the shell itself in ./sh can now be compiled without any of
-the ./std stuff which makes things much simpler on systems that
-have a real POSIX environment.
-
-Porting to new environemnts can be a real pain.  I don't really
-plan to make a huge effort in this area since I expect that this
-shell will be mainly required on exotic or obscure systems (the
-ones that the vendor does not provide a ksh for).  Thus the
-small "market" does not warrant a C-news or X11 style
-portability effort.  Of course if people send patches for
-various systems I'm happy to try and integrate them.
-
-ENVIRONMENT:
-
-My main interest in this shell is for Sun workstations.  Every
-other UNIX system I use comes with a real ksh.  Being a strictly
-C-shell environment, some improved profile files are in order on
-Sun's.
-
-The etc directory contains a set of useful environment files.
-These are the same files I use on several systems (many use a
-real ksh):
-./etc/profile
-./etc/sys_config.sh
-./etc/ksh.kshrc	
-
-The first one is obvious.  The second, sys_config.sh is sourced
-by /etc/profile and several other scripts.  It is used to
-determine the system type so that scripts like profile can be
-used on multiple platforms.
-The third one is also quite useful, add 
-. /etc/ksh.kshrc 
-to user's ~/.kshrc to simplify alias management.
-
-BUGS:
-
-Many folk have contributed to this shell.  
-I have attempted to credit (in sh/ChangeLog) the authors of bug
-fixes received since the previous release.
-There are surely still plenty of bugs to be found/fixed.
-
-There is a template bug report in bug-report [borrowed from the
-X11R5 mit tree], just fill in the blanks and mail to
-pdksh-bug@zen.void.oz.au.  
-
-I hope you find this shell as useful as I do...
-
-Simon J. Gerraty <sjg@zen.void.oz.au>
+Michael Rendell, michael@cs.mun.ca.

@@ -1,0 +1,128 @@
+Version 5.0.6
+
+* most reported bugs/problems fixed (all but two)
+
+* temporary files now created in $TMPDIR (if it is a sane path)
+
+Version 5.0.5
+
+* function parsing POSIXized (function bodies can be any compound command,
+  redirections after functions effect function invocation, not the
+  instantiation, the () in a function definition now parsed as two tokens).
+
+* exit bultin now does stopped jobs check.
+
+* set -p/-o priviliged supported.
+
+* test builtin now believed to be completely posix.
+
+* a default path is now used when PATH is not set (defined in options.h).
+
+Version 5.0.4
+
+* configuration checks for buggy opendir()s and setpgrp()s.
+
+* autoloading functions now supported.
+
+* functions can safely redefine themselves.
+
+Version 5.0.3
+
+* hash command changed to "alias -t"; whence -p added; print -s added
+  (all as in at&t ksh); unalias -a added (POSIX).
+
+* test builtin POSIX complient
+
+* TMOUT parameter supported (at&t ksh: timeout interactive shells)
+
+Version 5.0.2
+
+* trap/error handling changed to eliminate longjmp()s from signal handlers;
+  trap ERR added.
+
+* ksh conditional expressions ([[ .. ]]) supported.
+
+* arithmetic expressions (let, $((..)), etc.) now understand full C
+  integer expressions (except ++/-- and sizeof()).
+
+* typeset -L -R -Z -u -l added (ala at&t ksh)
+
+* at&t/posix $(( .. )) arithmetic expansions supported.
+
+Version 5.0.1
+
+* set -e no longer effects commands executed as part of if/while/until/&&/||/!
+  condition.
+
+* posix ! keyword now recognized.
+
+* posix getopts; if not in posix mode, getopts will accept options starting
+  with + (at&t kshism)
+
+* syntax error messages improved (says what was unexpected/unmatched)
+
+Version 4.9+mun.5
+
+* all known bugs related to job control fixed:
+    * fg,bg,jobs,wait,kill commands fully POSIX complient
+    * signals are no longer reported for foreground jobs killed by SIGINT and
+      SIGPIPE
+    * pipeline process groups now created more reliablely (was a problem
+      if first process exited before second process exec'd).
+    * "(: ; cat /etc/termcap) | sleep" nolonger hangs
+
+* save/restore tty mode if command succeeds/fails, respectively.  Edit
+  mode (emacs,vi) no longer use old tty mode information
+
+* test command: added -h
+
+* alternations option renamed to braceexpand (eg, use set -o braceexpand).
+  Old usage (set -o alternations) still accepted (will disappear in next
+  version).
+
+* trap/kill now accept upper and lower case signal names.
+
+Version 4.9+mun.3
+
+* here documents in functions now work properly
+
+* read command: added -s option, use REPLY if no variable specified
+
+* don't accept "while command; done" as a valid command
+
+* fg,bg,jobs,wait,kill commands mostly POSIX complient.
+
+* unset command: added POSIX -v option
+
+* set command: added -A option
+
+* handle ${array[@]} and ${array[*]}
+
+* compiles with old bsd 4.2 compiler (pcc)
+
+* new versions of etc/profile and etc/ksh.profile
+
+Version 4.9+mun.2 (versus 4.9)
+
+* directory/file structure has been re-arranged:
+    * moved files from sh directory up a level, deleted sh directory
+    * created misc directory, old ChangeLog,README,.. files moved to misc
+
+* now uses GNU autoconf for compilation.
+
+* no longer uses stdio FILE *'s for I/O redirection (most stdio
+  usage has been removed).  Solves many porting problems caused by
+  dup'd file descriptors, forked processes and exiting.
+
+* removed lint from code (compiles with very few warning with gcc -O -Wall
+  -Wno-comment)
+
+* has array support (needs work but is pretty functional).
+
+* ulimit command now more functional on more machines. Compatable with at&t ksh.
+
+* command line and set option parsing cleaned up, POSIXized.
+
+* POSIX IFS handling.
+
+* many many small bug fixes (see ChangeLog)

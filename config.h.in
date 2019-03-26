@@ -1,0 +1,313 @@
+/* config.h.in.  Generated automatically from configure.in by autoheader.  */
+/* Copyright (C) 1994, Memorial University of Newfoundland.
+ * This file is covered by the GNU General Public License, version 2, see
+ * the file misc/COPYING for details.
+ */
+/*
+ * Top portion of the configuration file for the PD ksh
+ *
+ * RCSid: $Id: config.h.top,v 1.1 1994/05/31 13:34:34 michael Exp $
+ */
+
+#ifndef CONFIG_H
+#define CONFIG_H
+
+#include "options.h"
+
+/* end of config.h.top */
+
+/* Define if on AIX 3.
+   System headers sometimes define this.
+   We just want to avoid a redefinition error message.  */
+#ifndef _ALL_SOURCE
+#undef _ALL_SOURCE
+#endif
+
+/* Define to empty if the keyword does not work.  */
+#undef const
+
+/* Define if you have dirent.h.  */
+#undef DIRENT
+
+
+/* Define to `int' if <sys/types.h> doesn't define.  */
+#undef gid_t
+
+/* Define if you have a working `mmap' system call.  */
+#undef HAVE_MMAP
+
+/* Define if your struct stat has st_rdev.  */
+#undef HAVE_ST_RDEV
+
+/* Define if `union wait' is the type of the first arg to wait functions.  */
+#undef HAVE_UNION_WAIT
+
+/* Define if you have unistd.h.  */
+#undef HAVE_UNISTD_H
+
+/* Define if on MINIX.  */
+#undef _MINIX
+
+/* Define to `int' if <sys/types.h> doesn't define.  */
+#undef mode_t
+
+/* Define if you don't have dirent.h, but have ndir.h.  */
+#undef NDIR
+
+/* Define to `long' if <sys/types.h> doesn't define.  */
+#undef off_t
+
+/* Define to `int' if <sys/types.h> doesn't define.  */
+#undef pid_t
+
+/* Define if the system does not provide POSIX.1 features except
+   with this defined.  */
+#undef _POSIX_1_SOURCE
+
+/* Define if you need to in order for stat and other things to work.  */
+#undef _POSIX_SOURCE
+
+/* Define as the return type of signal handlers (int or void).  */
+#undef RETSIGTYPE
+
+/* Define if the `S_IS*' macros in <sys/stat.h> do not work properly.  */
+#undef STAT_MACROS_BROKEN
+
+/* Define if you don't have dirent.h, but have sys/dir.h.  */
+#undef SYSDIR
+
+/* Define if you don't have dirent.h, but have sys/ndir.h.  */
+#undef SYSNDIR
+
+/* Define if `sys_siglist' is declared by <signal.h>.  */
+#undef SYS_SIGLIST_DECLARED
+
+/* Define if you can safely include both <sys/time.h> and <time.h>.  */
+#undef TIME_WITH_SYS_TIME
+
+/* Define to `int' if <sys/types.h> doesn't define.  */
+#undef uid_t
+
+/* Define if the closedir function returns void instead of int.  */
+#undef VOID_CLOSEDIR
+
+/* Copyright (C) 1994, Memorial University of Newfoundland.
+ * This file is covered by the GNU General Public License, version 2, see
+ * the file misc/COPYING for details.
+ */
+/* Define if your kernal doesn't handle scripts starting with #! */
+#undef SHARPBANG
+
+/* Define if dup2() preserves the close-on-exec flag (ultrix does this) */
+#undef DUP2_BROKEN
+
+/* Define if you have posix signal routines (sigaction(), et. al.) */
+#undef POSIX_SIGNALS
+
+/* Define if you have BSD4.2 signal routines (sigsetmask(), et. al.) */
+#undef BSD42_SIGNALS
+
+/* Define if you have BSD4.1 signal routines (sigset(), et. al.) */
+#undef BSD41_SIGNALS
+
+/* Define if you have v7 signal routines (signal(), signal reset on delivery) */
+#undef V7_SIGNALS
+
+/* Define to use the fake posix signal routines (sigact.[ch]) */
+#undef USE_FAKE_SIGACT
+
+/* Define if you have bsd versions of the setpgrp() and getpgrp() routines */
+#undef BSD_PGRP
+
+/* Define if you have bsd versions of the setpgid() and getpgrp() routines */
+#undef POSIX_PGRP
+
+/* Define if you have sysV versions of the setpgrp() and getpgrp() routines */
+#undef SYSV_PGRP
+
+/* Define to char if your compiler doesn't like the void keyword */
+#undef void
+
+/* Define to nothing if compiler doesn't like the volatile keyword */
+#undef volatile
+
+/* Define to 32-bit signed integer type */
+#undef INT32
+
+/* Define to 32-bit signed integer type if <sys/types.h> doesn't define */
+#undef clock_t
+
+/* Define to 32-bit signed integer type if <sys/types.h> doesn't define */
+#undef time_t
+
+/* Define if time() is declared in <time.h> */
+#undef TIME_DECLARED
+
+/* Define to `unsigned' if <signal.h> doesn't define */
+#undef sigset_t
+
+/* Define if sys_errlist[] and sys_nerr are in the C library */
+#undef HAVE_SYS_ERRLIST
+
+/* Define if sys_errlist[] and sys_nerr are defined in <errno.h> */
+#undef SYS_ERRLIST_DECLARED
+
+/* Define if sys_siglist[] is in the C library */
+#undef HAVE_SYS_SIGLIST
+
+/* Define if sys_siglist[] are defined in <signal.h> or <unistd.h> */
+#undef SYS_SIGLIST_DECLARED
+
+/* Define if C compiler groks function prototypes */
+#undef HAVE_PROTOTYPES
+
+/* Define if C compiler groks __attribute__((...)) (const, noreturn, format) */
+#undef GCC_FUNC_ATTR
+
+/* Define if you have a sane <unistd.h> header file */
+#undef HAVE_UNISTD_H
+
+/* Define if you have a sane <termios.h> header file */
+#undef HAVE_TERMIOS_H
+
+/* Define if you don't have times() or if it always returns 0 */
+#undef TIMES_BROKEN
+
+/* Define if opendir() will open non-directory files */
+#undef OPENDIR_DOES_NONDIR
+
+/* Define if the pgrp of setpgrp() can't be the pid of a zombie process */
+#undef NEED_PGRP_SYNC
+
+/* Define if you have bcopy.  */
+#undef HAVE_BCOPY
+
+/* Define if you have confstr.  */
+#undef HAVE_CONFSTR
+
+/* Define if you have getcwd.  */
+#undef HAVE_GETCWD
+
+/* Define if you have getrusage.  */
+#undef HAVE_GETRUSAGE
+
+/* Define if you have killpg.  */
+#undef HAVE_KILLPG
+
+/* Define if you have memmove.  */
+#undef HAVE_MEMMOVE
+
+/* Define if you have memset.  */
+#undef HAVE_MEMSET
+
+/* Define if you have strcasecmp.  */
+#undef HAVE_STRCASECMP
+
+/* Define if you have strerror.  */
+#undef HAVE_STRERROR
+
+/* Define if you have strstr.  */
+#undef HAVE_STRSTR
+
+/* Define if you have sysconf.  */
+#undef HAVE_SYSCONF
+
+/* Define if you have tcsetpgrp.  */
+#undef HAVE_TCSETPGRP
+
+/* Define if you have ulimit.  */
+#undef HAVE_ULIMIT
+
+/* Define if you have wait3.  */
+#undef HAVE_WAIT3
+
+/* Define if you have waitpid.  */
+#undef HAVE_WAITPID
+
+/* Define if you have the <fcntl.h> header file.  */
+#undef HAVE_FCNTL_H
+
+/* Define if you have the <limits.h> header file.  */
+#undef HAVE_LIMITS_H
+
+/* Define if you have the <memory.h> header file.  */
+#undef HAVE_MEMORY_H
+
+/* Define if you have the <paths.h> header file.  */
+#undef HAVE_PATHS_H
+
+/* Define if you have the <stddef.h> header file.  */
+#undef HAVE_STDDEF_H
+
+/* Define if you have the <stdlib.h> header file.  */
+#undef HAVE_STDLIB_H
+
+/* Define if you have the <string.h> header file.  */
+#undef HAVE_STRING_H
+
+/* Define if you have the <sys/time.h> header file.  */
+#undef HAVE_SYS_TIME_H
+
+/* Define if you have the <sys/wait.h> header file.  */
+#undef HAVE_SYS_WAIT_H
+
+/* Define if you have the <termio.h> header file.  */
+#undef HAVE_TERMIO_H
+
+/* Define if you have the <ulimit.h> header file.  */
+#undef HAVE_ULIMIT_H
+
+/* Define if you have the <values.h> header file.  */
+#undef HAVE_VALUES_H
+/* Copyright (C) 1994, Memorial University of Newfoundland.
+ * This file is covered by the GNU General Public License, version 2, see
+ * the file misc/COPYING for details.
+ */
+/*
+ * Bottom portion of the configuration file for the PD ksh
+ *
+ * RCSid: $Id: config.h.bot,v 1.1 1994/05/31 13:34:34 michael Exp $
+ */
+
+/*
+ * if you don't have mmap() you can't use Peter Collinson's history
+ * mechanism.  If that is the case, then define EASY_HISTORY
+ */
+#if !defined(COMPLEX_HISTORY) || !defined(HAVE_MMAP)
+# define EASY_HISTORY			/* sjg's trivial history file */
+#endif
+
+/* Don't compile in job control if there is no support for it */
+#if (!defined(HAVE_WAITPID) && !defined(HAVE_WAIT3)) || (!defined(POSIX_SIGNALS) && !defined(BSD42_SIGNALS))
+# undef JOBS
+#endif
+
+/* pdksh assumes system calls return EINTR if a signal happened (this so
+ * the signal handler doesn't have to longjmp()).  I don't know if this
+ * happens (or can be made to happen) with sigset() et. al., so, to be on
+ * the safe side, make sure a bogus shell doesn't get compiled.
+ * If BSD41_SIGNALS isn't defined and your compiler chokes on this, delete
+ * the hash in front of the error (and file a bug report).
+ */
+#ifdef BSD41_SIGNALS
+  # error pdksh needs interruptable system calls.
+#endif /* BSD41_SIGNALS */
+
+#ifdef GCC_FUNC_ATTR
+# define GCC_FA_NORETURN	__attribute__((noreturn))
+# define GCC_FA_CONST		__attribute__((noreturn))
+# define GCC_FA_FORMAT(t,f,s)	__attribute__((format(t,f,s)))
+#else
+# define GCC_FA_NORETURN
+# define GCC_FA_CONST
+# define GCC_FA_FORMAT(t, f, s)
+#endif /* GCC_FUNC_ATTR */
+
+#if defined(EMACS) || defined(VI)
+# define	EDIT
+#else
+# undef		EDIT
+#endif
+
+/* end of config.h.bot */
+#endif /* CONFIG_H */

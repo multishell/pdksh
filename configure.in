@@ -1,0 +1,97 @@
+dnl Copyright (C) 1994, Memorial University of Newfoundland.
+dnl This file is covered by the GNU General Public License, version 2, see
+dnl the file misc/COPYING for details.
+dnl
+dnl
+dnl Process this file with autoconf to produce a configure script
+dnl
+AC_INIT(c_ksh.c)
+AC_CONFIG_HEADER(config.h)
+dnl
+dnl
+dnl If LDSTATIC set in environment, pass it on to the Makefile
+AC_SUBST(LDSTATIC) LDSTATIC=${LDSTATIC-}
+dnl
+AC_PROG_CC
+AC_PROG_CPP
+AC_GCC_TRADITIONAL
+  dnl A hack to turn on warning messages for gcc - Warn-flags is not in
+  dnl the distribution since not everyone wants to see this stuff and it
+  dnl compiles out the RCSid's
+  dnl (Warn-flags contains: -Wall -Wno-comments -Dno_RCSids)
+  AC_SUBST(GCC_WARNFLAGS) GCC_WARNFLAGS=
+  if test -n "$GCC" && test -f $srcdir/Warn-flags; then
+    GCC_WARNFLAGS="`cat $srcdir/Warn-flags`"
+  fi
+AC_ISC_POSIX
+AC_MINIX
+dnl
+dnl
+dnl Headers
+dnl
+AC_DIR_HEADER
+AC_XENIX_DIR
+KSH_UNISTD_H
+KSH_TERM_CHECK
+AC_HAVE_HEADERS(stddef.h stdlib.h string.h memory.h \
+    fcntl.h limits.h paths.h values.h ulimit.h sys/time.h sys/wait.h)
+AC_TIME_WITH_SYS_TIME
+dnl
+dnl
+dnl Typedefs
+dnl
+AC_OFF_T
+AC_MODE_T
+AC_PID_T
+AC_UID_T
+KSH_INT32
+KSH_CLOCK_T
+KSH_TIME_T
+KSH_SIGSET_T
+AC_RETSIGTYPE
+dnl
+dnl
+dnl Library functions
+dnl
+AC_HAVE_FUNCS(bcopy confstr getcwd killpg memset memmove strerror tcsetpgrp \
+	strcasecmp strstr sysconf ulimit waitpid wait3)
+AC_MMAP
+KSH_SYS_ERRLIST
+KSH_SYS_SIGLIST
+KSH_TIME_DECLARED
+KSH_TIMES_CHECK
+dnl
+dnl
+dnl Structures
+dnl
+AC_STAT_MACROS_BROKEN
+AC_ST_RDEV
+dnl
+dnl
+dnl Compiler characteristics
+dnl
+AC_CONST
+KSH_VOID
+KSH_VOLATILE
+KSH_PROTOTYPES
+dnl
+dnl
+dnl System services
+dnl
+AC_HAVE_POUNDBANG(AC_VERBOSE(it does),
+	AC_VERBOSE(it doesn't)AC_DEFINE(SHARPBANG))dnl
+AC_PROG_INSTALL
+dnl
+dnl
+dnl  Misc ksh tests
+dnl
+KSH_DUP2_CLEXEC_CHECK
+KSH_SIGNAL_CHECK
+KSH_PGRP_CHECK
+KSH_PGRP_SYNC
+KSH_GCC_FUNC_ATTR
+KSH_OPENDIR_CHECK
+AC_UNION_WAIT
+dnl
+dnl
+AC_OUTPUT(Makefile)

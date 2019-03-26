@@ -1,0 +1,164 @@
+srcdir = @srcdir@
+VPATH = @srcdir@
+
+CC = @CC@
+CPP = @CPP@
+
+INSTALL = @INSTALL@
+INSTALL_PROGRAM = @INSTALL_PROGRAM@
+INSTALL_DATA = @INSTALL_DATA@
+
+DEFS = @DEFS@
+LIBS = @LIBS@
+
+# configure.in sets GCC_WARNFLAGS to the contents of $(srcdir)/Warn-flags
+# if gcc is being used (normally something like
+# 	-Wall -Wno-comments -Dno_RCSids)
+CFLAGS = -g -O @GCC_WARNFLAGS@
+LDSTATIC = @LDSTATIC@
+LDFLAGS = -g -O $(LDSTATIC)
+
+prefix = /usr/local
+exec_prefix = $(prefix)
+binprefix =
+manprefix =
+
+bindir = $(exec_prefix)/bin
+mandir = $(prefix)/man/man1
+maxext = 1
+
+SHELL = /bin/sh
+
+SRCS = alloc.c c_ksh.c c_sh.c c_test.c c_ulimit.c edit.c emacs.c \
+	eval.c exec.c expr.c history.c io.c jobs.c lex.c mail.c \
+	main.c misc.c missing.c path.c shf.c sigact.c syn.c table.c trap.c \
+	tree.c tty.c var.c version.c vi.c
+OBJS = alloc.o c_ksh.o c_sh.o c_test.o c_ulimit.o edit.o emacs.o \
+	eval.o exec.o expr.o history.o io.o jobs.o lex.o mail.o \
+	main.o misc.o missing.o path.o shf.o sigact.o syn.o table.o trap.o \
+	tree.o tty.o var.o version.o vi.o
+HDRS = edit.h expand.h ksh_dir.h ksh_limval.h ksh_stat.h ksh_time.h \
+	ksh_times.h ksh_wait.h lex.h options.h proto.h sh.h shf.h sigact.h \
+	table.h tree.h tty.h
+RCSFILES = $(SRCS) $(HDRS) ksh.1 Makefile.in configure.in config.h.top \
+	config.h.bot config.h.in acconfig.h aclocal.m4 mkinstalldirs \
+	install.sh new-version.sh siglist.in siglist.sh \
+	check-fd.c check-pgrp.c check-sigs.c \
+	README POSIX NEWS CONTRIBUTORS PROJECTS 
+DISTFILES = $(RCSFILES) configure stamp-h.in Bugs BUG-REPORTS ChangeLog \
+	INSTALL NOTES
+# ETCFILES also disted, but handled differently
+ETCFILES = etc/ksh.kshrc etc/profile etc/sys_config.sh
+# MISCFILES also disted, but handled differently
+MISCFILES = misc/COPYING misc/ChangeLog.sjg misc/Changes.jrm misc/Changes.mlj \
+	misc/Changes.pc misc/README.sjg misc/ReadMe.eg misc/ReadMe.emacs \
+	misc/ReadMe.jrm
+
+.PRECIOUS: configure config.h.in Makefile config.status
+
+all: ksh
+
+.c.o:
+	$(CC) -c $(CPPFLAGS) $(DEFS) -I. -I$(srcdir) $(CFLAGS) $<
+
+install: installdirs all $(srcdir)/ksh.1
+	$(INSTALL_PROGRAM) ksh $(bindir)/$(binprefix)ksh
+	-$(INSTALL_DATA) $(srcdir)/ksh.1 $(mandir)/$(manprefix)ksh.$(manext)
+
+installdirs:
+	$(srcdir)/mkinstalldirs $(bindir) $(mandir)
+
+uninstall:
+	rm -f $(bindir)/$(binprefix)ksh
+	rm -f $(mandir)/$(manprefix)ksh.$(manext)
+
+check:
+	ENV= ./ksh $(srcdir)/Bugs ./ksh
+
+ksh: $(OBJS)
+	$(CC) $(LDFLAGS) -o $@ $(OBJS) $(LIBS)
+
+info:
+	@echo "No info (yet)"
+dvi:
+
+configure: configure.in aclocal.m4
+	cd $(srcdir) && autoconf
+
+config.h.in: stamp-h.in
+stamp-h.in: configure.in aclocal.m4 acconfig.h config.h.top config.h.bot
+	cd $(srcdir) && autoheader
+	touch $(srcdir)/stamp-h.in
+
+config.h: stamp-h
+stamp-h: config.h.in config.status
+	CONFIG_FILES= CONFIG_HEADERS=config.h ./config.status
+	touch stamp-h
+
+Makefile: Makefile.in config.status
+	CONFIG_FILES=Makefile CONFIG_HEADERS= ./config.status
+
+config.status: configure
+	LDSTATIC=$(LDSTATIC) ./config.status --recheck
+
+$(OBJS): config.h sh.h options.h
+
+trap.o: trap.c siglist.out
+
+# two steps to prevent the creation of a bogus siglist.out
+siglist.out: config.h sh.h siglist.in siglist.sh
+	$(srcdir)/siglist.sh "$(CPP) $(CPPFLAGS) $(DEFS) -I. -I$(srcdir)" < $(srcdir)/siglist.in > tmpsiglist.out
+	mv tmpsiglist.out siglist.out
+
+debugtools: check-fd check-pgrp check-sigs
+
+check-fd: check-fd.o config.h
+	$(CC) $(LDFLAGS) -o $@ check-fd.o $(LIBS)
+
+check-pgrp: check-pgrp.o config.h
+	$(CC) $(LDFLAGS) -o $@ check-pgrp.o $(LIBS)
+
+check-sigs: check-sigs.o config.h
+	$(CC) $(LDFLAGS) -o $@ check-sigs.o $(LIBS)
+
+TAGS: $(SRCS) $(HDRS)
+	cd $(srcdir) && etags $(SRCS) $(HDRS)
+
+tags: $(SRCS) $(HDRS)
+	cd $(srcdir) && ctags -wt $(SRCS) $(HDRS)
+
+clean:
+	rm -f ksh $(OBJS) siglist.out core version.c.bak Makefile.bak
+
+mostlyclean: clean
+
+distclean: clean
+	rm -f Makefile config.h stamp-h config.status tags TAGS
+
+realclean: distclean
+
+rcs-ci:
+	cd $(srcdir) && ci -l -q $(RCSFILES)
+
+rcs-diff:
+	cd $(srcdir) && for i in $(RCSFILES); do \
+	    rcsdiff -kkv -c $$i; \
+	done
+
+dist: $(DISTFILES) $(ETCFILES) $(MISCFILES)
+	cd $(srcdir) && \
+	  { \
+	    ./new-version.sh; \
+	    FNAME=pdksh-`sed -e '/KSH_VERSION=/!d' \
+		    -e 's/[^0-9]*\([0-9.+mun]*\).*/\1/' -e q version.c`; \
+	    echo Creating version $$FNAME; \
+	    rm -rf $$FNAME; \
+	    mkdir $$FNAME $$FNAME/etc $$FNAME/misc; \
+	    cp -p $(DISTFILES) $$FNAME; \
+	    cp -p $(ETCFILES) $$FNAME/etc; \
+	    cp -p $(MISCFILES) $$FNAME/misc; \
+	    [ -x ./Dist-fixup ] && ./Dist-fixup $$FNAME; \
+	    chmod -R a+rX,u+w,og-w $$FNAME; \
+	    tar chzf $$FNAME.tar.gz $$FNAME; \
+	    find $$FNAME -print | xargs pathchk -p; \
+	  }

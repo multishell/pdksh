@@ -14,15 +14,9 @@
 #
 # SEE ALSO:
 #	/etc/profile
-#
-# AMENDED:
-#	91/11/05 22:09:08 (rook)
-#
-# RELEASED:
-#	91/11/05 22:09:09 v1.3
-#
-# SCCSID:
-#	@(#)sys_config.sh 1.3 91/11/05 22:09:08 (rook)
+
+# RCSid:
+#	$Id: sys_config.sh,v 1.5 93/09/29 08:59:36 sjg Exp $
 #
 #	@(#)Copyright (c) 1991 Simon J. Gerraty
 #
@@ -35,7 +29,11 @@
 #
 
 # determin machine type
-if [ -f /usr/bin/arch ]; then
+if [ -f /386bsd ]; then		# doesn't have uname or arch
+	ARCH=i386
+	OS=386bsd
+	HOSTNAME=`hostname`
+elif [ -f /usr/bin/arch ]; then
 	ARCH=`arch`
 elif [ -f /usr/bin/uname -o -f /bin/uname ]; then
 	ARCH=`uname -m`
@@ -57,12 +55,10 @@ esac
 OS=${OS:-`eval $uname -s`}
 HOSTNAME=${HOSTNAME:-`eval $uname -n`}
 
-# set which ever is required to not produce a linefeed 
-# in an echo(1)
-case $OS in
-SunOS)	C="\c"; N="";
-	;;
-*)	C="\c"; N=""
-	;;
+case `echo -n ""` in
+-n*)	_C_=""; _N_="-n";;
+*)	_C_="\c"; _N_="";;
 esac
-export OS ARCH HOSTNAME C N uname
+N="${_N_}"
+C="${_C_}"
+export OS ARCH HOSTNAME uname

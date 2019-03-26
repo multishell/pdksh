@@ -1,10 +1,10 @@
-.\" $Id: ksh.1,v 1.1 1992/05/02 13:26:52 sjg Exp $
+.\" $Id: ksh.1,v 1.1 1994/05/31 13:34:34 michael Exp $
 .nr OJ 1 \" Job Control
 .nr OE 1 \" Command Editing
 .nr OB 1 \" BSD enhanced ulimit options
 .ds OK [\|
 .ds CK \|]
-.TH KSH 1 "April 1992"
+.TH KSH 1 "July 1992"
 .SH NAME
 ksh \- Bourne / Korn Shell (Public Domain)
 .SH SYNOPSIS
@@ -43,6 +43,7 @@ In the following syntax, { ... }? indicates an optional thing,
 .S "\fB(\fP list \fB)\fP"
 .S "\fB{\fP list \fB;\fP \fB}\fP"
 .S "\fBfor\fP name { \fBin\fP { word }* }? \fBdo\fP list \fB;\fP \fBdone\fP"
+.S "\fBselect\fP name { \fBin\fP { word }* }? \fBdo\fP list \fB;\fP \fBdone\fP"
 .S "{ \fBwhile\fP | \fBuntil\fP } list \fB;\fP \fBdo\fP list \fB;\fP \fBdone\fP"
 .S "\fBif\fP list \fB;\fP \fBthen\fP list \fB;\fP { \fBelif\fP list \fB;\fP \fBthen\fP list \fB;\fP }* { \fBelse\fP list \fB;\fP }?\fBfi\fP"
 .S "\fBcase\fP name \fBin\fP { \fB(\fP word { \fB|\fP word } \fB)\fP list \fB;;\fP }* \fBesac\fP"
@@ -64,12 +65,35 @@ Redirection may occur anywhere in a command.
 .S "pipe \fB||\fP cond"
 .IP pipe:
 .S "statement { \fB|\fP statement }*"
+.SS The select statement
+The \fBselect\fP statement provides an automatic method of presenting the
+user with a menu selection from several options.
+The \fIwords\fP given in the list are printed on standard error, each
+preceded by a number.
+Typing the number on standard input sets the variable \fIname\fP to the
+word that was selected.
+The data that was typed is preserved in a variable called REPLY.
+The contents of the loop are then executed using the selected value.
+A new prompt PS3 is used to indicate that a number should be typed in
+to choose a value from the menu.
+.LP
+Menus will continue to be presented until an interrupt is received or
+end-of-file is typed on input.
 .SS Alias expansion
 Alias expansion occurs when the first word of a
 statement is a defined alias,
 except when that alias is already being expanded.
 It also occurs after the expansion of an alias whose
 definition ends with a space.
+.SS Alternation
+Csh provides a filename expansion method known as alternation.
+This has been added into this version of ksh.
+When performing filename substitution, you can get the shell to create
+a set of strings for you. For example, `exampl{a,b,c,d,e}' will expand
+to ``exampla examplb examplc exampld example''.
+A comma separated set of strings in curly braces 
+will be expanded into a set of strings that are passed into the command.
+The strings are not sorted.
 .SS Shell variables
 The following standard special variables exist:
 \fB!\fP, \fB#\fP, \fB$\fP, \fB\-\fP, \fB?\fP.
@@ -88,14 +112,23 @@ It typically contains function and alias definitions.
 .IP FCEDIT
 The editor used by the \fIfc\fP command.
 During startup the shell checks the value of \fBFCEDIT\fP, 
-\fBEDITOR\fP and finally \fBVISUAL\fP to try and determin what
+\fBEDITOR\fP and finally \fBVISUAL\fP to try and determine what
 command line edit mode to use.  Note that this is not strictly
 ksh compatible behaviour.
+.IP COLUMNS
+The width to use for the commandline editing (emacs mode only).
+.IP HISTFILE
+The name of the file used to store history.
+If defined, history will be loaded from this file on startup.
+Also, several invocations of the shell running on the same machine
+will share history if their HISTFILE variables all point at the same file.
+.IP HISTSIZE
+The number of commands normally stored for history, default 128.
+.IP HOME
+The default directory for the \fIcd\fP command.
 .IP IFS
 \fIInternal field separator\fP,
 used during substitution and the \fIread\fP command.
-.IP HOME
-The default directory for the \fIcd\fP command.
 .IP MAIL
 If set, the user will be informed of the arrival of mail
 in the named file.  This variable is ignored if
@@ -129,18 +162,6 @@ by assigning an integer value to this variable.
 The number of seconds since the shell timer was started or
 reset.  Assigning an integer value to this variable resets
 the timer.
-.IP COLUMNS
-The width to use for the commandline editing (emacs mode only).
-.IP HISTFILE
-The name of the file to read initial history from.  The default
-is "\fB$HOME/.pdksh_hist\fP".  When the shell exits it will
-overwrite this file with its current history.  This behaviour
-will almost certainly cause grief when multiple shells are being
-run by the same user.  Making the file read-only will allow each
-shell to start with a set history and avoid overwriting the
-file.
-.IP HISTSIZE
-The number of history items to save in \fBHISTFILE\fP.
 .SS Substitution
 In addition to the System Vr2 substitutions,
 the following are available.
@@ -157,7 +178,7 @@ the matched text is deleted from the result of substitution.
 A single \fB#\fP results in the shortest match,
 two \fB#\fP's results in the longest match.
 .IP "${var%pattern} ${var%%pattern}"
-Like \fB#\fP substition, but deleting from the end of the value.
+Like \fB#\fP substitution, but deleting from the end of the value.
 .SS Expressions
 Expressions can be used with the \fBlet\fP command,
 as numeric arguments to the \fBtest\fP command,
@@ -229,7 +250,7 @@ If no arguments are given, any IO redirection is permanent.
 .IP "fc [\fB\-e\fP \fIeditor\fP] [\fB\-lnr\fP] [\fIfirst\fP [\fIlast\fP]]"
 \fIFirst\fP and \fIlast\fP select commands.
 Commands can be selected by history number,
-or a string specifing the most recent command starting with that string.
+or a string specifying the most recent command starting with that string.
 The \fB\-l\fP option lists the command on stdout,
 and \fB\-n\fP inhibits the default command numbers.
 The \fB\-r\fP option reverses the order of the list.
@@ -319,7 +340,7 @@ The attributes are as follows.
 .ta 5n 10n
 \t\-i\tThe variable's value is stored as an integer.
 .br
-\t\-x\tThe variable is exported to the enviroment.
+\t\-x\tThe variable is exported to the environment.
 .br
 \t\-r\tThe variable is read-only cannot be reassigned a value.
 .br
@@ -445,7 +466,7 @@ If the system does not support job control, monitor mode enables
 job reporting.  The jobs and kill commands
 functions as above, and you will
 be informed when background jobs complete.  Fg and bg are not 
-availiable.
+available.
 .PD
 .br
 .SS "Interactive Input Line Editing"
@@ -495,9 +516,9 @@ bind '^XB'=down-history
 .br
 bind '^XC'=forward-char
 .br
-bind '^XC'=backward-char
+bind '^XD'=backward-char
 .br
-will bind the arrow keys on an ANSI terminal.  Of course some escape
+will bind the arrow keys on an ANSI terminal, or xterm.  Of course some escape
 sequences won't work out quite that nicely.
 .TP
 \fBbind -m\fP \*(OK \fIstring\fP \*(CK = \*(OK \fIsubstitute\fP \*(CK
@@ -519,7 +540,7 @@ using caret notation
 (note that the ASCII
 .SM ESC
 character is written as \s-1^[\s0\|),
-then the editing function performed is decribed.
+then the editing function performed is described.
 Note that
 .I "editing command"
 names are used only with the
@@ -809,11 +830,10 @@ Based on the public domain 7th edition Bourne shell.
 .LP
 System V and Korn modifications by Eric Gisin,
 with contributions by
-Ron Natalie, Arnold Robbins, Doug Gwyn, Erik Baalbergen, 
-AT&T\ (getopt(3)), John McMillan and Simon Gerraty.
-
+Ron Natalie, Arnold Robbins, Doug Gwyn, Erik Baalbergen, AT&T (getopt(3)),
+John McMillan, Simon Gerraty and Peter Collinson.
 .SH DIFFERENCES FROM AT&T VERSION
-The \fBselect\fP statement is not implemented.
+Csh-style alternations are implemented.
 Variable arrays are not implemented.
 Variable attributes other than integer are not implemented.
 The \fBERR\fP and \fBEXIT\fP traps are not implemented for functions.
@@ -853,7 +873,7 @@ test \- test condition (Korn and 8th edition)
 .br
 \fB[\fP \fIexpression\fP \fB]\fP
 .SH DESCRIPTION
-\fBTest\f evalutates the \fIexpression\fP and returns zero status if true,
+\fBTest\f evaluates the \fIexpression\fP and returns zero status if true,
 and non-zero status otherwise.
 It is normally used as the controlling command of the \fBif\fP and \fBwhile\fP statements.
 .LP

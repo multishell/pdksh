@@ -1,0 +1,52 @@
+/* Copyright (C) 1994, Memorial University of Newfoundland.
+ * This file is covered by the GNU General Public License, version 2, see
+ * the file misc/COPYING for details.
+ */
+/*
+ * Bottom portion of the configuration file for the PD ksh
+ *
+ * RCSid: $Id: config.h.bot,v 1.1 1994/05/31 13:34:34 michael Exp $
+ */
+
+/*
+ * if you don't have mmap() you can't use Peter Collinson's history
+ * mechanism.  If that is the case, then define EASY_HISTORY
+ */
+#if !defined(COMPLEX_HISTORY) || !defined(HAVE_MMAP)
+# define EASY_HISTORY			/* sjg's trivial history file */
+#endif
+
+/* Don't compile in job control if there is no support for it */
+#if (!defined(HAVE_WAITPID) && !defined(HAVE_WAIT3)) || (!defined(POSIX_SIGNALS) && !defined(BSD42_SIGNALS))
+# undef JOBS
+#endif
+
+/* pdksh assumes system calls return EINTR if a signal happened (this so
+ * the signal handler doesn't have to longjmp()).  I don't know if this
+ * happens (or can be made to happen) with sigset() et. al., so, to be on
+ * the safe side, make sure a bogus shell doesn't get compiled.
+ * If BSD41_SIGNALS isn't defined and your compiler chokes on this, delete
+ * the hash in front of the error (and file a bug report).
+ */
+#ifdef BSD41_SIGNALS
+  # error pdksh needs interruptable system calls.
+#endif /* BSD41_SIGNALS */
+
+#ifdef GCC_FUNC_ATTR
+# define GCC_FA_NORETURN	__attribute__((noreturn))
+# define GCC_FA_CONST		__attribute__((noreturn))
+# define GCC_FA_FORMAT(t,f,s)	__attribute__((format(t,f,s)))
+#else
+# define GCC_FA_NORETURN
+# define GCC_FA_CONST
+# define GCC_FA_FORMAT(t, f, s)
+#endif /* GCC_FUNC_ATTR */
+
+#if defined(EMACS) || defined(VI)
+# define	EDIT
+#else
+# undef		EDIT
+#endif
+
+/* end of config.h.bot */
+#endif /* CONFIG_H */

@@ -1,0 +1,112 @@
+List of reported problems (problems reported and fixed before 5.0.4 not
+included).  Unresolved problems (may or may not still exist) marked by *,
+problems believed to be fixed marked by x.
+
+* pdksh 5.0.3, MIPS RISC/os 5.0 (bsd universe) (reported by Michael Rendell):
+  for interactive, job controlled shells, the kernel's tty state gets twisted
+  in such a way that all output is lost (eg, if ttyXX is wedged then
+  "echo hi > /dev/ttyXX" from a seperate login appears to succeed but produces
+  no output on ttyXX).
+  Work around is to run a program and hit ^C.
+
+* pdksh 5.0.1, NetBSD 0.9a? (reported by Simon J. Gerraty): problem with
+  job control not finding tty
+  [from Mail.1:71]:
+    Also, I have noticed (with 5.0.1 anyway) that if as root I su to a
+    user I get: 
+    root:511$ su foobar
+    warning: won't have full job control
+    [1] + Stopped (tty output) stty erase ^? 
+    foobar:1$
+
+--------------------- put fixed problems below this line ---------------------
+
+x pdksh 5.0.3, NetBSD 0.9a (reported by Simon J. Gerraty): pipelines
+  occasionally hang.
+  [from Mail.1:71]:
+    Yes, I just built 5.0.3 on zen (NetBSD) and the menu stuff worked fine.
+    However I've just done:
+
+    sjg:910$ diff -cb /etc/profile profile | more
+
+    And it has been sitting there ever since.
+  [... gdb output indicating process groups set up ok - presumed problem is
+   with tty process group]
+  [Fixed in 5.0.4 - do tcsetpgrp() in both parent and child for first process]
+
+x pdksh 5.0.2, ISC unix 3.01 (reported by Sean Hogan): set +o monitor (in
+  interactive shell?) closes tty
+  [from Mail.1:64]:
+    I'm having two problems with the job control code, which I believe might
+    be related.  The first one is that "set +o monitor" closes the tty,
+    which causes the shell to exit since its input is gone.  According to
+    the code, that would imply that FTALKING has mysteriously been turned
+    off (jobs.c:343).  But my understanding of the code is that FTALKING
+    would only be clear for background processes, and set would be done by
+    the shell.  Do you have any insights here?  It's not a big deal of course;
+    I don't need to turn off monitor anyway.
+  [fixed in 5.0.5 - problem was tty process group was being restored so
+   shell could no longer read from tty]
+
+x pdksh 5.0.4, - (reported by Simon J. Gerraty and Sean Hogan):
+  test "" -a x would fail.
+  [fixed in 5.0.5 - t_wp being unnecessarily decremented in primary()]
+
+x pdksh 5.0.4, -: test -p foo would always fail.
+  [fixed in 5.0.5 - spell S_ISFIFO correctly]
+
+x pdksh 5.0.4, -: test ! ! foo would generate error (unexpected !)
+  [fixed in 5.0.5 - nexpr() always calls nexpr(), changes to posix code]
+
+x pdksh 5.0.4, -: set -i would generate an internal error.
+  [fixed in 5.0.5 - use OF_SET in creating set_opts]
+
+x pdksh 5.0.4, -: let 0>22 would evaluate to true (and 0<22 false)
+  [fixed in 5.0.5 - reversed order of O_LT and O_GT in enum]
+
+x pdksh 5.0.4, - (reported by Sean Hogan): echo does not process escape
+  characters (ie, echo "foo\c" doesn't to the sysV thing)
+  [see Mail.1:98]
+  [fixed in 5.0.5 - echo now behaves like sysv echo]
+
+x pdksh 5.0.4, - (reported by Sean Hogan): tty process groups not restored
+  properly (vi, :sh, exit causes vi to received SIGTTOU).
+  [see Mail.1:98]
+  [fixed in 5.0.5 - restore tty process group in j_exit]
+
+x pdksh 5.0.4, - (reported by Sean Hogan): the exit command does not do the
+  stopped jobs check.
+  [see Mail.1:94,95,98]
+  [fixed in 5.0.5 - added LSHELL, hack c_exitreturn to use it]
+
+x pdksh 5.0.3, ISC unix 3.01 (reported by Sean Hogan): if notify is set,
+  running cat & produces "[1] + Stopped (tty input) cat", but jobs, fg,
+  etc. don't know about the job.
+  [from Mail.1:76]
+    I get [1] + Stopped (tty input)  cat.  Interestingly, "jobs" reports
+    nothing, and "fg" doesn't see it either.  But it's definitely there in
+    the ps output.  It only responds to kill -9, nothing else.  I guess this
+    is a side track?
+  [see also Mail.1:97,Mail.2:2,3]
+  [fixed in 5.0.6 - don't remove stopped jobs in the notify code of check_job()]
+
+x pdksh 5.0.5, - (reported by Sean Hogan): repeated history commands were being
+  echoed after the command was executed.
+  [see Mail.2:5,6]
+  [fixed in 5.0.6 - call shf_flush() in case SHIST: of yylex()]
+
+x pdksh 5.0.5, -: wait with no arguments would hang forever.
+  [fixed in 5.0.6 - only wait for running jobs in waitfor()]
+
+x pdksh 5.0.2, HP-UX 9.01 (reported by Sean Hogan): scipts occasionally get
+  stopped with SIGTTIN
+  [from Mail.1:68]:
+    I noticed another small problem today, which is that occasionally
+    (on an HP 9000/715, HP-UX 9.01, cc from the ANSI C developer set)
+    a background process which is definitely not reading from its input
+    stops with SIGTTIN.  I first noticed this with a nohup'ed process, but
+    it periodically happens without as well.  The process is a perl script,
+    if that makes any difference.  Have you seen this on your HP(s)?
+  [hasn't been seen in 5.0.3: Mail.1:73,76]
+  [not a shell bug, see Mail.2:14,15]
+
