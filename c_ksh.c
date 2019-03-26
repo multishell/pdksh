@@ -392,13 +392,17 @@ c_print(wp)
 		for (s = Xstring(xs, xp); len > 0; ) {
 			n = write(fd, s, len);
 			if (n < 0) {
+#ifdef KSH
 				if (flags & PO_COPROC)
 					restore_pipe(opipe);
+#endif /* KSH */
 				if (errno == EINTR) {
 					/* allow user to ^C out */
 					intrcheck();
+#ifdef KSH
 					if (flags & PO_COPROC)
 						opipe = block_pipe();
+#endif /* KSH */
 					continue;
 				}
 #ifdef KSH
@@ -762,6 +766,12 @@ c_typeset(wp)
 	    for (l = e->loc; l; l = l->next) {
 		for (p = tsort(&l->vars); (vp = *p++); )
 		    for (; vp; vp = vp->u.array) {
+			/* Report an unset param only if the user has
+			 * explicitly given it some attribute (like export);
+			 * otherwise, after "echo $FOO", we would report FOO...
+			 */
+			if (!(vp->flag & ISSET) && !(vp->flag & USERATTRIB))
+			    continue;
 			if (flag && (vp->flag & flag) == 0)
 			    continue;
 			/* no arguments */
@@ -983,6 +993,7 @@ c_unalias(wp)
 	return rv;
 }
 
+#ifdef KSH
 int
 c_let(wp)
 	char **wp;
@@ -1001,6 +1012,7 @@ c_let(wp)
 				rv = val == 0;
 	return rv;
 }
+#endif /* KSH */
 
 int
 c_jobs(wp)
@@ -1368,7 +1380,9 @@ const struct builtin kshbuiltins [] = {
 	{"+getopts", c_getopts},
 	{"+jobs", c_jobs},
 	{"+kill", c_kill},
+#ifdef KSH
 	{"let", c_let},
+#endif /* KSH */
 	{"print", c_print},
 	{"pwd", c_pwd},
  	{"*=readonly", c_typeset},

@@ -1,3 +1,6 @@
+#ifndef KSH_TIME_H
+# define KSH_TIME_H
+
 /* Wrapper around the ugly time.h,sys/time.h includes/ifdefs */
 /* $Id$ */
 
@@ -19,3 +22,4 @@ extern time_t time ARGS((time_t *));
 #ifndef CLK_TCK
 # define CLK_TCK 60			/* 60HZ */
 #endif
+#endif /* KSH_TIME_H */

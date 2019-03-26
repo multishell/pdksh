@@ -30,8 +30,8 @@
 #if !defined(S_ISBLK) && defined(S_IFBLK)
 # define S_ISBLK(m)	(((m) & S_IFMT) == S_IFBLK)
 #endif /* S_ISBLK */
-#if !defined(S_ISFIFO) && defined(S_IFFIFO)
-# define S_ISFIFO(m)	(((m) & S_IFMT) == S_IFFIFO)
+#if !defined(S_ISFIFO) && defined(S_IFIFO)
+# define S_ISFIFO(m)	(((m) & S_IFMT) == S_IFIFO)
 #endif /* S_ISFIFO */
 #if !defined(S_ISLNK) && defined(S_IFLNK)
 # define S_ISLNK(m)	(((m) & S_IFMT) == S_IFLNK)

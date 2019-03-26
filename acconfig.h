@@ -87,6 +87,12 @@
 /* Define if you have a sane <termios.h> header file */
 #undef HAVE_TERMIOS_H
 
+/* Define if you can include <sys/ioctl.h> with <termios.h> */
+#undef SYS_IOCTL_WITH_TERMIOS
+
+/* Define if you can include <sys/ioctl.h> with <termio.h> */
+#undef SYS_IOCTL_WITH_TERMIO
+
 /* Define if you have a memset() function in your C library */
 #undef HAVE_MEMSET
 

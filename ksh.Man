@@ -18,10 +18,10 @@
 .\"}}}
 .\"{{{  Title
 .ksh(
-.TH KSH 1 "May 19, 1995" "" "User commands"
+.TH KSH 1 "August 19, 1996" "" "User commands"
 .ksh)
 .sh(
-.TH SH 1 "May 19, 1995" "" "User commands"
+.TH SH 1 "August 19, 1996" "" "User commands"
 .sh)
 .\"}}}
 .\"{{{  Name
@@ -160,9 +160,11 @@ used to specify redirections (see Input/Output Redirection below);
 \fB&\fP is used to create asynchronous pipelines;
 \fB&&\fP and \fB||\fP are used to specify conditional execution;
 \fB;;\fP is used in \fBcase\fP statements;
-\fB(\fP .. \fB)\fP are used to create subshells;
-and lastly,
+.ksh(
 \fB((\fP .. \fB))\fP are used in arithmetic expressions;
+.ksh)
+and lastly,
+\fB(\fP .. \fB)\fP are used to create subshells.
 .PP
 White-space and meta-characters can be quoted individually using
 backslash (\fB\e\fP), or in groups using double (\fB"\fP) or single (\fB'\fP)
@@ -202,7 +204,9 @@ The command may be a shell built-in command, a function or an \fIexternal
 command\fP, \fIi.e.\fP, a separate executable file that is located using the
 \fBPATH\fP parameter (see Command Execution below).
 Note that all command constructs have an \fIexit status\fP: for external
-commands, this is related to the status returned by \fIwait\fP(2);
+commands, this is related to the status returned by \fIwait\fP(2) (if the
+command could not be found, the exit status is 127, if it could not be
+executed, the exit status is 126);
 the exit status of other command constructs (built-in commands, functions,
 compound-commands, pipelines, lists, \fIetc.\fP) are all well defined and are
 described where the construct is described.
@@ -388,10 +392,12 @@ Mostly the same as \fBfunction\fP.
 See Functions below.
 .\"}}}
 .\"{{{  (( expression ))
+.ksh(
 .IP "\fB((\fP \fIexpression\fP \fB))\fP"
 The arithmetic expression \fIexpression\fP is evaluated;
 equivalent to \fBlet "\fP\fIexpression\fP\fB"\fP.
 See Arithmetic Expressions and the \fBlet\fP command below.
+.ksh)
 .\"}}}
 .\"{{{  [[ expression ]]
 .ksh(
@@ -941,9 +947,18 @@ The process ID of the shell's parent (readonly).
 Parameter, command and arithmetic substitutions are performed, and
 \fB!\fP is replaced with the current command number (see \fBfc\fP
 command below).  A literal ! can be put in the prompt by placing !! in PS1.
+Note that since the command line editors try to figure out how long the
+prompt is (so they know how far it is to edge of the screen),
+escape codes in the prompt tend to mess things up.
+You can tell the shell not to count certain sequences (such as escape codes)
+by prefixing your prompt with a non-printing character (such as control-A)
+followed by a carriage return and then delimiting the escape codes with
+this non-printing character.
+If you don't have any non-printing characters, you're out of luck...
+BTW, don't blame me for this hack; it's in the original ksh.
 .ksh)
 .sh(
-The prompt is printed verbatum (\fIi.e.\fP, no substitutions are done).
+The prompt is printed verbatim (\fIi.e.\fP, no substitutions are done).
 .sh)
 Default is `\fB$\ \fP' for non-root users, `\fB#\ \fP' for root..
 .\"}}}
@@ -968,7 +983,7 @@ Parameter, command and arithmetic substitutions are performed
 before it is printed.
 .ksh)
 .sh(
-The prompt is printed verbatum (\fIi.e.\fP, no substitutions are done).
+The prompt is printed verbatim (\fIi.e.\fP, no substitutions are done).
 .sh)
 Default is `\fB+\ \fP'.
 .\"}}}
@@ -1213,7 +1228,10 @@ will print an error with a line number prepended to it.
 .\"}}}
 .\"{{{  Arithmetic Expressions
 .SS "Arithmetic Expressions"
-Integer arithmetic expressions can be used with the \fBlet\fP command,
+Integer arithmetic expressions can be used
+.ksh(
+with the \fBlet\fP command,
+.ksh)
 inside \fB$((\fP..\fB))\fP expressions,
 inside array references (\fIe.g.\fP, \fIname\fP\fB[\fP\fIexpr\fP\fB]\fP),
 as numeric arguments to the \fBtest\fP command,
@@ -1271,6 +1289,17 @@ negation.
 logical not; the result is 1 if argument is zero, 0 if not.
 .IP "\fB~\fP"
 arithmetic (bit-wise) not.
+.IP "\fB++\fP"
+increment; must be applied to a parameter (not a literal or other
+expression) - the parameter is incremented by 1.
+When used as a prefix operator, the result is the incremented value of
+the parameter, when used as a postfix operator, the result is the
+original value of the parameter.
+.IP "\fB++\fP"
+similar to \fB++\fP, except the paramter is decremented by 1.
+.IP "\fB,\fP"
+seperates two arithmetic expressions; the left hand side is evaluated first,
+then the right.  The result is value of the expression on the right hand side.
 .IP "\fB=\fP"
 assignment; variable on the left is set to the value on the right.
 .IP "\fB*= /= %= += \-= <<= >>= &= ^= |=\fP"
@@ -1840,6 +1869,7 @@ If no arguments are specified, a list of all the signals, their numbers and
 a short description of them are printed.
 .\"}}}
 .\"{{{  let [expression ...]
+.ksh(
 .IP "\fBlet\fP [\fIexpression\fP ...]"
 Each expression is evaluated, see Arithmetic Expressions above.
 If all expressions are successfully evaluated, the exit status
@@ -1849,6 +1879,7 @@ the exit status is greater than 1.
 Since expressions may need to be
 quoted, \fB((\fP \fIexpr\fP \fB))\fP is syntactic sugar for \fBlet
 "\fP\fIexpr\fP\fB"\fP.
+.ksh)
 .\"}}}
 .\"{{{  print [-nprsun | -R [-en]] [argument ...]
 .IP "\fBprint\fP [\fB\-nprsu\fP\fIn\fP | \fB\-R\fP [\fB\-en\fP]] [\fIargument ...\fP]"
@@ -1892,9 +1923,10 @@ If the input line ends in a backslash and the \fB\-r\fP option was not used, the
 backslash and newline are stripped and more input is read.
 If no input is read, \fBread\fP exits with a non-zero status.
 .sp
-A prompt, which is printed to standard error before any input is read, may be
-specified by appending and question mark and the prompt to the
-first parameter (\fIe.g.\fP, \fBread nfoo?'number of foos: '\fP).
+The first parameter may have a question mark and a string appended to it, in
+which case the string is used as a prompt (printed to standard error before
+any input is read) if the input is a tty
+(\fIe.g.\fP, \fBread nfoo?'number of foos: '\fP).
 .sp
 The \fB\-u\fP\fIn\fP and \fB\-p\fP options cause input to be read
 from file descriptor \fIn\fP or the current co-process (see Co-Processes above
@@ -2073,6 +2105,10 @@ T}
 No effect \- in the original Korn shell, unless viraw was set, the vi command
 line mode would let the tty driver do the work until ESC (^[) was entered.
 pdksh is always in viraw mode.
+T}
+	vi-esccomplete	T{
+In vi command line editing, do command / file name completion when
+escape (^[) is entered in command mode.
 T}
 	vi-show8	T{
 Prefix characters with the eighth bit set with `M-'.
@@ -3130,11 +3166,12 @@ File name expansion matches the big-word against the files in the
 current directory.
 After expansion, the cursor is placed just past the last word and the editor
 is in insert mode.
-.IP "\fIn\fP\fB\e\fP, \fIn\fP\fB^F\fP and \fIn\fP\fB<tab>\fP"
+.IP "\fIn\fP\fB\e\fP, \fIn\fP\fB^F\fP, \fIn\fP\fB<tab>\fP and \fIn\fP\fB<esc>\fP"
 command/file name completion: 
 replace the current big-word with the longest unique
 match obtained after performing command/file name expansion.
-\fB<tab>\fP is only recognized if the \fBvi-tabcomplete\fP option
+\fB<tab>\fP is only recognized if the \fBvi-tabcomplete\fP option is set,
+while \fB<esc>\fP is only recognized if the \fBvi-esccomplete\fP option
 is set (see \fBset \-o\fP).
 If \fIn\fP is specified, the \fIn\fPth possible
 completion is selected (as reported by the command/file name enumeration

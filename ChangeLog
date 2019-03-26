@@ -1,3 +1,170 @@
+Tue Oct 29 11:34:58 NST 1996 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* made pdksh-5.2.12 distribution
+
+Fri Oct 25 11:59:48 NDT 1996 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* vi.c(vi_cmd): case Cntl('i'): dont fall through, call complete_word().
+
+Tue Oct 22 17:38:21 NDT 1996 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* table.h(USERATTRIB): new define.
+	* c_ksh.c(c_typeset): report unset params only if it has some
+	  interesting attributes.
+
+Tue Oct 22 15:54:39 NDT 1996 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* jobs.c(exchild): changed NEED_PGRP_SYNC code so j_sync_pipe[1] isn't
+	  left open in 2nd+ children.
+
+Tue Oct 22 12:59:49 NDT 1996 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* main.c(main): memset() env to 0.
+
+Mon Oct 21 12:53:44 NDT 1996 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* main.c(cleanup_proc_env): new function.
+	* exec.c(execute): call cleanup_proc_env() before calling ksh_execve().
+
+Fri Oct 11 22:53:57 NDT 1996 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* vi.c(display): use ch not e->buf[cur] when printing character.
+
+Fri Oct 11 13:26:11 NDT 1996 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* aclocal.m4(KSH_TIMES_CHECK,KSH_DUP2_CLEXEC_CHECK,KSH_OPENDIR_CHECK):
+	  changed sense of test so "yes" result is printed if you have a good
+	  system.
+	* aclocal.m4(KSH_C_FUNC_ATTR): changed return type of test_cnst to int.
+
+Fri Oct 11 13:05:40 NDT 1996 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* syn.c(get_command): added inalias() call when setting cf = CONTIN.
+
+Thu Oct 10 16:22:03 NDT 1996 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* lex.c(getsc__): case SALIAS: if we read eof, break, don't continue.
+
+Tue Oct  8 13:14:00 NDT 1996 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* aclocal.m4(KSH_TERM): added SYS_IOCTL_WITH_TERMIOS,
+	  SYS_IOCTL_WITH_TERMIO tests.
+	* tty.h: include <sys/ioctl.h> with <termios.h>/<termio.h>
+	  if possible.
+
+Tue Oct  8 11:42:36 NDT 1996 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* made pdksh-5.2.11 distribution
+
+Tue Oct  8 11:02:54 NDT 1996 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* syn.c(inalias): new function.
+	* syn.c(c_list): call inalias() instead of testing source->type.
+
+Mon Oct  7 17:00:40 NDT 1996 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* made pdksh-5.2.10 distribution
+
+Mon Oct  7 16:23:53 NDT 1996 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* c_sh.c(c_read): when printing prompt, use isatty, not FTALKING.
+
+Wed Oct  2 12:00:51 NDT 1996 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* lex.c(yylex): redirection stuff: save result of getsc() == '-'
+	  and use it for ungetsc().
+
+	* lex.h(struct source): moved ugbuf out of union so it can be used
+	  with alias stuff.
+	* lex.c(getsc__) case SALIAS: instead of appending a space, get the
+	  next character and stuff it in ugbuf.
+
+	* lex.c(getsc_,getsc__): getsc_() renamed to getsc__().
+	* lex.c(getsc_,getsc): getsc() macro renamed to getsc_().
+	* lex.c(backslash_skip,ignore_backslash_newline): new variables.
+	* lex.c(getsc): new macro that checks backslash_skip.
+	* lex.c(getsc_bn_,getsc_bn): getsc_bn() macro deleted (all calls
+	  replaced with getsc()); getsc_bn_ renamed to getsc_bn.
+	* lex.c(ungetsc_,ungetsc): ungetsc() macro deleted; renamed ungetsc_()
+	  to ungetsc().
+	* lex.c(yylex,ungetsc,getsc_bn): set and use backslash_skip,
+	  ignore_backslash_newline.
+	* lex.c(yylex): removed special cases for backslash-newline sequence,
+	  explicitly ignore backslash followed by eof.
+
+Mon Sep 30 17:14:41 NDT 1996 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* made pdksh-5.2.9 distribution
+
+Mon Sep 30 12:52:21 NDT 1996 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* lex.c(pprompt): fixed usage of ntruncate.
+
+Thu Sep 19 17:43:33 NDT 1996 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* sh.h(KSH_SYSTEM_PROFILE): new define.
+	* main.c(main): use KSH_SYSTEM_PROFILE.
+
+	* aclocal.m4(KSH_OS_TYPE): added case for NEXT.
+
+Thu Sep 19 15:39:54 NDT 1996 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* tty.c(tty_init): added hack for NeXT's rlogin's missing controlling
+	  tty.
+
+Mon Sep 16 11:18:10 NDT 1996 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* edit.c(add_glob): don't append a * to a ~username.
+	 
+	* edit.c(x_init): set got_sigwinch before calling check_sigwinch().
+
+Wed Sep 11 14:38:38 NDT 1996 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* c_ksh.c(c_let): ifdef'd KSH.
+	* lex.h(SDPAREN),lex.c: ifdef'd KSH all uses of SDPAREN.
+	* lex.h(MDPAREN),syn.c: ifdef'd KSH all uses of MDPAREN.
+
+Mon Sep  9 16:18:03 NDT 1996 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* aclocal.m4(AC_PROG_CC): replaced autoconf's version with
+	  modified version.
+
+	* configure.in(clock_t): check in sys/time.h as well.
+	* ksh_times.h: include ksh_time.h.
+	* ksh_time.h,ksh_times.h: added ifndef KSH_TIME_H/KSH_TIMES_H.
+
+Fri Sep  6 13:20:24 NDT 1996 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* edit.c(promptlen): X\r hack for delimiting hidden characters
+	  in prompt.
+	  (Based on fix from Bill Kish)
+
+Tue Sep  3 11:03:26 NDT 1996 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* Makefile.in: removed options.h from HDRS (also removed file).
+
+Thu Aug 29 10:04:01 NDT 1996 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* aclocal.m4(KSH_MEMMOVE): added return 0 to end of main().
+
+Fri Aug 23 14:23:50 NDT 1996 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* aclocal.m4,ksh_stat.h: changed S_IFFIFO to S_IFIFO.
+
+Fri Aug 23 09:58:09 NDT 1996 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* var.c(skip_wdvarname): don't check for array if first char
+	  isn't [.
+
+Thu Aug 22 12:51:25 NDT 1996 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* jobs.c: added ifdef KSH around Coproc_id/j->coproc_id usagae.
+	* c_ksh.c(c_read): added ifdef KSH around opipe.
+
+Tue Aug 20 09:41:32 NDT 1996 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* configure.in: fixed quoting of sed LDSTATIC expression.
+
 Mon Aug 19 14:26:08 NDT 1996 Michael Rendell (michael@panda.cs.mun.ca)
 
 	* made pdksh-5.2.8 distribution

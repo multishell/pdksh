@@ -163,6 +163,7 @@ void 	unwind		ARGS((int i)) GCC_FUNC_ATTR(noreturn);
 void 	newenv		ARGS((int type));
 void 	quitenv		ARGS((void));
 void	cleanup_parents_env ARGS((void));
+void	cleanup_proc_env ARGS((void));
 void 	aerror		ARGS((Area *ap, const char *msg))
 				GCC_FUNC_ATTR(noreturn);
 /* misc.c */

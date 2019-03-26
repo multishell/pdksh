@@ -93,3 +93,9 @@ Other contributors:
     * Arnon Kanfi (<arnon@gilly.datatools.com>): fix for prompt.
     * Marc Olzheim (<marcolz@stack.urc.tue.nl>): patches to ifdef KSH the
       mail check code and aliases.
+    * Lars Hecking (<lhecking@nmrc.ucc.ie>): fixes so shell compiles as sh
+      again.
+    * Bill Kish (<kish@browncow.com>): added prompt delimiter hack for
+      hidden characters (eg, escape codes).
+    * Andrew S. Townley (<atownley@informix.com>): fixes for NeXT machines:
+      get a controlling if one needed, use correct profile.

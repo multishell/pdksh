@@ -44,7 +44,7 @@ OBJS = os2.o alloc.o c_ksh.o c_sh.o c_test.o c_ulimit.o edit.o emacs.o \
 	main.o misc.o missing.o path.o shf.o sigact.o syn.o table.o trap.o \
 	tree.o tty.o var.o version.o vi.o
 HDRS = c_test.h edit.h expand.h ksh_dir.h ksh_limval.h ksh_stat.h ksh_time.h \
-	ksh_times.h ksh_wait.h lex.h options.h proto.h sh.h shf.h sigact.h \
+	ksh_times.h ksh_wait.h lex.h proto.h sh.h shf.h sigact.h \
 	table.h tree.h tty.h
 DISTFILES = $(SRCS) $(HDRS) ksh.Man Makefile.in configure.in \
 	config.h.in conf-end.h acconfig.h aclocal.m4 emacs-gen.sh \
@@ -59,11 +59,11 @@ MISCFILES = misc/ChangeLog.sjg misc/Changes.jrm misc/Changes.mlj \
 	misc/Changes.pc misc/README.sjg misc/ReadMe.eg misc/ReadMe.emacs \
 	misc/ReadMe.jrm misc/Bugs 
 # TESTFILES also disted, but handled differently
-TESTFILES = tests/th tests/th-sh tests/arith.t tests/cdhist.t tests/eglob.t \
-	tests/glob.t tests/heredoc.t tests/history.t tests/ifs.t \
-	tests/integer.t tests/read.t tests/regress.t \
-	tests/unclass1.t tests/unclass2.t tests/version.t \
-	tests/brkcont.t
+TESTFILES = tests/th tests/th-sh tests/alias.t tests/arith.t tests/bksl-nl.t \
+	tests/brkcont.t tests/cdhist.t tests/eglob.t tests/glob.t \
+	tests/heredoc.t tests/history.t tests/ifs.t tests/integer.t \
+	tests/read.t tests/regress.t tests/unclass1.t \
+	tests/unclass2.t tests/version.t 
 # OS2FILES also disted, but handled differently
 OS2FILES = os2/Makefile os2/config.h os2/config.status os2/configure.cmd \
 	os2/emacs.out os2/kshrc.ksh os2/make.sed os2/os2.c os2/os2siglist.out \
@@ -95,7 +95,7 @@ uninstall:
 	rm -f $(bindir)/$(SHELL_PROG)$(exe_suffix)
 	rm -f $(mandir)/$(SHELL_PROG).$(manext)
 
-check:
+check test:
 	th.cmd $(srcdir)/tests/th -s $(srcdir)/tests -p ./$(SHELL_PROG)$(exe_suffix)
 
 $(SHELL_PROG)$(exe_suffix): $(OBJS)
@@ -256,7 +256,7 @@ io.o: io.c \
 jobs.o: jobs.c sh.h config.h conf-end.h \
  shf.h table.h tree.h expand.h lex.h \
  proto.h ksh_stat.h ksh_wait.h \
- ksh_times.h \
+ ksh_times.h ksh_time.h \
  tty.h \
  sh.h
 lex.o: lex.c sh.h config.h conf-end.h \

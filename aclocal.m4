@@ -5,6 +5,7 @@ dnl
 dnl This file is covered by the GPL 'cause it contains some modified versions
 dnl of autoconf's macros, in particular:
 dnl	AC_FUNC_MMAP AC_LANG_C AC_LANG_CPLUXPLUS AC_TRY_RUN KSH_HEADER_SYS_WAIT
+dnl	AC_HEADER_STAT AC_PROG_CC
 dnl
 dnl
 dnl Like AC_CHECK_TYPE(), only
@@ -59,6 +60,7 @@ AC_DEFUN(KSH_MEMMOVE,
 	  if (strcmp(buf, "abcdefcdefEF"))
 	    exit(2);
 	  exit(0);
+	  return 0;
 	}],
        ksh_cv_func_memmove=yes, ksh_cv_func_memmove=no,
        AC_MSG_WARN(assuming memmove broken); ksh_cv_func_memmove=no)])
@@ -92,6 +94,27 @@ AC_DEFUN(KSH_MEMMOVE,
          AC_MSG_WARN(assuming bcopy broken); ksh_cv_func_bcopy=no)])
     if test $ksh_cv_func_bcopy = yes; then
       AC_DEFINE(HAVE_BCOPY)
+    fi
+  fi
+ ])dnl
+dnl
+dnl
+dnl
+dnl Check for sigsetjmp()/siglongjmp() and _setjmp()/_longjmp() pairs.
+dnl Can't use simple library check as QNX 422 has _setjmp() but not _longjmp()
+dnl (go figure).
+AC_DEFUN(KSH_SETJMP,
+ [AC_CACHE_CHECK(for sigsetjmp()/siglongjmp(), ksh_cv_func_sigsetjmp,
+    [AC_TRY_LINK([], [sigsetjmp(); siglongjmp()],
+       ksh_cv_func_sigsetjmp=yes, ksh_cv_func_sigsetjmp=no)])
+  if test $ksh_cv_func_sigsetjmp = yes; then
+    AC_DEFINE(HAVE_SIGSETJMP)
+  else
+    AC_CACHE_CHECK(for _setjmp()/_longjmp(), ksh_cv_func__setjmp,
+      [AC_TRY_LINK([], [_setjmp(); _longjmp();],
+	 ksh_cv_func__setjmp=yes, ksh_cv_func__setjmp=no)])
+    if test $ksh_cv_func__setjmp = yes; then
+      AC_DEFINE(HAVE__SETJMP)
     fi
   fi
  ])dnl
@@ -257,7 +280,7 @@ dnl Defines TIMES_BROKEN if it doesn't exist or if it always returns 0
 dnl (also checks for existance of getrusage if times doesn't work).
 dnl  XXX: requires clock_t to be typedefed/defined...
 AC_DEFUN(KSH_TIMES_CHECK,
- [AC_CACHE_CHECK(if times() is broken/missing, ksh_cv_func_times_broken,
+ [AC_CACHE_CHECK(if times() is present/working, ksh_cv_func_times_ok,
     [AC_TRY_RUN([
 #include <sys/types.h>
 #include <sys/times.h>
@@ -281,10 +304,10 @@ AC_DEFUN(KSH_TIMES_CHECK,
 	      exit(1);
 	    exit(0);
 	  }
-	], ksh_cv_func_times_broken=no, ksh_cv_func_times_broken=yes,
-	AC_MSG_ERROR(cannot determine if times is broken when cross compiling)
+	], ksh_cv_func_times_ok=yes, ksh_cv_func_times_ok=no,
+	AC_MSG_ERROR(cannot determine if times works when cross compiling)
 	)])
-  if test $ksh_cv_func_times_broken = yes; then
+  if test $ksh_cv_func_times_ok = no; then
     AC_DEFINE(TIMES_BROKEN)
     AC_CHECK_FUNCS(getrusage)
   fi
@@ -354,8 +377,8 @@ AC_DEFUN(KSH_C_FUNC_ATTR,
 #include <stdarg.h>
 void test_fmt(char *fmt, ...) __attribute__((format(printf, 1, 2)));
 void test_fmt(char *fmt, ...) { return; }
-void test_cnst(int) __attribute__((const));
-void test_cnst(int x) { return x + 1; }
+int test_cnst(int) __attribute__((const));
+int test_cnst(int x) { return x + 1; }
 void test_nr() __attribute__((noreturn));
 void test_nr() { exit(1); }
 void test_uk() __attribute__((blah));
@@ -371,7 +394,7 @@ dnl
 dnl
 dnl Check if dup2() does not clear the close on exec flag
 AC_DEFUN(KSH_DUP2_CLEXEC_CHECK,
- [AC_CACHE_CHECK(if dup2() fails to reset the close-on-exec flag, ksh_cv_dup2_clexec_broken,
+ [AC_CACHE_CHECK([if dup2() works (ie, resets the close-on-exec flag)], ksh_cv_dup2_clexec_ok,
     [AC_TRY_RUN([
 #include <sys/types.h>
 #ifdef HAVE_FCNTL_H
@@ -399,10 +422,10 @@ main()
     exit(2);
   exit(fcntl(fd2, F_GETFD, 0) == 0 ? 0 : 3);
 }
-     ], ksh_cv_dup2_clexec_broken=no, ksh_cv_dup2_clexec_broken=yes,
+     ], ksh_cv_dup2_clexec_ok=yes, ksh_cv_dup2_clexec_ok=no,
      AC_MSG_WARN(cannot test if dup2 is broken when cross compiling - assuming it is)
-     ksh_cv_dup2_clexec_broken=yes)])
-  if test $ksh_cv_dup2_clexec_broken = yes; then
+     ksh_cv_dup2_clexec_ok=no)])
+  if test $ksh_cv_dup2_clexec_ok = no; then
     AC_DEFINE(DUP2_BROKEN)
   fi
  ])dnl
@@ -713,7 +736,7 @@ dnl
 dnl
 dnl Check to see if opendir will open non-directories (not a nice thing)
 AC_DEFUN(KSH_OPENDIR_CHECK,
- [AC_CACHE_CHECK(if opendir() opens non-directories, ksh_cv_opendir_nondir,
+ [AC_CACHE_CHECK(if opendir() fails to open non-directories, ksh_cv_opendir_ok,
     [AC_TRY_RUN([
 #include <stdio.h>
 #include <sys/types.h>
@@ -733,7 +756,7 @@ AC_DEFUN(KSH_OPENDIR_CHECK,
 # ifdef NDIR
 #  include <ndir.h>
 # endif /* NDIR */
-#endif /* DIRENT || _POSIX_VERSION */
+#endif /* DIRENT */
 	main()
 	{
 	  int i, ret = 0;
@@ -750,10 +773,10 @@ AC_DEFUN(KSH_OPENDIR_CHECK,
 	  unlink(fname);
 	  exit(ret);
 	}
-      ], ksh_cv_opendir_nondir=no, ksh_cv_opendir_nondir=yes,
+      ], ksh_cv_opendir_ok=yes, ksh_cv_opendir_ok=no,
       AC_MSG_WARN(cannot test if opendir opens non-directories when cross compiling - assuming it does)
-      ksh_cv_opendir_nondir=yes)])
-  if test $ksh_cv_opendir_nondir = yes; then
+      ksh_cv_opendir_ok=no)])
+  if test $ksh_cv_opendir_ok = no; then
     AC_DEFINE(OPENDIR_DOES_NONDIR)
   fi
  ])dnl
@@ -783,8 +806,8 @@ dnl
 dnl Several OSes need to be detected and symbols defined so the shell can
 dnl deal with them.  This is a bit kludgy, but...
 dnl Currently tests for:
-dnl	AIX, ISC (Interactive systems corp), MINIX, OS2 using EMX library
-dnl	SCO (santa cruz operation)
+dnl	AIX, ISC (Interactive systems corp), MINIX, OS2 using EMX library,
+dnl	SCO (santa cruz operation), NEXT
 dnl DO NOT USE with AC_AIX, AC_MINIX or AC_ISC_POSIX tests as these are
 dnl incorperated in this test.
 AC_DEFUN(KSH_OS_TYPE,
@@ -795,7 +818,7 @@ AC_DEFUN(KSH_OS_TYPE,
     [ ksh_cv_os_type=no
       # Some tests below add -C to CPPFLAGS
       saveCPPFLAGS="$CPPFLAGS"
-      for i in AIX ISC MINIX SCO OS2_EMX TITANOS; do
+      for i in AIX ISC MINIX SCO OS2_EMX TITANOS NEXT; do
 	case $i in	#((
 	  AIX)
 	    AC_EGREP_CPP(yes,
@@ -844,6 +867,25 @@ YesTitan
 #endif
 	       ], ksh_cv_os_type=$i)dnl
 	    ;;	#(
+	  NEXT)
+	    #
+	    # NeXT 3.2 (other versions?) - cc -E doesn't work and /lib/cpp
+	    # doesn't define things that need defining, so tests that rely
+	    # on $CPP will break.
+	    #
+	    # Hmmm - can't safely use CPP to test for NeXT defines, so have
+	    # to use a program that won't compile on a NeXT and one that will
+	    # only compile on a NeXT...
+	    AC_TRY_COMPILE([], [
+	        #if defined(__NeXT) || defined(NeXT)
+		  this is a NeXT box and the compile should fail
+	        #endif
+	      ], , AC_TRY_COMPILE([], [
+		  #if !defined(__NeXT) && !defined(NeXT)
+		    this is NOT a NeXT box and the compile should fail
+		  #endif
+		], ksh_cv_os_type=$i))dnl
+	    ;;	#(
 	esac		#))
 	test $ksh_cv_os_type != no && break
       done
@@ -886,6 +928,31 @@ YesTitan
 	  CC="$CC -43"
 	  ;;			#(
       esac			#))
+      #
+      # Force dirent check to find the right thing.  There is a dirent.h
+      # (and a sys/dirent.h) file which compiles, but generates garbage...
+      # 
+      ac_cv_header_dirent_dirent_h=no
+      ac_cv_header_dirent_sys_ndir_h=no
+      ac_cv_header_dirent_sys_dir_h=yes
+      ;;			#(
+    NEXT)
+      #
+      # NeXT 3.2 (other versions?) - cc -E doesn't work and /lib/cpp
+      # doesn't define things that need defining, so tests that rely
+      # on $CPP will break.
+      #
+      AC_EGREP_CPP([Bad NeXT], [#include <signal.h>
+	#if !defined(SIGINT) || !defined(SIGQUIT)
+	    Bad NeXT
+	#endif
+	], AC_MSG_ERROR([
+There is a problem on NeXT boxes resulting in a bad siglist.out file being
+generated (which breaks the trap and kill commands) and probably resulting
+in many configuration tests not working correctly.
+
+You appear to have this problem - see the comments on NeXT in the pdksh
+README file for work arounds.]))dnl
       ;;			#(
   esac				#))
  ])dnl
@@ -924,8 +991,26 @@ AC_DEFUN(KSH_TERM_CHECK,
 	      ksh_cv_term_check=sgtty)])])])
   if test $ksh_cv_term_check = termios; then
     AC_DEFINE(HAVE_TERMIOS_H)
+dnl Don't know of a system on which this fails...
+dnl     AC_CACHE_CHECK(sys/ioctl.h can be included with termios.h,
+dnl       ksh_cv_sys_ioctl_with_termios,
+dnl       [AC_TRY_COMPILE([#include <termios.h>
+dnl #include <sys/ioctl.h>], , ksh_cv_sys_ioctl_with_termios=yes,
+dnl 	ksh_cv_sys_ioctl_with_termios=no)])
+dnl     if test $ksh_cv_sys_ioctl_with_termios = yes; then
+dnl       AC_DEFINE(SYS_IOCTL_WITH_TERMIOS)
+dnl     fi
   elif test $ksh_cv_term_check = termio; then
     AC_DEFINE(HAVE_TERMIO_H)
+dnl Don't know of a system on which this fails...
+dnl     AC_CACHE_CHECK(sys/ioctl.h can be included with termio.h,
+dnl       ksh_cv_sys_ioctl_with_termio,
+dnl       [AC_TRY_COMPILE([#include <termio.h>
+dnl #include <sys/ioctl.h>], , ksh_cv_sys_ioctl_with_termio=yes,
+dnl 	ksh_cv_sys_ioctl_with_termio=no)])
+dnl     if test $ksh_cv_sys_ioctl_with_termio = yes; then
+dnl       AC_DEFINE(SYS_IOCTL_WITH_TERMIO)
+dnl     fi
   fi
  ])dnl
 dnl
@@ -952,20 +1037,15 @@ dnl
 dnl
 dnl Modified test from autoconf's acspecific.m4: MMAP test needs to check
 dnl for/use the MAP_FILE flag. (Needed for older NetBSD systems).
-undefine([AC_FUNC_MMAP])
+undefine([AC_FUNC_MMAP])dnl
 AC_DEFUN(AC_FUNC_MMAP,
-[AC_CACHE_CHECK(for working mmap, ac_cv_func_mmap,
+[AC_CHECK_FUNCS(valloc getpagesize)
+AC_CACHE_CHECK(for working mmap, ac_cv_func_mmap,
 [AC_TRY_RUN([
 /* Thanks to Mike Haertel and Jim Avera for this test. */
 #include <sys/types.h>
 #include <fcntl.h>
 #include <sys/mman.h>
-
-#ifdef BSD
-# ifndef BSD4_1
-#  define HAVE_GETPAGESIZE
-# endif
-#endif
 
 #ifndef HAVE_GETPAGESIZE
 # include <sys/param.h>
@@ -987,7 +1067,7 @@ AC_DEFUN(AC_FUNC_MMAP,
 # endif
 #endif
 
-#ifdef __osf__
+#ifndef HAVE_VALLOC
 # define valloc malloc
 #endif
 
@@ -1006,7 +1086,7 @@ main()
 {
   char *buf1, *buf2, *buf3;
   int i = getpagesize(), j;
-  int i2 = getpagesize()*2;
+  int i2 = i * 2;
   int fd;
 
   buf1 = (char *)valloc(i2);
@@ -1126,7 +1206,7 @@ dnl
 dnl
 dnl Modified test from autoconf's acspecific.m4(AC_HEADER_STAT) test: need
 dnl to check if S_ISSOCK == S_ISFIFO (FreeBSD).
-undefine([AC_HEADER_STAT])
+undefine([AC_HEADER_STAT])dnl
 AC_DEFUN(AC_HEADER_STAT,
 [AC_CACHE_CHECK(whether stat file-mode macros are broken,
   ac_cv_header_stat_broken,
@@ -1157,13 +1237,58 @@ You lose.
 # endif
 #endif
 
-#if defined(S_ISSOCK) && defined(S_IFFIFO)
-# if S_ISSOCK (S_IFFIFO)
+#if defined(S_ISSOCK) && defined(S_IFIFO)
+# if S_ISSOCK (S_IFIFO)
 You lose.
 # endif
 #endif
 ], ac_cv_header_stat_broken=yes, ac_cv_header_stat_broken=no)])
 if test $ac_cv_header_stat_broken = yes; then
   AC_DEFINE(STAT_MACROS_BROKEN)
+fi
+])
+dnl
+dnl
+dnl Need to change the "accepts -g" test - some broken systems
+dnl allow "cc -c -g ..." but fail on the link (missing -lg).
+dnl LaserMoon's linux/FT is such a broken system...
+undefine([AC_PROG_CC])dnl
+AC_DEFUN(AC_PROG_CC,
+[AC_BEFORE([$0], [AC_PROG_CPP])dnl
+AC_CHECK_PROG(CC, gcc, gcc, cc)
+
+AC_CACHE_CHECK(whether we are using GNU C, ac_cv_prog_gcc,
+[dnl The semicolon is to pacify NeXT's syntax-checking cpp.
+cat > conftest.c <<EOF
+#ifdef __GNUC__
+  yes;
+#endif
+EOF
+if ${CC-cc} -E conftest.c 2>&AC_FD_CC | egrep yes >/dev/null 2>&1; then
+  ac_cv_prog_gcc=yes
+else
+  ac_cv_prog_gcc=no
+fi])
+if test $ac_cv_prog_gcc = yes; then
+  GCC=yes
+  if test "${CFLAGS+set}" != set; then
+    AC_CACHE_CHECK(whether ${CC-cc} accepts -g, ac_cv_prog_gcc_g,
+[echo 'int main(){ return 0; }' > conftest.c
+if test -z "`${CC-cc} -g conftest.c 2>&1`"; then
+  ac_cv_prog_gcc_g=yes
+else
+  ac_cv_prog_gcc_g=no
+fi
+rm -f conftest*
+])
+    if test $ac_cv_prog_gcc_g = yes; then
+      CFLAGS="-g -O"
+    else
+      CFLAGS="-O"
+    fi
+  fi
+else
+  GCC=
+  test "${CFLAGS+set}" = set || CFLAGS="-g"
 fi
 ])

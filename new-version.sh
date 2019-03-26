@@ -54,6 +54,7 @@ for i in $vfiles; do
     if sed "s?$DATEPAT?\1$date\3?" < $i > $tfile; then
 	    if cmp -s $i $tfile; then
 		echo "$i not changed, not updating"
+		rm -f $tfile
 	    else
 		rm -f $bfile
 		ln $i $bfile || exit 1

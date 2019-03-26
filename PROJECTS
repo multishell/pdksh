@@ -108,7 +108,3 @@ Things to be done in pdksh (see also the NOTES file):
 
 	* teach shf_vfprintf() about long long's (%lld); also make %p use
 	  long longs if appropriate.
-
-	* add \[...\] parsing to prompt printing (don't count width of chars
-	  inside the \[..\] - used to keep escape sequences in prompts from
-	  messing up command-line-editor's idea of where the cursor is)

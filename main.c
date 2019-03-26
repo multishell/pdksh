@@ -14,17 +14,17 @@ extern char **environ;
  * global data
  */
 
-static	void	reclaim ARGS((void));
-static	void	remove_temps ARGS((struct temp *tp));
-static	int	is_restricted ARGS((char *name));
+static void	reclaim ARGS((void));
+static void	remove_temps ARGS((struct temp *tp));
+static int	is_restricted ARGS((char *name));
 
 /*
  * shell initialization
  */
 
-static	const char	initifs [] = "IFS= \t\n"; /* must be R/W */
+static const char	initifs [] = "IFS= \t\n"; /* must be R/W */
 
-static	const	char   initsubs [] = 
+static const	char   initsubs [] = 
   "${PS2=> } ${PS3=#? } ${PS4=+ }";
 
 static const char version_param[] =
@@ -35,7 +35,7 @@ static const char version_param[] =
 #endif /* KSH */
 	;
 
-static	const char *const initcoms [] = {
+static const char *const initcoms [] = {
 	"typeset", "-x", "SHELL", "PATH", "HOME", NULL,
 	"typeset", "-r", version_param, NULL,
 	"typeset", "-ri", "PPID", NULL,
@@ -55,7 +55,9 @@ static	const char *const initcoms [] = {
 #ifdef KSH
 	  "autoload=typeset -fu",
 	  "functions=typeset -f",
+# ifdef HISTORY
 	  "history=fc -l",
+# endif /* HISTORY */
 	  "integer=typeset -i",
 	  "nohup=nohup ",
 	  "local=typeset",
@@ -116,11 +118,9 @@ main(argc, argv)
 	ainit(&aperm);		/* initialize permanent Area */
 
 	/* set up base enviroment */
+	memset(&env, 0, sizeof(env));
 	env.type = E_NONE;
 	ainit(&env.area);
-	env.savefd = NULL;
-	env.oenv = NULL;
-	env.loc = (struct block *) 0;
 	e = &env;
 	newblock();		/* set up global l->vars and l->funs */
 
@@ -354,7 +354,7 @@ main(argc, argv)
 			include(substitute("$HOME/profile.ksh", 0), 0,
 				(char **) 0, 1);
 #else /* OS2 */
-		include("/etc/profile", 0, (char **) 0, 1);
+		include(KSH_SYSTEM_PROFILE, 0, (char **) 0, 1);
 		if (!Flag(FPRIVILEGED))
 			include(substitute("$HOME/.profile", 0), 0,
 				(char **) 0, 1);
@@ -725,6 +725,17 @@ cleanup_parents_env()
 	e->oenv = (struct env *) 0;
 }
 
+/* Called just before an execve cleanup stuff temporary files */
+void
+cleanup_proc_env()
+{
+	struct env *ep;
+
+	for (ep = e; ep; ep = ep->oenv)
+		remove_temps(ep->temps);
+	remove_temps(func_heredocs);
+}
+
 /* remove temp files and free ATEMP Area */
 static void
 reclaim()
@@ -739,25 +750,43 @@ remove_temps(tp)
 	struct temp *tp;
 {
 #ifdef OS2
-  static char tmpfile[30];
-  int status;
+	static struct temp *delayed_remove;
+	struct temp *t, **tprev;
 
-  if (strlen (tmpfile) > 0 ) {
-    unlink(tmpfile);
-    *tmpfile=0;
-  }
+	if (delayed_remove) {
+		for (tprev = &delayed_remove, t = delayed_remove; t; t = *tprev)
+			/* No need to check t->pid here... */
+			if (unlink(t->name) >= 0 || errno == ENOENT) {
+				*tprev = t->next;
+				afree(t, APERM);
+			} else
+				tprev = &t->next;
+	}
 #endif /* OS2 */
 
 	for (; tp != NULL; tp = tp->next)
-		if (tp->pid == procpid)
+		if (tp->pid == procpid) {
 #ifdef OS2
-		  { status=unlink(tp->name);
-		    if (status < 0)
-		      strcpy(tmpfile, tp->name);
-		  }
+			/* OS/2 (and dos) do not allow files that are currently
+			 * open to be removed, so we cache it away for future
+			 * removal.
+			 * XXX should only do this if errno
+			 *     is Efile-still-open-can't-remove
+			 *     (but I don't know what that is...)
+			 */
+			if (unlink(tp->name) < 0 && errno != ENOENT) {
+				t = (struct temp *) alloc(
+				    sizeof(struct temp) + strlen(tp->name) + 1,
+				    APERM);
+				memset(t, 0, sizeof(struct temp));
+				strcpy(t->name, tp->name);
+				t->next = delayed_remove;
+				delayed_remove = t;
+			}
 #else /* OS2 */
 			unlink(tp->name);
 #endif /* OS2 */
+		}
 }
 
 /* Returns true if name refers to a restricted shell */
