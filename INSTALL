@@ -1,0 +1,149 @@
+BUILDING THE PD KSH
+===================
+
+The PD KSH can be built in two ways.  The default method uses
+the POSIX/ANSI compatability libraries in ./std.  The
+alternative method is to build the ksh in ./sh without the ./std
+tree.  The second method should be used only if a) you have a
+real POSIX environemnt or b) you have major difficulties with
+building the ./std tree.
+
+I have modified the source slightly to make standalone building
+simpler.  Using -DNOSTDHDRS avoids attempts to include ANSI
+headers that may be lacking.  I have built the shell this way on
+all Sun platforms and on a Bull DPX/2 (which has good POSIX
+support).  The config file defines USE_SIGACT so that the shell
+will use the XPG3 signalaction() and friends.  You should leave
+USE_SIGACT defined, sh/sigact.c contains an implementation for
+systems that lack this facility. 
+
+It is recommended that you try using the ./std tree first.  This
+avoids problems like BSD times() calls that do not return an
+indication of elapsed time and so on.
+
+Using ./std:
+------------
+
+If you are on a Sun building it quite simple:
+
+	make CONFIG=-D_BSD
+
+will do it.  If you have a sun386 or sun3 and have gcc, it is
+worth using, just add CC="gcc -pipe" to the above command line.
+If you have SunOS 4.1 or later you probably need to add
+-DHAVE_SYS_STDTYPES
+
+Building on other systems may well be more difficult.
+Apparently the creating of the ./std/h tree causes problems on
+some systems.  
+
+
+Notes on ./std:
+---------------
+
+I have updated the Makefiles in ./std/stdc and ./tsd/posix to
+maintain the objects within the libraries.  Ie.
+libstdc.a(strstr.o) If your make(1) doesn't know how to do this
+then you will need to modify the makefiles accordingly.
+
+In ReadMe.jrm, John MacMillan recommends being cautious of
+std/libstdc.a and using only those routines which your system
+lacks.  Please note that I have tested virtually none of
+./std/stdc.  The Makefile contains target lines for most modules
+but most are commented out.  I suggest you uncomment _only_
+those that you need.
+
+On the other hand std/libposix.a seems quite safe, and
+indeed provides a better times() call for BSD systems.
+
+Read ReadMe.jrm for more...
+
+
+Building without ./std:
+-----------------------
+
+On some systems it might be worth forgetting about ./std/lib*
+either because they proved too difficult to build or they seem
+unnecessary.  As previously indicated I have done this on Sun's
+and on a Bull system.  On Sun's it is perhaps not a great idea
+as you then get the system's times() call which does not behave
+the way the shell wants.
+
+In anycase to build without ./std, you simply cd to ./sh and
+either edit the Makefile accordingly, or use an appropriate
+command line.  For instance:
+
+Sun with SunOS 4.0:
+
+	cd ./sh
+	ln -s ../std/stdc/strstr.c .
+	ln -s ../std/stdc/memmove.c .
+	make CFLAGS="-D_BSD -DNOSTDHDRS" \
+		XOBJS="strstr.o memmove.o" LDLIBS="" LDFLAGS=""
+
+Note that we still need a couple of functions from ./std/stdc
+
+On the Bull system which is a POSIX compliant System V machine:
+
+	cd ./sh
+	make CFLAGS="-D_SYSV" LDLIBS="-lc_s" LDFLAGS=""
+	make CC=gcc CFLAGS="-D_POSIX_SOURCE" LDLIBS="-lc_s" LDFLAGS=""
+
+INSTALLING:
+===========
+
+This is quite simple.  
+
+	# cp ./ksh /bin
+	# chmod 555 /bin/ksh
+
+The above assumes of course that you don't already have a
+/bin/ksh :-)
+The manual page ksh.1 should be copied to an appropriate
+location.
+BSD:
+	# cp ksh.1 /usr/man/man1
+SYSV:
+	# nroff -man ksh.1 > /usr/catman/u_man/man1/ksh.1
+	# pack /usr/catman/u_man/man1/ksh.1
+
+Or something similar.  For systems such as Sun's that really
+only ship with a C-shell environment, the ./etc directory
+contains a useful /etc/profile and /etc/ksh.kshrc file to
+provide a suitable environemnt for /bin/sh and /bin/ksh users,
+they should work, they are straight of my system and I use them
+on Sun,Bull and even an SCO system.
+
+
+PROBLEMS:
+=========
+
+Clearly building will not be so simple on all systems.
+Apparently some of the enum manipulations border on ilegal and
+cause some compilers problems.  Curiously both gcc -ansi and the
+GreenHills compiler on the Bull system are quite picky and did
+not complain.  Note if you want to use gcc -ansi you may well
+need to add some definitions, for instance the following all
+work on the sun386:
+
+	CC=cc
+	CC=gcc
+	CC=gcc -ansi -Dsun -Di386 -Dsun386
+
+The last three items on the last line are normally all defined
+automatically, but this is disabled when -ansi is used.  The
+system headers do not work unless they know what architecture is
+in use.  
+
+On the Bull DPX/2 I used gcc-2.1, my gcc port will be available
+as of release 2.2.  To save effort I found it necessary to copy
+stdio.h and stdlib.h to gcc's private include directory and edit
+them to remove unnecessary #ifdef's and unwanted #include's.
+
+If you find and fix a problem please fill in a copy of
+./bug-report and e-mail it to pdksh-bug@zen.void.oz.au
+
+Enjoy!
+
+Simon J. Gerraty <sjg@zen.void.oz.au>
+

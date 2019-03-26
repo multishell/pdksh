@@ -1,0 +1,15 @@
+Thu May  7 20:36:40 1992  Simon J. Gerraty  (sjg@zen)
+
+	* fprintf.c: avoid use of #if __STDC__ some compilers don't handle it.
+
+	* vprintf.c: avoid side effects from putc() macro!
+
+Sat Apr 25 14:52:01 1992  Simon J. Gerraty  (sjg@zen)
+
+	* Added RCS keys to sources.
+
+Mon Nov 25 13:19:01 1991  Simon J. Gerraty  (sjg at zen)
+
+	* Added all source modules to Makefile, but most remain commented
+	out as they are untested.
+

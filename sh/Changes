@@ -1,0 +1,19 @@
+Fix echo $$ | cat
+#if and config option cleanup
+Fix let evaluation of null/unset vars
+alloc improvement
+Fix accidental SCCS keywords
+Fix Xstring overwriting in lex.c
+Print here doc temp file when printing I/O actions
+Add more slack on end of Xstrings
+Fix up test(1) parsing
+Run shell scripts with EXECSHELL
+Make temp files 0600
+Make unset -f work
+Make trailing blank or tab in alias work
+Fix command completion bug
+--------------------------------------------------
+Fix "cd / foo"
+Fix getopts accidentally resetting itself
+--------------------------------------------------
+Fix whence exit codes

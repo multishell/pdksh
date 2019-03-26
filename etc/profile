@@ -1,0 +1,230 @@
+:
+# NAME:
+#	profile - global initialization for sh,ksh
+#
+# DESCRIPTION:
+#	This file is processed during login by /bin/sh
+#	and /bin/ksh.  It is used to setup the default user
+#	environment.  It is processed with root privs.
+#
+# SEE ALSO:
+#	$HOME/.profile
+#	/etc/ksh.kshrc
+#
+# RCSid:
+#	$Id: profile,v 1.3 1992/05/03 08:28:27 sjg Exp $
+#	@(#)Copyright (c) 1991 Simon J. Gerraty
+#
+#	This file is provided in the hope that it will
+#	be of use.  There is absolutely NO WARRANTY.
+#	Permission to copy, redistribute or otherwise
+#	use this file is hereby granted provided that 
+#	the above copyright notice and this notice are
+#	left intact. 
+
+case "$_INIT_" in
+*env*) ;;
+*)	# do these once
+	_INIT_="$_INIT_"env
+	export _INIT_
+	# sys_config.sh should set ARCH,OS,C,N,HOSTNAME,uname
+	# we use these in lots of scripts...
+	[ -f /etc/sys_config.sh ] && . /etc/sys_config.sh
+
+	# pick one of the following for the default umask
+	# umask 002	# relaxed	-rwxrwxr-x
+	umask 022	# cautious	-rwxr-xr-x
+	# umask 027	# uptight	-rwxr-x---
+	# umask 077	# paranoid	-rwx------
+	# you can override the default umask
+	# for specific groups later...
+
+	if [ -d /local ]; then
+		LOCAL=/local
+	else
+		LOCAL=/usr/local
+	fi
+
+	# set system specific things,
+	# eg. set PATH,MANPATH 
+	# override default ulimit if desired.
+	# defult ulmit is unlimited on SunOS
+	# and 4Mb for most System V
+	case $OS in
+	SunOS)
+		# On sun's /bin -> /usr/bin so leave it out!
+		PATH=.:/usr/bin:/usr/ucb:/usr/5bin
+		MANPATH=/usr/man
+		defterm=vt220
+		;;
+	SCO-UNIX)
+		PATH=.:/bin:/usr/bin:/usr/lbin:/usr/dbin:/usr/ldbin
+		MANPATH=/usr/man
+		defterm=ansi
+		;;
+	B.O.S.)
+		PATH=.:/bin:/usr/bin
+		if [ -d /usr/ucb ]; then
+			PATH=$PATH:/usr/ucb
+		fi
+		MANPATH=/usr/catman
+		defterm=vt220
+		SRC_COMPAT=_SYSV
+		export SRC_COMPAT
+		;;
+	*)
+		PATH=.:/bin:/usr/bin
+		if [ -d /usr/ucb ]; then
+			PATH=$PATH:/usr/ucb
+		fi
+		MANPATH=/usr/catman
+		defterm=vt220
+		;;
+	esac
+	if [ -d ${LOCAL}/bin ]; then
+		PATH=$PATH:${LOCAL}/bin
+	fi
+	if [ -d $HOME/bin -a "$HOME" != / ]; then
+		PATH=$PATH:$HOME/bin
+	fi
+	if [ -d ${LOCAL}/man ]; then
+		MANPATH=$MANPATH:${LOCAL}/man
+	fi
+	# make sure these are set at least once
+	LOGNAME=${LOGNAME:-`logname`}
+	USER=${USER:-$LOGNAME}
+
+	# this is adapted from my whoami.sh
+	# we expect id to produce output like:
+	# uid=100(sjg) gid=10(staff) groups=10(staff),...
+	S='('
+	E=')'
+	GROUP=`id | cut -d= -f3 | \
+		sed -e "s;^[^${S}][^${S}]*${S}\([^${E}][^${E}]*\)${E}.*$;\1;"`
+
+	# set some group specific defaults
+	case "$GROUP" in
+	staff)	# staff deal with things that non-staff 
+		# have no business looking at
+		umask 027
+		;;
+	extern)	# we put external accounts in group "extern"
+		# give them as much privacy as we can...
+		umask 077
+		ulimit 16384	# 8Mb file limit
+		TMOUT=600	# idle timeout
+		;;
+	esac
+
+	unset S E GROUP
+	export LOCAL TTY PATH LOGNAME USER
+
+	if [ -t 1 ]; then
+		TTY=`tty`
+		TTY=`basename $TTY`
+		ORGANIZATION=""
+		COPYRIGHT="Copyright (c) `date +19%y` $ORGANIZATION"
+		export ORGANIZATION COPYRIGHT
+
+		# set up some env variables
+		MAIL=/usr/spool/mail/$USER
+		MAILPATH=/usr/spool/mail/$USER:/etc/motd
+		EMACSDIR=${LOCAL}/lib/emacs
+		PAGER=${PAGER:-more}
+		export MAIL EMACSDIR MANPATH MAILPATH PAGER
+
+		EDITOR=emacs
+		FCEDIT=${EDITOR}	
+
+		PROMPT="<$LOGNAME@$HOSTNAME>$ "
+		PUBDIR=/usr/spool/uucppublic
+		export PUBDIR 
+		[ -f /etc/profile.TeX ] && . /etc/profile.TeX
+	else
+		TTY=none
+	fi
+
+	# test (and setup if we are Korn shell)
+	if [ "$RANDOM" != "$RANDOM" ]; then
+		# we are Korn shell
+		SHELL=/bin/ksh
+		ENV=${HOME%/}/.kshrc
+		PROMPT="<$LOGNAME@$HOSTNAME:!>$ "
+		export HISTSIZE HISTFILE ENV
+		CDPATH=.:$HOME
+		if [ "$TMOUT" ]; then
+			typeset -r TMOUT
+		fi
+	else
+		SHELL=/bin/sh
+	fi
+	PS1=$PROMPT
+	export SHELL PS1 EDITOR PATH PROMPT HOSTNAME CDPATH FCEDIT
+
+;;
+esac
+
+# login time initialization
+case "$_INIT_" in
+*log*) ;;
+*)	_INIT_="$_INIT_"log
+
+	if [ $TTY != none -a "$0" != "-su" -a "$LOGNAME" = "`logname`" -a ! -f ~/.hushlogin ]
+	then
+		case $TERM in
+		network|unknown|dialup|"") 
+			echo $N "Enter terminal type [$defterm]: $C" 1>&2
+			read tmpterm
+			TERM=${tmpterm:-$defterm}
+			;;
+		esac
+		# set up desired tty modes
+		stty intr '^c'
+		case $TERM in
+		wy50)	stty erase '^h';;
+		*)	stty erase '^?';;
+		esac
+		# welcome first time users
+		[ -r ${LOCAL}/etc/1stlogin.ann -a ! -f $HOME/... ] && \
+			. ${LOCAL}/etc/1stlogin.ann
+		# not all of the following are appropriate at all sites
+		# Sun's don't need to cat /etc/motd for instance
+		case "$OS" in
+		SunOS)	;;
+		SCO-UNIX)	
+			[ -s /etc/motd ] && cat /etc/motd
+			[ -x /usr/bin/mail -a -s "$MAIL" ] && 
+				echo "You have mail."
+			[ -x /usr/bin/news ] && /usr/bin/news -n
+			;;
+		*)
+			[ -s /etc/motd ] && cat /etc/motd
+			if [ -x /usr/bin/mailx ]; then
+		 	  if mailx -e; then
+			    echo "You have mail."
+			    # show the the headers, this might
+			    # be better done in .profile so they
+			    # can override it.
+#			    mailx -H
+			  fi
+			fi
+			[ -x /usr/bin/news ] && /usr/bin/news -n
+			;;
+		esac
+		[ -x /usr/games/fortune ] && /usr/games/fortune -a
+		# remind folk who turned on reply.pl to turn it off.
+		if [ -f $HOME/.forward ]; then
+			echo "Your mail is being forwarded to:"
+			cat $HOME/.forward
+			if [ -f $HOME/.recording ]; then
+				echo "Perhaps you should run \"reply.pl off\""
+			fi
+		fi
+	fi
+	unset tmpterm defterm C N
+	TERM=${TERM:-unknown}
+	export TERM TTY
+;;
+esac
+# Handle X-terminals if necessary
+[ -f /etc/profile.X11 ] && . /etc/profile.X11

@@ -1,0 +1,27 @@
+Sun May  3 17:50:03 1992  Simon J. Gerraty  (sjg@zen)
+
+	* Updated MACHINES.
+	* Placed source under CVS.  This should help with processing fixes
+	from the field.
+
+Sat Apr 25 10:53:20 1992  Simon J. Gerraty  (sjg@zen)
+
+	* Getting ready for 4.3 release.  
+
+Fri Nov 22 22:24:29 1991  Simon J. Gerraty  (sjg at zen)
+
+	* Cleaned up the build process slightly.  Makefiles in ./std tree
+	now maintain objects within the libraries rather than simply
+	building the .o's and archiving them.  Of course the make(1) used
+	must know how to maintain libraries :-)
+
+	* Added bug.report as a template for bug reporting.
+
+	* Source in ./sh can be built independently of ./std tree if
+	desired.  See comments in ./sh/Makefile.
+
+	* As originally distributed some of libstdc.a was not used and
+	libposix.a was not used at all.  On Sun's this highlighted a bug
+	(incompatibility) in the times() call.  Now the ./std/libs are
+	used fully, and the supplied times() call functions as expected.
+

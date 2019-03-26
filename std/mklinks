@@ -1,0 +1,14 @@
+:
+# Make links 
+# we do it this way so that we can support symlinks
+# easily.
+
+src=`pwd`
+cd $1
+shift
+LN="${LN:-ln}"
+
+for f in $*
+do
+  $LN $src/$f .
+done
