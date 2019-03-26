@@ -12,9 +12,9 @@
 
 /* some useful #defines */
 #ifdef EXTERN
-# define _I_(i) = i
+# define I__(i) = i
 #else
-# define _I_(i)
+# define I__(i)
 # define EXTERN extern
 # define EXTERN_DEFINED
 #endif
@@ -69,7 +69,7 @@ typedef struct {
 #define TF_WAIT		0x01	/* drain output, even it requires sleep() */
 #define TF_MIPSKLUDGE	0x02	/* kludge to unwedge RISC/os 5.0 tty driver */
 
-EXTERN int		tty_fd _I_(-1);	/* dup'd tty file descriptor */
+EXTERN int		tty_fd I__(-1);	/* dup'd tty file descriptor */
 EXTERN int		tty_devtty;	/* true if tty_fd is from /dev/tty */
 EXTERN TTY_state	tty_state;	/* saved tty state */
 
@@ -83,4 +83,4 @@ extern void	tty_close ARGS((void));
 # undef EXTERN_DEFINED
 # undef EXTERN
 #endif
-#undef _I_
+#undef I__

@@ -36,8 +36,8 @@ int
 c_ulimit(wp)
 	char **wp;
 {
-	static struct limits {
-		char	*name;
+	static const struct limits {
+		const char	*name;
 		enum { RLIMIT, ULIMIT } which;
 		int	gcmd;	/* get command */
 		int	scmd;	/* set command (or -1, if no set command) */
@@ -46,7 +46,7 @@ c_ulimit(wp)
 	} limits[] = {
 		/* Do not use options -H, -S or -a */
 #ifdef RLIMIT_CPU
-		{ "time(seconds)", RLIMIT, RLIMIT_CPU, RLIMIT_CPU, 1, 't' },
+		{ "time(cpu-seconds)", RLIMIT, RLIMIT_CPU, RLIMIT_CPU, 1, 't' },
 #endif
 #ifdef RLIMIT_FSIZE
 		{ "file(blocks)", RLIMIT, RLIMIT_FSIZE, RLIMIT_FSIZE, 512, 'f' },
@@ -61,17 +61,20 @@ c_ulimit(wp)
 #  endif /* UL_GFILLIM */
 # endif /* UL_GETFSIZE */
 #endif /* RLIMIT_FSIZE */
+#ifdef RLIMIT_CORE
+		{ "coredump(blocks)", RLIMIT, RLIMIT_CORE, RLIMIT_CORE, 512, 'c' },
+#endif
 #ifdef RLIMIT_DATA
 		{ "data(kbytes)", RLIMIT, RLIMIT_DATA, RLIMIT_DATA, 1024, 'd' },
 #endif
 #ifdef RLIMIT_STACK
 		{ "stack(kbytes)", RLIMIT, RLIMIT_STACK, RLIMIT_STACK, 1024, 's' },
 #endif
+#ifdef RLIMIT_MEMLOCK
+		{ "lockedmem(kbytes)", RLIMIT, RLIMIT_MEMLOCK, RLIMIT_MEMLOCK, 1024, 'l' },
+#endif
 #ifdef RLIMIT_RSS
 		{ "memory(kbytes)", RLIMIT, RLIMIT_RSS, RLIMIT_RSS, 1024, 'm' },
-#endif
-#ifdef RLIMIT_CORE
-		{ "coredump(blocks)", RLIMIT, RLIMIT_CORE, RLIMIT_CORE, 512, 'c' },
 #endif
 #ifdef RLIMIT_NOFILE
 		{ "nofiles(descriptors)", RLIMIT, RLIMIT_NOFILE, RLIMIT_NOFILE, 1, 'n' },
@@ -80,6 +83,9 @@ c_ulimit(wp)
 		{ "nofiles(descriptors)", ULIMIT, UL_GDESLIM, -1, 1, 'n' },
 # endif /* UL_GDESLIM */
 #endif /* RLIMIT_NOFILE */
+#ifdef RLIMIT_NPROC
+		{ "processes", RLIMIT, RLIMIT_NPROC, RLIMIT_NPROC, 1, 'p' },
+#endif
 #ifdef RLIMIT_VMEM
 		{ "vmemory(kbytes)", RLIMIT, RLIMIT_VMEM, RLIMIT_VMEM, 1024, 'v' },
 #else /* RLIMIT_VMEM */
@@ -104,7 +110,7 @@ c_ulimit(wp)
 	static char	options[3 + NELEM(limits)];
 	rlim_t		UNINITIALIZED(val);
 	int		how = SOFT | HARD;
-	struct limits	*l;
+	const struct limits	*l;
 	int		set, all = 0;
 	int		optc, what;
 #ifdef HAVE_SETRLIMIT
@@ -180,7 +186,7 @@ c_ulimit(wp)
 #endif /* HAVE_SETRLIMIT */
 #ifdef HAVE_ULIMIT
 			{
-				val = ulimit(l->gcmd);
+				val = ulimit(l->gcmd, (rlim_t) 0);
 			}
 #else /* HAVE_ULIMIT */
 				;
@@ -229,7 +235,7 @@ c_ulimit(wp)
 				return 1;
 			}
 		} else
-			val = ulimit(l->gcmd);
+			val = ulimit(l->gcmd, (rlim_t) 0);
 	}
 #else /* HAVE_ULIMIT */
 		;

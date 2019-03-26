@@ -21,7 +21,7 @@ problems believed to be fixed marked by x.
 
 * pdksh 5.0.8, - (reported by Sean Hogan): attempting file name completion
   on a word with a single backquote causes a "no closing quote" error and
-  looses the partially entered command (vi mode).
+  loses the partially entered command (vi mode).
   [see Mail.2:48]
 
 * pdksh 5.0.10, - (reported by Andrew Moore): no overflow checking is done
@@ -39,16 +39,13 @@ problems believed to be fixed marked by x.
   controlling tty properly).
   [see Mail.7:29]
 
-* pdksh 5.1.3, - (reported by Brad Warkentin): if the last command of a
-  pipeline is a shell builtin, it is not executed in the parent shell,
+* pdksh 5.1.3, - (reported by Brad Warkentin & others): if the last command of
+  a pipeline is a shell builtin, it is not executed in the parent shell,
   so "echo a b | read foo bar" does not set foo and bar in the parent
   shell (at&t ksh will).
-  [see Mail.7:32]
+  [see Mail.7:32,Mail.9:65]
 
-* pdksh 5.1.3, - (reported by Gabor Zahemszky): emacs doesn't have ^[*.
-  [see Mail.7:87]
-
-* pdksh 5.1.3, - (reported by Gabor Zahemszky): emacs doesn't have \ as quote
+* pdksh 5.1.3, - (reported by Gabor Zahemszky): emacs/vi doesn't have \ as quote
   character.
   [see Mail.7:87]
 
@@ -64,14 +61,43 @@ problems believed to be fixed marked by x.
   start of the line.
   [see Mail.8:43]
 
-* pdksh 5.2.0, - (reported by Gabor Zahemszky): can set readonly variables
-  via command assignments (eg, "readonly x=y; x=z /bin/echo hi" should
-  fail and doesn't).
-  [see Mail.8:50,65]
-
 * enhancements that haven't been merged yet
 	- Mail.6:36-39,78,84 recursive function diffs
-	- Mail.7:7 partial sigwinch diffs
+
+* pdksh 5.2.3, - (reported by Mike Jetzer): in vi, <ESC>= on word with ~
+  but no /, beeps (or prints final path comonent?).
+  [see Mail.9:66]
+
+* pdksh 5.2.3, - (reported by David Gast(? gast@twinsun.com)): history (fc,
+  et al) don't work in shell scripts.
+  [see Mail.10:49]
+
+* pdksh 5.2.4, - (reported by Gabor Zahemszky): echo ${foo[*]#/} generates
+  bad substsitution error, newer ksh's don't (older ones do);
+  error includes {...#@(/)}.
+  [see Mail.XXX:XXX]
+
+* pdksh 5.2.4, - (reported by Gabor Zahemszky): emacs: ^P steps through
+  multiline commands - should go to start of command.
+  [see Mail.XXX:XXX]
+
+* pdksh 5.2.5, - (reported by Adrian Marsh): configuration on Linux FT fails.
+  Caused by configure script using -g flag - gcc passes -lg to ld, ld fails
+  to find -lg (autoconf or Linux FT bug).
+  [see Mail.XXX:XXX]
+
+* pdksh 5.2.7, - (reported by Adrian Marsh): typeset -L20u xxx is ok is ksh88
+  but not in pdksh.
+  [see Mail.XXX:XXX]
+
+* pdksh 5.2.7, - (reported by Gabor Zahemszky): TMOUT doesn't effect
+  select and read operations.
+  [see Mail.XXX:XXX]
+
+* pdksh 5.2.7, - (reported by Gabor Zahemszky): exec 3<&p doesn't close
+  shells copy of the coprocess file desc.
+  [see Mail.XXX:XXX]
+
 
 --------------------- put fixed problems below this line ---------------------
 
@@ -285,12 +311,12 @@ x pdksh 5.0.9, - (reported by Andrew Moore): newlines after here-documents
   [see Mail.3:25]
   [fixed in 5.0.10 - fixed up readhere()]
 
-x pdksh 5.0.9, - (reported with fix by Michael Jetzer): 'r r' repeats the r
+x pdksh 5.0.9, - (reported with fix by Mike Jetzer): 'r r' repeats the r
   command forever.
   [see Mail.3:38]
   [fixed in 5.0.10 - start the search from the previous command]
 
-x pdksh 5.0.9, - (reported by Michael Jetzer): edit of multi-line commands
+x pdksh 5.0.9, - (reported by Mike Jetzer): edit of multi-line commands
   does not result in single history entry.
   [see Mail.3:38]
   [fixed in 5.0.10 - use hist_append() to add second+ lines]
@@ -390,6 +416,11 @@ x pdksh 5.1.0 - (reported by Bob Manson): a leading non-white-space IFS
   [see Mail.4:68]
   [Fixed in 5.1.2 - changed expand() to do the right thing.]
 
+x pdksh 5.1.2, -: ^c during $ENV or .profile kills shell; should just go
+  to prompt.
+  [see Mail.5:14]
+  [fixed in 5.2.4 - added intr_ok flag to main.c(include)]
+
 x pdksh 5.1.2, - (reported by Dan Quinlan): when shell prints out
   execution trees (typeset -f), if botches elif statements.
   [see Mail.5:17]
@@ -404,6 +435,12 @@ x pdksh 5.1.2, - (reported by Art Mills): file completion in command mode
   doesn't work on a single character.
   [see Mail.5:13]
   [fixed in 5.1.3 - in vi.c(vi_cmd) call complete_word() with 1 not 0]
+
+x pdksh 5.1.2, - (reported by Dan Quinlan): an error in a let statement
+  causes shell to exit function/script.  at&t ksh just prints error and
+  returns from let.
+  [see Mail.5:17]
+  [fixed in 5.2.3 - added error_ok arg to evaluate() and v_evaluate()]
 
 x pdksh 5.1.2, - (reported by Art Mills): if markdirs option is set, file
   completion in vi adds two slashes to directories.
@@ -465,7 +502,7 @@ x pdksh 5.1.3, Unixware (Intel-SVR4.2) (reported by Thanh Ma): auto
   [fixed in 5.2.0 - special cases added for memmove, bcopy, memset; rlim_t
    configuration stuff re-arranged]
 
-x pdksh 5.1.3, - (reported by Michael Jetzer + fix): . in vi doesn't work
+x pdksh 5.1.3, - (reported by Mike Jetzer + fix): . in vi doesn't work
   after history motion or after one command is completed and another is being
   edited.
   [see Mail.6:85]
@@ -479,6 +516,11 @@ x pdksh 5.1.3, - Janjaap van Velthooven: ^v (version) missing in vi mode.
 x pdksh 5.1.3, - : y% on or before right bracket/paren/brace doesn't yank the
   brackets - just what is in the brackets...
   [fixed in 5.2.0 - changes to vi.c(domove,vi_cmd)]
+
+x pdksh 5.1.3, - (reported by Rob Mayoff): [[ ]] command doesn't do lazy
+  evaluation.
+  [see Mail.7:2]
+  [fixed in 5.2.1 - test routines re-arranged to deal with this]
 
 x pdksh 5.1.3, - (reported by Will Renkel): "r | more" doesn't work (nothing
   is sent to more).
@@ -510,6 +552,12 @@ x pdksh 5.1.3, - (reported by Dale DePriest + fix): emacs: can't prefix
   [fixed in 5.2.0 - x_set_arg reads sequence of numbers, other commands
   changed to use x_arg]
 
+x pdksh 5.1.3, - (reported by Dale DePriest): fc command line parsing
+  (and its interaction with history alias) doesn't act like at&t ksh:
+  history -40 gives bad option 4 error.
+  [see Mail.7:41,49]
+  [fixed in 5.2.1 - kludge parsing of -40 (numbers are option letters)]
+
 x pdksh 5.1.3, - (reported by Dale DePriest): if PS1 contains paramaters that
   get expanded, and if those parameters contain any ! characters, the !'s get
   changed to history numbers.
@@ -537,7 +585,7 @@ x pdksh 5.1.3, SCO unix ? (reported by Sean Hogan): job control stuff doesn't
   [see Mail.7:30,43,69,70,74]
   [fixed in 5.2.0 - don't try opening /dev/tty if on SCO]
 
-x pdksh 5.1.3, - (reported with fix by Michael Jetzer): vi globing tacks
+x pdksh 5.1.3, - (reported with fix by Mike Jetzer): vi globing tacks
   * at the end of files even if there are globing chars in last component
   of filename (at&t ksh does not).
   [see Mail.7:71]
@@ -574,10 +622,11 @@ x pdksh 5.2.0, - (reported by David Tamkin): when CDPATH set and cd'ing to a
   [see Mail.8:8]
   [fixed in 5.2.0 - fixed error message]
 
-x pdksh 5.1.3, - (reported by Rob Mayoff): [[ ]] command doesn't do lazy
-  evaluation.
-  [see Mail.7:2]
-  [fixed in 5.2.1 - test routines re-arranged to deal with this]
+x pdksh 5.2.0, - (reported by David Tamkin): if PS1 has an error in it
+  (eg, parameter expansion error), the shell loops forever printing
+  the error.
+  [see Mail.8:32]
+  [fixed in 5.2.3 - create error handling environment while expanding PS1]
 
 x pdksh 5.2.0, Coherent machines (reported by Gabor Zahemszky): insert after
   movement in emacs mode replaces all chars with first char on line.
@@ -589,12 +638,6 @@ x pdksh 5.2.0, - (reported by Gabor Zahemszky): ^[= in vi prints empty
   strings for directory matches if markdirs is set.
   [see Mail.8:48]
   [fixed in 5.2.1 - skip trailing /'s before looking for last /]
-
-x pdksh 5.1.3, - (reported by Dale DePriest): fc command line parsing
-  (and its interaction with history alias) doesn't act like at&t ksh:
-  history -40 gives bad option 4 error.
-  [see Mail.7:41,49]
-  [fixed in 5.2.1 - kludge parsing of -40 (numbers are option letters)]
 
 x pdksh 5.2.0, - (reported by Gabor Zahemszky): <ESC>^H bound to del-back-char
   not del-back-word
@@ -626,6 +669,11 @@ x pdksh 5.2.2, - (reported by Gabor Zahemszky): getopts prints shell name
   [see Mail.8:65]
   [fixed in 5.2.3 - added GI_NONAME flag]
 
+x pdksh 5.2.2, - (reported by Gabor Zahemszky): pdksh's test doesn't know about
+  /dev/fd/n.
+  [see Mail.8:65]
+  [fixed in 5.2.3 - added test_stat() and test_eaccess()]
+
 x pdksh 5.2.2, - (reported by Thomas Gellekum): config test for memmove/bcopy
   missing semi-colon
   [see Mail.8:67]
@@ -636,32 +684,15 @@ x pdksh 5.2.2, - (reported by Donald Craig): fc string doesn't find string
   [see Mail.8:76]
   [fixed in 5.2.3 - fixed off by one error in history.c(hist_get)]
 
-x pdksh 5.1.2, - (reported by Dan Quinlan): an error in a let statement
-  causes shell to exit function/script.  at&t ksh just prints error and
-  returns from let.
-  [see Mail.5:17]
-  [fixed in 5.2.3 - added error_ok arg to evaluate() and v_evaluate()]
-
 x pdksh 5.2.2, - (reported by Gabor Zahemszky): pdksh doesn't do the
   "You have running jobs" when user attempts to log out.
   [see Mail.8:74]
   [fixed in 5.2.3 - added set -o nohup option with supporting code]
 
-x pdksh 5.2.0, - (reported by David Tamkin): if PS1 has an error in it
-  (eg, parameter expansion error), the shell loops forever printing
-  the error.
-  [see Mail.8:32]
-  [fixed in 5.2.3 - create error handling environment while expanding PS1]
-
 x pdksh 5.2.2, - (reported by Gabor Zahemszky): configure test for
   broken memmove/bcopy doesn't work.
   [see Mail.8:93]
   [fixed in 5.2.3 - fixed test to copy overlapping buffers]
-
-x pdksh 5.2.2, - (reported by Gabor Zahemszky): pdksh's test doesn't know about
-  /dev/fd/n.
-  [see Mail.8:65]
-  [fixed in 5.2.3 - added test_stat() and test_eaccess()]
 
 x pdksh 5.1.3, - (reported by <wendt@sv5.mch.sni.de>): doesn't compile on
   solaris 5.x with COMPLEX_HISTORY defined.
@@ -678,6 +709,15 @@ x pdksh 5.2.2, - (reported by Gabor Zahemszky): "fc 30" edits from 30 to
   [see Mail.9:7]
   [fixed in 5.2.3 - if !-l and no last given, use first]
 
+x pdksh 5.2.2, - (reported by Gabor Zahemszky): [many problems with man page]
+  [see Mail.9:12]
+  [fixed in 5.2.3 - fixed problems]
+
+x pdksh 5.2.2, - (reported by Gabor Zahemszky): #else followed by non-comment
+  in sigact.c.
+  [see Mail.9:13]
+  [fixed in 5.2.3 - turn it into a comment]
+
 x pdksh 5.2.2, - (reported with fix by Gabor Zahemszky): two argument form of
   cd doesn't work.
   [see Mail.9:14]
@@ -687,4 +727,300 @@ x pdksh 5.2.2, - (reported with fix by Gabor Zahemszky): command -V doesn't
   report reserved words.
   [see Mail.9:30]
   [fixed in 5.2.3 - in c_whence(), look for reserved words if vflag set]
+
+x pdksh 5.2.3, - (reported by Dale DePriest): at&t's tbl wants space
+  between font specification and end of table descrption (ie, fB . not
+  fB.).
+  [see Mail.9:41]
+  [fixed in 5.2.4 - put spaces in]
+
+x pdksh 5.2.3, - (reported by David Tamkin & Claus L{gel Rasmussen): PS1
+  isn't imported from environment anymore.
+  [see Mail.9:43,76]
+  [fixed in 5.2.4 - main: don't set PS1 if it is already set]
+
+x pdksh 5.2.3, - (reported by Gary Rafe): If PS1 contains newlines, vi
+  editing mode dones't redraw lines properly.
+  [see Mail.9:63]
+  [fixed in 5.2.4 - added prompt_skip stuff to vi/emacs]
+
+x pdksh 5.2.3, - (reported & fixed by Mike Jetzer): cd: error message if
+  directory didn't exist was wrong.
+  [see Mail.9:66]
+  [fixed in 5.2.4 - print correct string in error message]
+
+x pdksh 5.2.3, - (reported & fixed by Mike Jetzer): vi: <ESC>* shouldn't append
+  a * if word contains a $.
+  [see Mail.9:66]
+  [fixed in 5.2.4 - vi.c(glob_word): check for $ in word, check for null
+   expansion]
+
+x pdksh 5.2.3, - (reported & fixed by Mike Jetzer): vi: <ESC>= doesn't
+  list expansions in column form.
+  [see Mail.9:66]
+  [fixed in 5.2.4 - use pr_menu to print things nicely]
+
+x pdksh 5.2.3, - (reported Larry Bouzane): should be a way of installing
+  binary/man page as pdksh instead of ksh.
+  [see Mail.9:100]
+  [fixed in 5.2.4 - use the --enable-shell=pdksh option to configure]
+
+x pdksh 5.2.3, - (reported by Gabor Zahemszky): [many problems with man
+  page]
+  [see Mail.10:20]
+  [fixed in 5.2.4 - fixed problems]
+
+x pdksh 5.2.3, - (reported by Gabor Zahemszky): exec 1<&9 reports
+  error with ">&9" in it.
+  [see Mail.10:20]
+  [fixed in 5.2.4 - changed iosetup()]
+
+x pdksh 5.2.3, - (reported by Gabor Zahemszky): man page doesn't document
+  /dev/fd/N
+  [see Mail.10:20]
+  [fixed in 5.2.4 - updated manual]
+
+x pdksh 5.2.3, - (reported by Ted Coady): [[ foo/bar = foo* ]]
+  fails; should succeed.
+  [see Mail.10:32]
+  [fixed in 5.2.4 - fixed problem in exec.c(dbteste_getopnd)]
+
+x pdksh 5.2.3, - (reported by Ruei-wun Tu): make on NeXT/NeXTSTEP 3.3
+  doesn't understand .PRECIOUS target and so does nothing.
+  [see Mail.10:43]
+  [fixed in 5.2.4 - moved .PRECIOUS after all in Makefile.in]
+
+x pdksh 5.2.3, - (reported & fixed by Paul Borman): shell doesn't kill
+  foreground process when SIGHUP received; Also, CONT sent before HUP.
+  [see Mail.10:44]
+  [fixed in 5.2.4 - j_exit now sends HUP to foreground process]
+
+x pdksh 5.2.3, AIX 3.2.5 (reported by Ian Portsmouth): C compiler compains
+  about sigtraps[] being re-declared in trap.c.
+  [see Mail.10:73]
+  [fixed in 5.2.4 - use cpp define to avoid bogus re-declaration error]
+
+x pdksh 5.2.3, - (reported by Michael Haardt): ENV should not be
+  included if shell is compiled as sh and posix option not set.
+  [see Mail.10:83]
+  [fixed in 5.2.4 - only include ENV if POSIX, if compiled as sh]
+
+x pdksh 5.2.3, - (reported & fixed by DaviD W. Sanderson): case statements
+  don't allow {/} in place of IN/ESAC.
+  [see Mail.10:77,78]
+  [fixed in 5.2.4 - allow {/} in case statements]
+
+x pdksh 5.2.3, - (reported by Larry Daffner): $? is incorrectly zero'd
+  at start of traps.
+  [see Mail.11:9]
+  [fixed in 5.2.4 - don't clear exstat in main.c(shell)]
+
+x pdksh 5.2.3, - (reported by Frank "Crash" Edwards): configure on linux XXX
+  doesn't detect the presence of lstat().
+  [see Mail.11:36]
+  [fixed in 5.2.4 - change configure to include <sys/stat.h> in lstat() test]
+
+x pdksh 5.2.3, - (reported by Gabor Zahemszky): typeset -f dumps core
+  in the after using autoload functions.
+  [see Mail.11:74?]
+  [fixed in 5.2.4 - c_typeset no longer traverses the array link for functions]
+
+x pdksh 5.2.3, - (reported by Gabor Zahemszky): typeset -f does not report
+  undefined autoload functions
+  [see Mail.11:74?]
+  [fixed in 5.2.4 - c_typeset: don't ignore unset functions]
+
+x pdksh 5.2.3, - (reported by Dale DePriest): alias -t -r does not
+  reset aliases.
+  [see Mail.11:99]
+  [fixed in 5.2.4 - c_alias: call ksh_getopt_reset() before calling c_unalias]
+
+x pdksh 5.2.3, - (reported & fixed by Jason Tyler): 'echo abc^Jfc -e - a=b e'
+  echos b, not bbc.
+  [see Mail.11:100?]
+  [fixed in 5.2.4 - hist_replace: use s, not last]
+
+x pdksh 5.2.3, - (reported by Jason Tyler): 'fc -e -' when there is
+  no history causes infinite loop.
+  [see Mail.11:100?]
+  [fixed in 5.2.4 - histbackup: allow histptr to go below history]
+
+x pdksh 5.2.4, - (reported by David Tamkin): jmp_buf is used instead of
+  sigjmp_buf.
+  [see Mail.XXX:XXX]
+  [fixed in 5.2.5 - added ksh_jmp_buf and defined appropriately]
+
+x pdksh 5.2.4, - (reported by Stephen Coffin): /<RETURN> in vi mode does not
+  repeat last search.
+  [see Mail.XXX:XXX]
+  [fixed in 5.2.5 - vi.c(vi_hook) - make it repeat last search]
+
+x pdksh 5.2.4, - (reported by Gabor Zahemszky): functions containing select
+  commands aren't printed correctly by typeset.
+  [see Mail.XXX:XXX]
+  [fixed in 5.2.5 - tree.c(ptree) - add case for TSELECT]
+
+x pdksh 5.2.4, - (reported & fixed by Stefan Dalibor): COLUMNS isn't set on
+  shell start up (and window size is ignored) 'cause tty_fd isn't valid when
+  x_init() is called.
+  [see Mail.XXX:XXX]
+  [fixed in 5.2.5 - call x_init() after j_init() is called]
+
+x pdksh 5.2.4, - (reported by Will Renkel): "echo -" just prints a blank
+  line - should print the minus.
+  [see Mail.XXX:XXX]
+  [fixed in 5.2.5 - c_ksh.c(c_print): don't do argument parsing on lone -]
+
+x pdksh 5.1.3, - (reported by Gabor Zahemszky): emacs doesn't have ^[*.
+  [see Mail.7:87]
+  [fixed in 5.2.5]
+
+x pdksh 5.2.3, - (reported by Mike Jetzer): in vi, <ESC>= doesn't append
+  a / after directories.
+  [see Mail.9:66]
+  [fixed in 5.2.5]
+
+x pdksh 5.2.0, - (reported by Gabor Zahemszky): can set readonly variables
+  via command assignments (eg, "readonly x=y; x=z /bin/echo hi" should
+  fail and doesn't).
+  [see Mail.8:50,65]
+  [fixed in 5.2.5 - LOCAL_COPY flag passed from comexec() down to local()]
+
+x pdksh 5.2.4, - (reported by Tom Karches): history: "r old=new", with
+  no commands prefix given, prints "fc: too mnay arguments" - it should
+  do the subst on the previous command.
+  [see Mail.XXX:XXX]
+  [fixed in 5.2.5]
+
+x pdksh 5.2.3, - (reported by Vigen Pogosyan): assignments in $(( ... ))
+  remember the base that was assigned in pdksh - does not in at&t ksh.
+  [see Mail.10:54]
+  [fixed in 5.2.5: uset setint() in expr.c(evalexpr)]
+
+x pdksh 5.2.4, - (reported by Gabor Zahemszky): emacs: ^O steps down
+  two lines (should be 1).
+  [see Mail.XXX:XXX]
+  [fixed in 5.2.5: convert history line to command number, then convert back]
+
+x pdksh 5.2.3, - (reported by David Gast(? gast@twinsun.com)): fc -ln -1 -1
+  reports the current command, not the previous command.
+  [see Mail.10:49]
+  [fixed in 5.2.5]
+
+x pdksh 5.2.3, - (reported by Matthew Green): foo=`^Jecho bar` doesn't
+  set foo to bar (foo is empty).
+  [see Mail.XXX:XXX]
+  [fixed in 5.2.5: syn.c: set multiline.on when source is SSTRING]
+
+x pdksh 5.2.5, - (reported by Gabor Zahemszky): continue/break: if n
+  is too big, shell prints internal error message.
+  [see Mail.XXX:XXX]
+  [fixed in 5.2.6: fix c_brkcont to use last loop if n is too big]
+
+x pdksh 5.2.5, - (reported by Gabor Zahemszky): set: +o in ksh93
+  prints command that sets various options.
+  [see Mail.XXX:XXX]
+  [fixed in 5.2.6: changed misc.c(printoptions)]
+
+x pdksh 5.2.5, - (reported by Gabor Zahemszky): COLUMNS/LINES variables
+  are not exported.
+  [see Mail.XXX:XXX]
+  [fixed in 5.2.6: use typeset() in edit.c(x_init) to export COLUMNS/LINES]
+
+x pdksh 5.2.5, - (reported by Gabor Zahemszky): emacs: <ESC><ESC> puts
+  space after completed directories.
+  [see Mail.XXX:XXX]
+  [fixed in 5.2.6: check for single/non-directory match in emacs.c(do_complete)]
+
+x pdksh 5.2.5, - (reported by Gabor Zahemszky): vi: # removes comment
+  and executes if command already commented.
+  [see Mail.XXX:XXX]
+  [fixed in 5.2.6: added vi.c(do_comment)]
+
+x pdksh 5.2.7, - (reported by Adrian Marsh): test doesn't have == operator.
+  [see Mail.XXX:XXX]
+  [fixed in 5.2.8: added == to c_test.c operator table]
+
+x pdksh 5.2.7, - (reported by Mike Jetzer): pdksh sets/exports COLUMNS/LINES
+  which causes applications not to respond to window size changes.
+  [see Mail.XXX:XXX]
+  [fixed in 5.2.8: COLUMNS/LINES no longer exported automatically]
+
+x pdksh 5.2.7, - (reported by Gabor Zahemszky): getopts sets OPTIND differently
+  that at&t ksh when a bad option is given.
+  [see Mail.XXX:XXX]
+  [fixed in 5.2.8: OPTIND not set if option was bad - fragile fix - may go away]
+
+x pdksh 5.2.7, - (reported with fix by Marc Olzheim): sh version shouldn't
+  have mail check stuff, macro expansion in PS[0-9].
+  [fixed in 5.2.8: added lots of ifdefs]
+
+x pdksh 5.2.7, - (reported by Gabor Zahemszky): sub commands in PS1 cause
+  a warning message to be printed.
+  [see Mail.XXX:XXX]
+  [fixed in 5.2.8: lex.c(set_prompt) - don't print the warning message]
+
+x pdksh 5.2.7, - (reported by Tom Watson): some environment variables
+  (eg, PATH) are converted to uppercase on 16-bit int machine.
+  [see Mail.XXX:XXX]
+  [fixed in 5.2.8: struct tbl.flag (32 bit thing) was being treated as an
+   int in some places]
+
+x pdksh 5.2.7, - (reported by Gabor Zahemszky): unset always returns 0 - should
+  return 1 if variable/function is not set.
+  [see Mail.XXX:XXX]
+  [fixed in 5.2.8: fixed c_sh.c(c_unset)]
+
+x pdksh 5.2.7, - (reported by Gabor Zahemszky): select should only print the
+  menu the first time, if REPLAY is empty, or if a blank line is entered.
+  [see Mail.XXX:XXX]
+  [fixed in 5.2.8: fixed up exec.c(execute,do_selectargs)]
+
+x pdksh 5.2.7, - (reported by Gabor Zahemszky): shell reports "cannot execute"
+  error if file exists, even if . not in path.
+  [see Mail.XXX:XXX]
+  [fixed in 5.2.8: fixed up exec.c(comexec)]
+
+x pdksh 5.1.3, - (reported with partial fix by ra@rhi.hi.is): shell doesn't
+  listen to sigwinch.
+  [see Mail.7:7 and related]
+  [fixed in 5.2.8: changed edit.c(x_init) to catch sigwinch]
+
+x pdksh 5.2.7, - (reported by Gabor Zahemszky): typeset doesn't report
+  variables that have attributes (like export) but no values.
+  [see Mail.XXX:XXX]
+  [fixed in 5.2.8: fixed up c_ksh.c(c_typeset)]
+
+x pdksh 5.2.7, - (reported by Gabor Zahemszky): error message printed as
+  a result of "set -o nounset" is different from at7t ksh.
+  [see Mail.XXX:XXX]
+  [fixed in 5.2.8: fixed error messges in eval.c]
+
+x pdksh 5.2.7, - (reported by Gabor Zahemszky): vi/emacs: when listing
+  command/file completions, should go back at most one space.  Also, should
+  allow completions on zero length names.
+  [see Mail.XXX:XXX]
+  [fixed in 5.2.8: fixed edit.c(x_locate_word); now allows zero-length
+   file completions (but not command)]
+
+* pdksh 5.2.7, - (reported by Gabor Zahemszky): emacs: <esc># doesn't do
+  the comment thing.
+  [see Mail.XXX:XXX]
+  [fixed in 5.2.8: added emacs.c(x_comment) et al.]
+
+x pdksh 5.2.7, - (reported by Gabor Zahemszky): arithmatic expressions
+  containing variables not expanded as in at&t ksh. eg, "x=1+2, let y=x"
+  fails.
+  [see Mail.XXX:XXX]
+  [fixed in 5.2.8: added evaling/INEXPREVAL/ET_RECURSIVE code to expr.c]
+
+x pdksh 5.2.7, - (reported by Gabor Zahemszky): unsetting the 0th element
+  of an array kills the whole array.
+  [see Mail.XXX:XXX]
+  [fixed in 5.2.8: var.c(unset) - allow ARRAY to be preserved]
+
+x pdksh 5.2.7, - (reported by Gabor Zahemszky): unsetting a function while
+  it is being executed can result in core dump.
+  [see Mail.XXX:XXX]
+  [fixed in 5.2.8: table.c(texpand) - dont free if FINUSE is set]
 

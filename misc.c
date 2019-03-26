@@ -12,9 +12,12 @@
 # define UCHAR_MAX	0xFF
 #endif
 
-char ctypes [UCHAR_MAX+1];	/* type bits for unsigned char */
+short ctypes [UCHAR_MAX+1];	/* type bits for unsigned char */
 
-static	char	*cclass ARGS((char *p, int sub));
+static int	do_gmatch ARGS((const unsigned char *s, const unsigned char *p,
+			const unsigned char *se, const unsigned char *pe,
+			int isfile));
+static const unsigned char *cclass ARGS((const unsigned char *p, int sub));
 
 /*
  * Fast character classes
@@ -26,7 +29,7 @@ setctypes(s, t)
 {
 	register int i;
 
-	if ((t&C_IFS)) {
+	if (t & C_IFS) {
 		for (i = 0; i < UCHAR_MAX+1; i++)
 			ctypes[i] &= ~C_IFS;
 		ctypes[0] |= C_IFS; /* include \0 in C_IFS */
@@ -51,6 +54,7 @@ initctypes()
 	setctypes(" \t\n", C_IFSWS);
 	setctypes("=-+?", C_SUBOP1);
 	setctypes("#%", C_SUBOP2);
+	setctypes(" \n\t\"#$&'()*;<>?[\\`|", C_QUOTE);
 }
 
 /* convert unsigned long to base N string */
@@ -73,7 +77,7 @@ ulton(n, base)
 }
 
 char *
-strsave(s, ap)
+str_save(s, ap)
 	register const char *s;
 	Area *ap;
 {
@@ -85,7 +89,7 @@ strsave(s, ap)
  * (unless n < 0).
  */
 char *
-strnsave(s, n, ap)
+str_nsave(s, n, ap)
 	register const char *s;
 	int n;
 	Area *ap;
@@ -114,13 +118,13 @@ Xcheck_grow_(xsp, xp, more)
 	return xsp->beg + (xp - old_beg);
 }
 
-struct option options[] = {
+const struct option options[] = {
 	/* Special cases (see parse_args()): -A, -o, -s.
 	 * Options are sorted by their longnames - the order of these
 	 * entries MUST match the order of sh_flag F* enumerations in sh.h.
 	 */
 	{ "allexport",	'a',		OF_ANY },
-#ifdef BRACEEXPAND
+#ifdef BRACE_EXPAND
 	{ "braceexpand",  0,		OF_ANY }, /* non-standard */
 #endif
 	{ "bgnice",	  0,		OF_ANY },
@@ -163,6 +167,7 @@ struct option options[] = {
 	{ "viraw",	  0,		OF_ANY }, /* no effect */
 	{ "vi-show8",	  0,		OF_ANY }, /* non-standard */
 	{ "vi-tabcomplete",  0, 	OF_ANY }, /* non-standard */
+	{ "vi-esccomplete",  0, 	OF_ANY }, /* non-standard */
 #endif
 	{ "xtrace",	'x',		OF_ANY },
 	{ NULL,		  0,		     0 }
@@ -187,10 +192,13 @@ option(n)
 struct options_info {
 	int opt_width;
 	struct {
-		char	*name;
+		const char *name;
 		int	flag;
 	} opts[NELEM(options)];
 };
+
+static char *options_fmt_entry ARGS((void *arg, int i, char *buf, int buflen));
+static void printoptions ARGS((int verbose));
 
 /* format a single select menu item */
 static char *
@@ -232,10 +240,11 @@ printoptions(verbose)
 		print_columns(shl_stdout, n, options_fmt_entry, &oi,
 			      oi.opt_width + 5);
 	} else {
-		/* short version */
+		/* short version ala ksh93 */
+		shprintf("set");
 		for (i = 0; options[i].name; i++)
 			if (Flag(i) && options[i].name[0])
-				shprintf("%s ", options[i].name);
+				shprintf(" -o %s", options[i].name);
 		shprintf(newline);
 	}
 }
@@ -251,7 +260,7 @@ getoptions()
 		if (options[i].c && Flag(i))
 			*cp++ = options[i].c;
 	*cp = 0;
-	return strsave(m, ATEMP);
+	return str_save(m, ATEMP);
 }
 
 /* change a Flag(*) value; takes care of special actions */
@@ -301,9 +310,9 @@ change_flag(f, what, newval)
 		setgid(getgid());
 #endif /* OS2 */
 	} else if (f == FPOSIX && newval) {
-#ifdef BRACEEXPAND
+#ifdef BRACE_EXPAND
 		Flag(FBRACEEXPAND) = 0
-#endif /* BRACEEXPAND */
+#endif /* BRACE_EXPAND */
 		;
 	}
 }
@@ -350,7 +359,7 @@ parse_args(argv, what, setargsp)
 		 * flag using +l.
 		 */
 		Flag(FLOGIN) = (argv[0][0] == '-'
-				|| ((p = strrchr_dirsep(argv[0]))
+				|| ((p = ksh_strrchr_dirsep(argv[0]))
 				     && *++p == '-'));
 		opts = cmd_opts;
 	} else
@@ -375,7 +384,14 @@ parse_args(argv, what, setargsp)
 				break;
 			}
 			i = option(go.optarg);
-			if (i >= 0 && (options[i].flags & what))
+			if (i >= 0 && set == Flag(i))
+				/* Don't check the context if the flag
+				 * isn't changing - makes "set -o interactive"
+				 * work if you're already interactive.  Needed
+				 * if the output of "set +o" is to be used.
+				 */
+				;
+			else if (i >= 0 && (options[i].flags & what))
 				change_flag((enum sh_flag) i, what, set);
 			else {
 				bi_errorf("%s: bad option", go.optarg);
@@ -424,11 +440,11 @@ parse_args(argv, what, setargsp)
 	if (arrayset) {
 		array = argv[go.optind++];
 		if (!array) {
-			bi_errorf("-A: missing array name\n");
+			bi_errorf("-A: missing array name");
 			return -1;
 		}
 		if (!*array || *skip_varname(array, FALSE)) {
-			bi_errorf("%s: is not an identifier\n", array);
+			bi_errorf("%s: is not an identifier", array);
 			return -1;
 		}
 	} else
@@ -451,10 +467,10 @@ parse_args(argv, what, setargsp)
 /* parse a decimal number: returns 0 if string isn't a number, 1 otherwise */
 int
 getn(as, ai)
-	char *as;
+	const char *as;
 	int *ai;
 {
-	register char *s;
+	const char *s;
 	register int n;
 	int sawdigit = 0;
 
@@ -472,7 +488,7 @@ getn(as, ai)
 /* getn() that prints error */
 int
 bi_getn(as, ai)
-	char *as;
+	const char *as;
 	int *ai;
 {
 	int rv = getn(as, ai);
@@ -494,85 +510,264 @@ bi_getn(as, ai)
 
 int
 gmatch(s, p, isfile)
-	register char *s, *p;
+	const char *s, *p;
 	int isfile;
 {
-	register unsigned int sc, pc;
+	const char *se, *pe;
 
 	if (s == NULL || p == NULL)
 		return 0;
-	while ((pc = *p++) != 0) {
-		sc = *s++;
+	se = s + strlen(s);
+	pe = p + strlen(p);
+	/* isfile is false iff no syntax check has been done on
+	 * the pattern.  If check fails, just to a strcmp().
+	 */
+	if (!isfile && !has_globbing(p, pe)) {
+		int len = pe - p + 1;
+		char tbuf[64];
+		char *t = len <= sizeof(tbuf) ? tbuf
+				: (char *) alloc(len, ATEMP);
+		debunk(t, p);
+		return !strcmp(t, s);
+	}
+	return do_gmatch((const unsigned char *) s, (const unsigned char *) se,
+			 (const unsigned char *) p, (const unsigned char *) pe,
+			 isfile);
+}
+
+/* Returns if p is a syntacticly correct globbing pattern, false
+ * if it contains no pattern characters or if there is a syntax error.
+ * Syntax errors are:
+ *	- [ with no closing ]
+ *	- imballenced $(...) expression
+ *	- [...] and *(...) not nested (eg, [a$(b|]c), *(a[b|c]d))
+ */
+/*XXX
+- if no magic,
+	if dest given, copy to dst
+	return ?
+- if magic && (no globbing || syntax error)
+	debunk to dst
+	return ?
+- return ?
+*/
+int
+has_globbing(xp, xpe)
+	const char *xp, *xpe;
+{
+	const unsigned char *p = (const unsigned char *) xp;
+	const unsigned char *pe = (const unsigned char *) xpe;
+	int c;
+	int nest = 0, bnest = 0;
+	int saw_glob = 0;
+	int in_bracket = 0; /* inside [...] */
+
+	for (; p < pe; p++) {
+		if (!ISMAGIC(*p))
+			continue;
+		if ((c = *++p) == '*' || c == '?')
+			saw_glob = 1;
+		else if (c == '[') {
+			if (!in_bracket) {
+				saw_glob = 1;
+				in_bracket = 1;
+				if (ISMAGIC(p[1]) && p[2] == NOT)
+					p += 2;
+				if (ISMAGIC(p[1]) && p[2] == ']')
+					p += 2;
+			}
+			/* XXX Do we need to check ranges here? POSIX Q */
+		} else if (c == ']') {
+			if (in_bracket) {
+				if (bnest)		/* [a*(b]) */
+					return 0;
+				in_bracket = 0;
+			}
+		} else if ((c & 0x80) && strchr("*+?@!", c & 0x7f)) {
+			saw_glob = 1;
+			if (in_bracket)
+				bnest++;
+			else
+				nest++;
+		} else if (c == '|') {
+			if (in_bracket && !bnest)	/* *(a[foo|bar]) */
+				return 0;
+		} else if (c == /*(*/ ')') {
+			if (in_bracket) {
+				if (!bnest--)		/* *(a[b)c] */
+					return 0;
+			} else if (nest)
+				nest--;
+		}
+		/* else must be a MAGIC-MAGIC, or MAGIC-!, MAGIC--, MAGIC-]
+			 MAGIC-{, MAGIC-,, MAGIC-} */
+	}
+	return saw_glob && !in_bracket && !nest;
+}
+
+/* Function must return either 0 or 1 (assumed by code for 0x80|'!') */
+static int
+do_gmatch(s, se, p, pe, isfile)
+	const unsigned char *s, *p;
+	const unsigned char *se, *pe;
+	int isfile;
+{
+	register int sc, pc;
+	const unsigned char *prest, *psub, *pnext;
+	const unsigned char *srest;
+
+	if (s == NULL || p == NULL)
+		return 0;
+	while (p < pe) {
+		pc = *p++;
+		sc = s < se ? *s : '\0';
+		s++;
 		if (isfile) {
 			sc = FILECHCONV(sc);
 			pc = FILECHCONV(pc);
 		}
-		if (pc == MAGIC)
-			switch (*p++) {
-			  case '[':
-				if (sc == 0 || (p = cclass(p, sc)) == NULL)
-					return (0);
-				break;
-
-			  case '?':
-				if (sc == 0)
-					return (0);
-				break;
-
-			  case '*':
-				s--;
-				do {
-					if (*p == '\0' || gmatch(s, p, isfile))
-						return (1);
-				} while (*s++ != '\0');
-				return (0);
-
-#if 0
-			  /* [!+*?@](pattern|pattern|..) */
-			  case '!': /* matches none of the patterns */
-			  case '+': /* matches one or more times */
-			  case '*': /* matches zero or more times */
-			  case '?': /* matches zero or once */
-			  case '@': /* matches once */
-				/* fall through */
-#endif /* 0 */
-
-			  default:
-				if (sc != p[-1])
-					return 0;
-				break;
-			}
-		else
+		if (!ISMAGIC(pc)) {
 			if (sc != pc)
 				return 0;
+			continue;
+		}
+		switch (*p++) {
+		  case '[':
+			if (sc == 0 || (p = cclass(p, sc)) == NULL)
+				return 0;
+			break;
+
+		  case '?':
+			if (sc == 0)
+				return 0;
+			break;
+
+		  case '*':
+			if (p == pe)
+				return 1;
+			s--;
+			do {
+				if (do_gmatch(s, se, p, pe, isfile))
+					return 1;
+			} while (s++ < se);
+			return 0;
+
+#ifdef KSH
+		  /* [*+?@!](pattern|pattern|..) */
+		  case 0x80|'+': /* matches one or more times */
+		  case 0x80|'*': /* matches zero or more times */
+			if (!(prest = pat_scan(p, pe, 0)))
+				return 0;
+			s--;
+			/* take care of zero matches */
+			if (p[-1] == (0x80 | '*')
+			    && do_gmatch(s, se, prest, pe, isfile))
+				return 1;
+			for (psub = p; ; psub = pnext) {
+				pnext = pat_scan(psub, pe, 1);
+				for (srest = s; srest <= se; srest++) {
+					if (do_gmatch(s, srest,
+						psub, pnext - 2, isfile)
+					    && (do_gmatch(srest, se,
+							  prest, pe, isfile)
+						|| (s != srest
+						    && do_gmatch(srest, se,
+							p - 2, pe, isfile))))
+						return 1;
+				}
+				if (pnext == prest)
+					break;
+			}
+			return 0;
+
+		  case 0x80|'?': /* matches zero or once */
+		  case 0x80|'@': /* matches one of the patterns */
+			if (!(prest = pat_scan(p, pe, 0)))
+				return 0;
+			s--;
+			/* Take care of zero matches */
+			if (p[-1] == (0x80 | '?')
+			    && do_gmatch(s, se, prest, pe, isfile))
+				return 1;
+			for (psub = p; ; psub = pnext) {
+				pnext = pat_scan(psub, pe, 1);
+				srest = prest == pe ? se : s;
+				for (; srest <= se; srest++) {
+					if (do_gmatch(s, srest,
+						      psub, pnext - 2, isfile)
+					    && do_gmatch(srest, se,
+							 prest, pe, isfile))
+						return 1;
+				}
+				if (pnext == prest)
+					break;
+			}
+			return 0;
+
+		  case 0x80|'!': /* matches none of the patterns */
+			if (!(prest = pat_scan(p, pe, 0)))
+				return 0;
+			s--;
+			for (srest = s; srest <= se; srest++) {
+				int matched = 0;
+
+				for (psub = p; ; psub = pnext) {
+					pnext = pat_scan(psub, pe, 1);
+					if (do_gmatch(s, srest,
+						      psub, pnext - 2, isfile))
+					{
+						matched = 1;
+						break;
+					}
+					if (pnext == prest)
+						break;
+				}
+				if (!matched && do_gmatch(srest, se,
+							  prest, pe, isfile))
+					return 1;
+			}
+			return 0;
+#endif /* KSH */
+
+		  default:
+			if (sc != p[-1])
+				return 0;
+			break;
+		}
 	}
-	return (*s == 0);
+	return s == se;
 }
 
-static char *
+static const unsigned char *
 cclass(p, sub)
-	register char *p;
+	const unsigned char *p;
 	register int sub;
 {
 	register int c, d, not, found = 0;
-	char *orig_p = p;
+	const unsigned char *orig_p = p;
 
-	if ((not = (*p == MAGIC && *++p == NOT)))
+	if ((not = (ISMAGIC(*p) && *++p == NOT)))
 		p++;
 	do {
-		if (*p == MAGIC)
-			p++;
-		if (*p == '\0')
+		c = *p++;
+		if (ISMAGIC(c)) {
+			c = *p++;
+			if ((c & 0x80) && !ISMAGIC(c))
+				c &= 0x7f;/* extended pattern matching: *+?@! */
+		}
+		if (c == '\0')
 			/* No closing ] - act as if the opening [ was quoted */
 			return sub == '[' ? orig_p : NULL;
-		c = *p++;
-		if (p[0] == MAGIC && p[1] == '-'
-		    && (p[2] != MAGIC || p[3] != ']'))
+		if (ISMAGIC(p[0]) && p[1] == '-'
+		    && (!ISMAGIC(p[2]) || p[3] != ']'))
 		{
 			p += 2; /* MAGIC- */
-			if (*p == MAGIC)
-				p++;
 			d = *p++;
+			if (ISMAGIC(d)) {
+				d = *p++;
+				if ((d & 0x80) && !ISMAGIC(d))
+					d &= 0x7f;
+			}
 			/* POSIX says this is an invalid expression */
 			if (c > d)
 				return NULL;
@@ -580,10 +775,32 @@ cclass(p, sub)
 			d = c;
 		if (c == sub || (c <= sub && sub <= d))
 			found = 1;
-	} while (!(p[0] == MAGIC && p[1] == ']'));
+	} while (!(ISMAGIC(p[0]) && p[1] == ']'));
 
 	return (found != not) ? p+2 : NULL;
 }
+
+/* Look for next ) or | (if match_sep) in *(foo|bar) pattern */
+const unsigned char *
+pat_scan(p, pe, match_sep)
+	const unsigned char *p;
+	const unsigned char *pe;
+	int match_sep;
+{
+	int nest = 0;
+
+	for (; p < pe; p++) {
+		if (!ISMAGIC(*p))
+			continue;
+		if ((*++p == /*(*/ ')' && nest-- == 0)
+		    || (*p == '|' && match_sep && nest == 0))
+			return ++p;
+		if ((*p & 0x80) && strchr("*+?@!", *p & 0x7f))
+			nest++;
+	}
+	return (const unsigned char *) 0;
+}
+
 
 /* -------- qsort.c -------- */
 
@@ -594,9 +811,9 @@ static void qsort1 ARGS((void **base, void **lim, int (*f)(void *, void *)));
 
 void
 qsortp(base, n, f)
-	void **base;		/* base address */
-	size_t n;		/* elements */
-	int (*f)();		/* compare function */
+	void **base;				/* base address */
+	size_t n;				/* elements */
+	int (*f) ARGS((void *, void *));	/* compare function */
 {
 	qsort1(base, base + n, f);
 }
@@ -611,7 +828,7 @@ qsortp(base, n, f)
 static void
 qsort1(base, lim, f)
 	void **base, **lim;
-	int (*f)();
+	int (*f) ARGS((void *, void *));
 {
 	register void **i, **j;
 	register void **lptr, **hptr;
@@ -730,7 +947,7 @@ int
 ksh_getopt(argv, go, options)
 	char **argv;
 	Getopt *go;
-	char *options;
+	const char *options;
 {
 	char c;
 	char *o;
@@ -765,11 +982,11 @@ ksh_getopt(argv, go, options)
 			go->buf[0] = c;
 			go->optarg = go->buf;
 		} else {
-			warningf(TRUE, "%s%s-%c: bad option",
-				(go->flags & GI_NONAME) ? "" : argv[0],
-				(go->flags & GI_NONAME) ? "" : ": ", c);
+			warningf(TRUE, "%s%s-%c: unknown option",
+				(go->flags & GF_NONAME) ? "" : argv[0],
+				(go->flags & GF_NONAME) ? "" : ": ", c);
 			if (go->flags & GF_ERROR)
-				bi_errorf((char *) 0);
+				bi_errorf(null);
 		}
 		return '?';
 	}
@@ -792,10 +1009,10 @@ ksh_getopt(argv, go, options)
 				return ':';
 			}
 			warningf(TRUE, "%s%s-`%c' requires argument",
-				(go->flags & GI_NONAME) ? "" : argv[0],
-				(go->flags & GI_NONAME) ? "" : ": ", c);
+				(go->flags & GF_NONAME) ? "" : argv[0],
+				(go->flags & GF_NONAME) ? "" : ": ", c);
 			if (go->flags & GF_ERROR)
-				bi_errorf((char *) 0);
+				bi_errorf(null);
 			return '?';
 		}
 		go->p = 0;
@@ -831,14 +1048,14 @@ ksh_getopt(argv, go, options)
  */
 void
 print_value_quoted(s)
-	char *s;
+	const char *s;
 {
-	char *p;
+	const char *p;
 	int inquote = 0;
 
 	/* Test if any quotes are needed */
 	for (p = s; *p; p++)
-		if (!letnum(*p) && *p != '/')
+		if (ctype(*p, C_QUOTE))
 			break;
 	if (!*p) {
 		shprintf("%s", s);
@@ -950,7 +1167,7 @@ strip_nuls(buf, nbytes)
 char *
 str_zcpy(dst, src, dsize)
 	char *dst;
-	char *src;
+	const char *src;
 	int dsize;
 {
 	if (dsize > 0) {

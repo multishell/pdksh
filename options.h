@@ -42,11 +42,11 @@
  */
 #define	JOBS
 
-/* Define BRACEEXPAND if you want csh-like {} globbing compiled in and enabled
+/* Define BRACE_EXPAND if you want csh-like {} globbing compiled in and enabled
  * (can be disabled with "set +o braceexpand"; also disabled by "set -o posix",
  * but can be re-enabled with "set -o braceexpand").
  */
-#define BRACEEXPAND
+#define BRACE_EXPAND
 
 /* Define COMPLEX_HISTORY if you want at&t ksh style history files (ie, file
  * is updated after each command is read; concurrent ksh's read each other's

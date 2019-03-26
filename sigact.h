@@ -24,6 +24,7 @@
  */
 /* Changes to sigact.h for pdksh, Michael Rendell <michael@cs.mun.ca>:
  *	- changed SIG_HDLR to RETSIGTYPE for use with GNU autoconf
+ *	- added RETSIGVAL
  *	- ifdef'd out ARGS(), volatile and const initializations
  *	- ifdef'd out sigset_t definition - let autoconf handle it
  *	- ifdef out routines not used in ksh if IS_KSH is defined
@@ -38,6 +39,7 @@
  */
 #ifndef RETSIGTYPE
 # define RETSIGTYPE void
+# define RETSIGVAL
 #endif
 
 #if 0 /* ARGS(), volatile and const are already set up in config*.h -mhr */
@@ -52,7 +54,7 @@
 #endif
 
 #ifndef IS_KSH
-RETSIGTYPE (*Signal	ARGS((int sig, RETSIGTYPE (*disp)(int)))) ARGS((int)); 
+handler_t Signal	ARGS((int sig, handler_t disp));
 #endif /* IS_KSH */
 
 /*
@@ -64,7 +66,7 @@ RETSIGTYPE (*Signal	ARGS((int sig, RETSIGTYPE (*disp)(int)))) ARGS((int));
 #endif
   
 #ifndef SIG_ERR
-# define SIG_ERR  (RETSIGTYPE (*)())-1
+# define SIG_ERR  ((handler_t) -1)
 #endif
 #ifndef BADSIG
 # define BADSIG  SIG_ERR
@@ -97,7 +99,7 @@ typedef unsigned int sigset_t;
  */
 struct sigaction
 {
-  RETSIGTYPE	(*sa_handler)();
+  handler_t	sa_handler;
   sigset_t	sa_mask;
   int		sa_flags;
 };

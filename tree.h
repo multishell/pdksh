@@ -13,7 +13,10 @@
  */
 struct op {
 	short	type;			/* operation type, see below */
-	short	evalflags;		/* eval() flags for arg expansion */
+	union { /* WARNING: newtp(), tcopy() use evalflags = 0 to clear union */
+		short	evalflags;	/* TCOM: arg expansion eval() flags */
+		short	ksh_func;	/* TFUNC: function x (vs x()) */
+	} u;
 	char  **args;			/* arguments to a command */
 	char  **vars;			/* variable assignments */
 	struct ioword	**ioact;	/* IO actions (eg, < > >>) */
@@ -29,7 +32,7 @@ struct op {
 #define	TCOM		1	/* command */
 #define	TPAREN		2	/* (c-list) */
 #define	TPIPE		3	/* a | b */
-#define	TLIST		4	/* a [&;] b */
+#define	TLIST		4	/* a ; b */
 #define	TOR		5	/* || */
 #define	TAND		6	/* && */
 #define TBANG		7	/* ! */
@@ -61,6 +64,9 @@ struct op {
 #define	CQUOTE	6		/* closing " or ' */
 #define	OSUBST	7		/* opening ${ substitution */
 #define	CSUBST	8		/* closing } of above */
+#define OPAT	9		/* open pattern: *(, @(, etc. */
+#define SPAT	10		/* seperate pattern: | */
+#define CPAT	11		/* close pattern: ) */
 
 /*
  * IO redirection
@@ -84,6 +90,7 @@ struct ioword {
 #define	IOSKIP	BIT(5)		/* <<-, skip ^\t* */
 #define	IOCLOB	BIT(6)		/* >|, override -o noclobber */
 #define IORDUP	BIT(7)		/* x<&y (as opposed to x>&y) */
+#define IONAMEXP BIT(8)		/* name has been expanded */
 
 /* execute/exchild flags */
 #define	XEXEC	BIT(0)		/* execute without forking */
@@ -111,8 +118,8 @@ struct ioword {
 #define DOBRACE_ BIT(6)		/* used by expand(): do brace expansion */
 #define DOMAGIC_ BIT(7)		/* used by expand(): string contains MAGIC */
 #define DOTEMP_	BIT(8)		/* ditto : in word part of ${..[%#=?]..} */
-#define DODIRSWP BIT(9)		/* map / to \ (OS2 only) */
-#define DOVACHECK BIT(10)	/* var assign check (for typeset, set, etc) */
+#define DOVACHECK BIT(9)	/* var assign check (for typeset, set, etc) */
+#define DOMARKDIRS BIT(10)	/* force markdirs behaviour */
 
 /*
  * The arguments of [[ .. ]] expressions are kept in t->args[] and flags

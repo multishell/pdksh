@@ -14,9 +14,9 @@
 
 /* some useful #defines */
 #ifdef EXTERN
-# define _I_(i) = i
+# define I__(i) = i
 #else
-# define _I_(i)
+# define I__(i)
 # define EXTERN extern
 # define EXTERN_DEFINED
 #endif
@@ -35,6 +35,26 @@ typedef struct {
 
 EXTERN X_chars edchars;
 
+/* x_fc_glob() flags */
+#define XCF_COMMAND	BIT(0)	/* Do command completion */
+#define XCF_FILE	BIT(1)	/* Do file completion */
+#define XCF_FULLPATH	BIT(2)	/* command completion: store full path */
+#define XCF_COMMAND_FILE (XCF_COMMAND|XCF_FILE)
+
+/* edit.c */
+int 	x_getc		ARGS((void));
+void 	x_flush		ARGS((void));
+void 	x_putc		ARGS((int c));
+void 	x_puts		ARGS((const char *s));
+bool_t 	x_mode		ARGS((bool_t onoff));
+int 	promptlen	ARGS((const char *cp, const char **spp));
+int	x_do_comment	ARGS((char *buf, int bsize, int *lenp));
+void	x_print_expansions ARGS((int nwords, char *const *words, int is_command));
+int	x_cf_glob ARGS((int flags, const char *buf, int buflen, int pos, int *startp,
+			  int *endp, char ***wordsp, int *is_commandp));
+int	x_longest_prefix ARGS((int nwords, char *const *words));
+int	x_basename ARGS((const char *s, const char *se));
+void	x_free_words ARGS((int nwords, char **words));
 /* emacs.c */
 int 	x_emacs		ARGS((char *buf, size_t len));
 void 	x_init_emacs	ARGS((void));
@@ -42,10 +62,11 @@ void	x_emacs_keys	ARGS((X_chars *ec));
 /* vi.c */
 int 	x_vi		ARGS((char *buf, size_t len));
 
+
 #ifdef DEBUG
-# define _D_(x) x
+# define D__(x) x
 #else
-# define _D_(x)
+# define D__(x)
 #endif
 
 /* This lot goes at the END */
@@ -54,7 +75,7 @@ int 	x_vi		ARGS((char *buf, size_t len));
 # undef EXTERN_DEFINED
 # undef EXTERN
 #endif
-#undef _I_
+#undef I__
 /*
  * Local Variables:
  * version-control:t

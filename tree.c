@@ -11,7 +11,7 @@ static void 	ptree ARGS((struct op *t, int indent, struct shf *f));
 static void 	pioact ARGS((struct shf *f, int indent, struct ioword *iop));
 static void	tputC ARGS((int c, struct shf *shf));
 static void	tputS ARGS((char *wp, struct shf *shf));
-static void	vfptreef ARGS((struct shf *shf, int indent, char *fmt, va_list va));
+static void	vfptreef ARGS((struct shf *shf, int indent, const char *fmt, va_list va));
 static struct ioword **iocopy ARGS((struct ioword **iow, Area *ap));
 static void     iofree ARGS((struct ioword **iow, Area *ap));
 
@@ -78,8 +78,14 @@ ptree(t, indent, shf)
 		fptreef(shf, indent, " ]] ");
 		break;
 	  }
+#ifdef KSH
+	  case TSELECT:
+		fptreef(shf, indent, "select %s ", t->str);
+		/* fall through */
+#endif /* KSH */
 	  case TFOR:
-		fptreef(shf, indent, "for %s ", t->str);
+		if (t->type == TFOR)
+			fptreef(shf, indent, "for %s ", t->str);
 		if (t->vars != NULL) {
 			fptreef(shf, indent, "in ");
 			for (w = t->vars; *w; )
@@ -243,7 +249,8 @@ pioact(shf, indent, iop)
 		if (iop->delim)
 			fptreef(shf, indent, "%S ", iop->delim);
 	} else if (iop->name)
-		fptreef(shf, indent, "%S ", iop->name);
+		fptreef(shf, indent, (iop->flag & IONAMEXP) ? "%s " : "%S ",
+			iop->name);
 }
 
 
@@ -286,6 +293,22 @@ tputS(wp, shf)
 				tputc('\\', shf);
 			tputC(c, shf);
 			break;
+		  case COMSUB:
+			tputc('$', shf);
+			tputc('(', shf);
+			while (*wp != 0)
+				tputC(*wp++, shf);
+			tputc(')', shf);
+			break;
+		  case EXPRSUB:
+			tputc('$', shf);
+			tputc('(', shf);
+			tputc('(', shf);
+			while (*wp != 0)
+				tputC(*wp++, shf);
+			tputc(')', shf);
+			tputc(')', shf);
+			break;
 		  case OQUOTE:
 		  	quoted = 1;
 			tputc('"', shf);
@@ -303,22 +326,18 @@ tputS(wp, shf)
 		  case CSUBST:
 			tputc('}', shf);
 			break;
-		  case COMSUB:
-			tputc('$', shf);
+#ifdef KSH
+		  case OPAT:
+			tputc(*wp++, shf);
 			tputc('(', shf);
-			while (*wp != 0)
-				tputC(*wp++, shf);
+			break;
+		  case SPAT:
+			tputc('|', shf);
+			break;
+		  case CPAT:
 			tputc(')', shf);
 			break;
-		  case EXPRSUB:
-			tputc('$', shf);
-			tputc('(', shf);
-			tputc('(', shf);
-			while (*wp != 0)
-				tputC(*wp++, shf);
-			tputc(')', shf);
-			tputc(')', shf);
-			break;
+#endif /* KSH */
 		}
 }
 
@@ -329,12 +348,12 @@ tputS(wp, shf)
 /* VARARGS */
 int
 #ifdef HAVE_PROTOTYPES
-fptreef(struct shf *shf, int indent, char *fmt, ...)
+fptreef(struct shf *shf, int indent, const char *fmt, ...)
 #else
 fptreef(shf, indent, fmt, va_alist) 
   struct shf *shf;
   int indent;
-  char *fmt;
+  const char *fmt;
   va_dcl
 #endif
 {
@@ -350,12 +369,12 @@ fptreef(shf, indent, fmt, va_alist)
 /* VARARGS */
 char *
 #ifdef HAVE_PROTOTYPES
-snptreef(char *s, int n, char *fmt, ...)
+snptreef(char *s, int n, const char *fmt, ...)
 #else
 snptreef(s, n, fmt, va_alist)
   char *s;
   int n;
-  char *fmt;
+  const char *fmt;
   va_dcl
 #endif
 {
@@ -375,7 +394,7 @@ static void
 vfptreef(shf, indent, fmt, va)
 	register struct shf *shf;
 	int indent;
-	register char *fmt;
+	const char *fmt;
 	register va_list va;
 {
 	register int c;
@@ -457,9 +476,9 @@ tcopy(t, ap)
 	r = (struct op *) alloc(sizeof(struct op), ap);
 
 	r->type = t->type;
-	r->evalflags = t->evalflags;
+	r->u.evalflags = t->u.evalflags;
 
-	r->str = t->type == TCASE ? wdcopy(t->str, ap) : strsave(t->str, ap);
+	r->str = t->type == TCASE ? wdcopy(t->str, ap) : str_save(t->str, ap);
 
 	if (t->vars == NULL)
 		r->vars = NULL;
@@ -503,7 +522,7 @@ wdcopy(wp, ap)
 }
 
 /* return the position of prefix c in wp plus 1 */
-const char *
+char *
 wdscan(wp, c)
 	register const char *wp;
 	register int c;
@@ -513,10 +532,15 @@ wdscan(wp, c)
 	while (1)
 		switch (*wp++) {
 		  case EOS:
-			return wp;
+			return (char *) wp;
 		  case CHAR:
 		  case QCHAR:
 			wp++;
+			break;
+		  case COMSUB:
+		  case EXPRSUB:
+			while (*wp++ != 0)
+				;
 			break;
 		  case OQUOTE:
 		  case CQUOTE:
@@ -528,14 +552,22 @@ wdscan(wp, c)
 			break;
 		  case CSUBST:
 			if (c == CSUBST && nest == 0)
-				return wp;
+				return (char *) wp;
 			nest--;
 			break;
-		  case COMSUB:
-		  case EXPRSUB:
-			while (*wp++ != 0)
-				;
+#ifdef KSH
+		  case OPAT:
+			nest++;
+			wp++;
 			break;
+		  case SPAT:
+		  case CPAT:
+			if (c == wp[-1] && nest == 0)
+				return (char *) wp;
+			if (wp[-1] == CPAT)
+				nest--;
+			break;
+#endif /* KSH */
 		}
 }
 

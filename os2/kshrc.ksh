@@ -1,4 +1,4 @@
-# .kshrc for OS/2 version of ksh
+# kshrc.ksh startup file for OS/2 version of ksh
 
 set -o trackall
 set -o ignoreeof
@@ -10,6 +10,12 @@ alias d:='cd d:.'
 alias e:='cd e:.'
 alias f:='cd f:.'
 alias g:='cd g:.'
+alias h:='cd h:.'
+alias i:='cd i:.'
+alias j:='cd j:.'
+alias k:='cd k:.'
+alias l:='cd l:.'
+alias m:='cd m:.'
 
 alias h='fc -l'
 alias j='jobs'
@@ -19,8 +25,10 @@ alias cls='print -n "\033[H\033[2J"'
 
 alias dir='cmd /c dir'
 alias del='cmd /c del'
+alias erase='cmd/c erase'
 alias copy='cmd /c copy'
-alias start='cmd /c start'
+alias start='cmd /c start /f'
+alias path='print -r $PATH'
 
 alias ll='ls -lsAFk'
 alias lf='ls -CAFk'
@@ -31,12 +39,31 @@ clock_p () {
 PS1='${__[(H=SECONDS/3600%24)==(M=SECONDS/60%60)==(S=SECONDS%60)]-$H:$M:$S}>'
 typeset -Z2 H M S; let SECONDS=`date '+(%H*60+%M)*60+%S'`
 }
+#function needed by add_path, pre_path, and del_path
+no_path () {
+  eval _v="\$${2:-PATH}"
+  case \;$_v\; in
+    *\;$1\;*) return 1 ;;           # no we have it
+  esac
+  return 0
+}
+#if $1 exists and is not in path, append it, or prepend it
+add_path () {
+  [ -d ${1:-.} ] && no_path $* && eval ${2:-PATH}="\$${2:-PATH}\;$1"
+}
+pre_path () {
+  [ -d ${1:-.} ] && no_path $* && eval ${2:-PATH}="$1\;\$${2:-PATH}"
+}
+#if $1 is in path then remove it
+del_path () {
+  no_path $* || eval ${2:-PATH}=`eval print -f '\;$'${2:-PATH}'\;' | sed -e "s!;$1;!;!g" -e "s!^;!!" -e "s!;\\$!!" -e "s!;!\\\\\;!g"`
+}
 
 unalias login newgrp
 
 if [ "$KSH_VERSION" = "" ]
 then PS1='$PWD>'
-     return
+     return               #bail out for sh which doesn't have edit modes
 fi
 
 set -o emacs

@@ -55,7 +55,8 @@ struct shf {
 
 extern struct shf shf_iob[];
 
-struct shf *shf_open	ARGS((char *name, int oflags, int mode, int sflags));
+struct shf *shf_open	ARGS((const char *name, int oflags, int mode,
+			      int sflags));
 struct shf *shf_fdopen	ARGS((int fd, int sflags, struct shf *shf));
 struct shf *shf_reopen  ARGS((int fd, int sflags, struct shf *shf));
 struct shf *shf_sopen	ARGS((char *buf, int bsize, int sflags,
@@ -71,10 +72,9 @@ char	   *shf_getse	ARGS((char *buf, int bsize, struct shf *shf));
 int	    shf_getchar	ARGS((struct shf *shf));
 int	    shf_ungetc	ARGS((int c, struct shf *shf));
 int	    shf_putchar	ARGS((int c, struct shf *shf));
-int	    shf_puts	ARGS((char *s, struct shf *shf));
-int	    shf_write	ARGS((char *buf, int nbytes, struct shf *shf));
+int	    shf_puts	ARGS((const char *s, struct shf *shf));
+int	    shf_write	ARGS((const char *buf, int nbytes, struct shf *shf));
 int	    shf_fprintf ARGS((struct shf *shf, const char *fmt, ...));
-int	    shf_snprintf ARGS((char *buf, int bsize, char *fmt, ...));
-char	    *shf_smprintf ARGS((char *fmt, ...));
-/* stdarg/varargs may not have been included yet.. */
-int	    shf_vfprintf ARGS((/*struct shf *, char *fmt, va_list args*/));
+int	    shf_snprintf ARGS((char *buf, int bsize, const char *fmt, ...));
+char	    *shf_smprintf ARGS((const char *fmt, ...));
+int	    shf_vfprintf ARGS((struct shf *, const char *fmt, va_list args));

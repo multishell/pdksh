@@ -25,7 +25,7 @@ errorf(fmt, va_alist)
 
 	shl_stdout_ok = 0;	/* debugging: note that stdout not valid */
 	exstat = 1;
-	if (fmt) {
+	if (*fmt) {
 		error_prefix(TRUE);
 		SH_VA_START(va, fmt);
 		shf_vfprintf(shl_out, fmt, va);
@@ -73,7 +73,7 @@ bi_errorf(fmt, va_alist)
 
 	shl_stdout_ok = 0;	/* debugging: note that stdout not valid */
 	exstat = 1;
-	if (fmt) {
+	if (*fmt) {
 		error_prefix(TRUE);
 		/* not set when main() calls parse_args() */
 		if (builtin_argv0)
@@ -217,8 +217,9 @@ ksh_dup2(ofd, nfd, errok)
  * set close-on-exec flag.
  */
 int
-savefd(fd)
+savefd(fd, noclose)
 	int fd;
+	int noclose;
 {
 	int nfd;
 
@@ -229,7 +230,8 @@ savefd(fd)
 				return -1;
 			else
 				errorf("too many files open in shell");
-		close(fd);
+		if (!noclose)
+			close(fd);
 	} else
 		nfd = fd;
 	fd_clexec(nfd);
@@ -256,8 +258,8 @@ openpipe(pv)
 {
 	if (pipe(pv) < 0)
 		errorf("can't create pipe - try again");
-	pv[0] = savefd(pv[0]);
-	pv[1] = savefd(pv[1]);
+	pv[0] = savefd(pv[0], 0);
+	pv[1] = savefd(pv[1], 0);
 }
 
 void
@@ -275,7 +277,7 @@ int
 check_fd(name, mode, emsgp)
 	char *name;
 	int mode;
-	char **emsgp;
+	const char **emsgp;
 {
 	int fd, fl;
 
@@ -287,6 +289,20 @@ check_fd(name, mode, emsgp)
 			return -1;
 		}
 		fl &= O_ACCMODE;
+#ifdef OS2
+		if (mode == W_OK ) { 
+		       if (setmode(fd, O_TEXT) == -1) {
+				if (emsgp)
+					*emsgp = "couldn't set write mode";
+				return -1;
+			}
+		 } else if (mode == R_OK)
+	      		if (setmode(fd, O_BINARY) == -1) {
+				if (emsgp)
+					*emsgp = "couldn't set read mode";
+				return -1; 
+			}
+#else /* OS2 */
 		/* X_OK is a kludge to disable this check for dups (x<&1):
 		 * historical shells never did this check (XXX don't know what
 		 * posix has to say).
@@ -301,19 +317,26 @@ check_fd(name, mode, emsgp)
 					      : "fd not open for writing";
 			return -1;
 		}
+#endif /* OS2 */
 		return fd;
-	} else if (name[0] == 'p' && !name[1])
-		return get_coproc_fd(mode, emsgp);
+	}
+#ifdef KSH
+	else if (name[0] == 'p' && !name[1])
+		return coproc_getfd(mode, emsgp);
+#endif /* KSH */
 	if (emsgp)
 		*emsgp = "illegal file descriptor name";
 	return -1;
 }
 
+#ifdef KSH
 /* Called once from main */
 void
 coproc_init()
 {
 	coproc.read = coproc.readw = coproc.write = -1;
+	coproc.njobs = 0;
+	coproc.id = 0;
 }
 
 /* Called by c_read() when eof is read - close fd if it is the co-process fd */
@@ -322,12 +345,9 @@ coproc_read_close(fd)
 	int fd;
 {
 	if (coproc.read >= 0 && fd == coproc.read) {
+		coproc_readw_close(fd);
 		close(coproc.read);
 		coproc.read = -1;
-		if (coproc.readw >= 0) {
-			close(coproc.readw);
-			coproc.readw = -1;
-		}
 	}
 }
 
@@ -338,7 +358,7 @@ void
 coproc_readw_close(fd)
 	int fd;
 {
-	if (coproc.read >= 0 && fd == coproc.read && coproc.readw >= 0) {
+	if (coproc.readw >= 0 && coproc.read >= 0 && fd == coproc.read) {
 		close(coproc.readw);
 		coproc.readw = -1;
 	}
@@ -361,9 +381,9 @@ coproc_write_close(fd)
  * (Used by check_fd() and by c_read/c_print to deal with -p option).
  */
 int
-get_coproc_fd(mode, emsgp)
+coproc_getfd(mode, emsgp)
 	int mode;
-	char **emsgp;
+	const char **emsgp;
 {
 	int fd = (mode & R_OK) ? coproc.read : coproc.write;
 
@@ -374,12 +394,13 @@ get_coproc_fd(mode, emsgp)
 	return -1;
 }
 
-/* called to close file descriptors related to the coprocess (if any) */
+/* called to close file descriptors related to the coprocess (if any)
+ * Should be called with SIGCHLD blocked.
+ */
 void
-cleanup_coproc(reuse)
+coproc_cleanup(reuse)
 	int reuse;
 {
-	coproc.job = (void *) 0;
 	/* This to allow co-processes to share output pipe */
 	if (!reuse || coproc.readw < 0 || coproc.read < 0) {
 		if (coproc.read >= 0) {
@@ -396,6 +417,7 @@ cleanup_coproc(reuse)
 		coproc.write = -1;
 	}
 }
+#endif /* KSH */
 
 /*
  * temporary files
@@ -405,20 +427,44 @@ struct temp *
 maketemp(ap)
 	Area *ap;
 {
-	static unsigned int inc = 0;
+	static unsigned int inc;
 	struct temp *tp;
 	int len;
-	char *path, *tmp;
+	int fd;
+	char *path;
+	const char *tmp;
 
 	tmp = tmpdir ? tmpdir : "/tmp";
 	/* The 20 + 20 is a paranoid worst case for pid/inc */
 	len = strlen(tmp) + 3 + 20 + 20 + 1;
 	tp = (struct temp *) alloc(sizeof(struct temp) + len, ap);
 	tp->name = path = (char *) &tp[1];
-	/* Note that temp files need to fit 8.3 DOS limits */
-	shf_snprintf(path, len, "%s/sh%05u.%03x",
-		tmp, (unsigned) procpid, inc++);
-	close(creat(path, 0600));	/* to get safe permissions */
+	tp->shf = (struct shf *) 0;
+	while (1) {
+		/* Note that temp files need to fit 8.3 DOS limits */
+		shf_snprintf(path, len, "%s/sh%05u.%03x",
+			tmp, (unsigned) procpid, inc++);
+		/* Mode 0600 to be paranoid, O_TRUNC in case O_EXCL isn't
+		 * really there.
+		 */
+		fd = open(path, O_RDWR|O_CREAT|O_EXCL|O_TRUNC, 0600);
+		if (fd >= 0) {
+			tp->shf = shf_fdopen(fd, SHF_WR, (struct shf *) 0);
+			break;
+		}
+		if (errno != EINTR
+#ifdef EEXIST
+		    && errno != EEXIST
+#endif /* EEXIST */
+#ifdef EISDIR
+		    && errno != EISDIR
+#endif /* EISDIR */
+			)
+			/* Error must be printed by called: don't know here if
+			 * errorf() or bi_errorf() should be used.
+			 */
+			break;
+	}
 	tp->next = NULL;
 	tp->pid = procpid;
 	return tp;

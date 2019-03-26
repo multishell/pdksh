@@ -55,7 +55,7 @@ memmove(d, s, n)
  * Case insensitive string compare routines, same semantics as str[n]cmp()
  * (assumes ASCII..).
  */
-static const char strichars[256] = {
+static const char ichars[256] = {
 		   0,  0x1,  0x2,  0x3,  0x4,  0x5,  0x6,  0x7,
 		 0x8,  0x9,  0xa,  0xb,  0xc,  0xd,  0xe,  0xf,
 		0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17,
@@ -98,11 +98,11 @@ strcasecmp(s1, s2)
 	const unsigned char *us1 = (const unsigned char *) s1;
 	const unsigned char *us2 = (const unsigned char *) s2;
 
-	while (strichars[*us1] == strichars[*us2++])
+	while (ichars[*us1] == ichars[*us2++])
 		if (!*us1++)
 			return 0;
 
-	return strichars[*us1] - strichars[*--us2];
+	return ichars[*us1] - ichars[*--us2];
 }
 
 int
@@ -114,11 +114,11 @@ strncasecmp(s1, s2, n)
 	const unsigned char *us1 = (const unsigned char *) s1;
 	const unsigned char *us2 = (const unsigned char *) s2;
 
-	while (--n >= 0 && strichars[*us1] == strichars[*us2++])
+	while (--n >= 0 && ichars[*us1] == ichars[*us2++])
 		if (!*us1++)
 			return 0;
 
-	return n < 0 ? 0 : strichars[*us1] - strichars[*--us2];
+	return n < 0 ? 0 : ichars[*us1] - ichars[*--us2];
 }
 #endif /* HAVE_STRCASECMP */
 
@@ -126,15 +126,15 @@ strncasecmp(s1, s2, n)
 #ifndef HAVE_STRSTR
 char *
 strstr(s, p)
-	char *s;
-	char *p;
+	const char *s;
+	const char *p;
 {
 	int len;
 
 	if (s && p)
 		for (len = strlen(p); *s; s++)
 			if (*s == *p && strncmp(s, p, len) == 0)
-				return s;
+				return (char *) s;
 
 	return 0;
 }
@@ -254,7 +254,7 @@ ksh_times(tms)
  */
 DIR *
 ksh_opendir(d)
-	char *d;
+	const char *d;
 {
 	struct stat statb;
 

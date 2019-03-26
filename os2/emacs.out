@@ -103,26 +103,30 @@ static int x_xchg_point_mark ARGS((int c));
 static int x_yank ARGS((int c));
 #define XFUNC_comp_list 49
 static int x_comp_list ARGS((int c));
-#define XFUNC_fold_capitialize 50
+#define XFUNC_expand 50
+static int x_expand ARGS((int c));
+#define XFUNC_fold_capitialize 51
 static int x_fold_capitialize ARGS((int c));
-#define XFUNC_fold_lower 51
+#define XFUNC_fold_lower 52
 static int x_fold_lower ARGS((int c));
-#define XFUNC_fold_upper 52
+#define XFUNC_fold_upper 53
 static int x_fold_upper ARGS((int c));
-#define XFUNC_set_arg 53
+#define XFUNC_set_arg 54
 static int x_set_arg ARGS((int c));
+#define XFUNC_comment 55
+static int x_comment ARGS((int c));
 #ifdef SILLY
-#define XFUNC_game_of_life 54
+#define XFUNC_game_of_life 56
 static int x_game_of_life ARGS((int c));
 #else
 #endif
 #ifdef DEBUG
-#define XFUNC_debug_info 55
+#define XFUNC_debug_info 57
 static int x_debug_info ARGS((int c));
 #else
 #endif
 #ifdef OS2
-#define XFUNC_meta3 56
+#define XFUNC_meta3 58
 static int x_meta3 ARGS((int c));
 #else
 #endif

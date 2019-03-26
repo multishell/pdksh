@@ -1,1 +1,2 @@
-echo Please run os2\configure.
+extproc ksh
+echo Please run os2/configure.

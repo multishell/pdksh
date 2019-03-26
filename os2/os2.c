@@ -104,7 +104,7 @@ newsession(int type, int mode, char *cmd, char **args, char **env)
     exit(0);
 }
 
-int _execve(char *cmd, char **args, char **env)
+int ksh_execve(char *cmd, char **args, char **env)
 {
   ULONG apptype;
   char path[256], *p;
@@ -139,7 +139,7 @@ int _execve(char *cmd, char **args, char **env)
       if ( !isfullscreen() )
         return newsession(SSF_TYPE_FULLSCREEN, P_NOWAIT, path, args, env);
   }
-  if ( (rc = spawnve(P_WAIT, path, args, env)) != -1 )
+  if ( (rc = execve(path, args, env)) != -1 )
     exit(rc);
 
   return -1;
@@ -152,7 +152,7 @@ void UnixName(char *path)
       *path = '/';
 }
 
-char *strchr_dirsep(char *path)
+char *ksh_strchr_dirsep(const char *path)
 {
   char *p1 = strchr(path, '\\');
   char *p2 = strchr(path, '/');
@@ -162,7 +162,7 @@ char *strchr_dirsep(char *path)
 }
 
 
-char *strrchr_dirsep(char *path)
+char *ksh_strrchr_dirsep(const char *path)
 {
   char *p1 = strrchr(path, '\\');
   char *p2 = strrchr(path, '/');

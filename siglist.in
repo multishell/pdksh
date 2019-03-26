@@ -31,11 +31,11 @@
     XFSZ   File size limit exceeded
     VTALRM Virtual timer expired
     PROF   Profiling timer expired
-    WINCH  Window size changed
+    WINCH  Window size change
     LOST   File lock lost
     USR1   User defined signal 1
     USR2   User defined signal 2
-    PWR    Power-fail restart
+    PWR    Power-fail/Restart
     POLL   Pollable event occurred
     STOP   Stopped (signal)
     TSTP   Stopped
@@ -47,3 +47,9 @@
     TTOU   Stopped (tty output)
     INFO   Information request
     URG    Urgent I/O condition
+# Solaris (svr4?) signals
+    WAITING No runnable LWPs
+    LWP	   Inter-LWP signal
+    FREEZE Checkpoint freeze
+    THAW   Checkpoint thaw
+    CANCEL Thread cancellation

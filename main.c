@@ -8,6 +8,8 @@
 #include "ksh_stat.h"
 #include "ksh_time.h"
 
+extern char **environ;
+
 /*
  * global data
  */
@@ -20,7 +22,7 @@ static	int	is_restricted ARGS((char *name));
  * shell initialization
  */
 
-static	char	initifs [] = "IFS= \t\n"; /* must be R/W */
+static	const char	initifs [] = "IFS= \t\n"; /* must be R/W */
 
 static	const	char   initsubs [] = 
   "${PS2=> } ${PS3=#? } ${PS4=+ }";
@@ -33,18 +35,19 @@ static const char version_param[] =
 #endif /* KSH */
 	;
 
-static	const	char *initcoms [] = {
+static	const char *const initcoms [] = {
 	"typeset", "-x", "SHELL", "PATH", "HOME", NULL,
 	"typeset", "-r", version_param, NULL,
 	"typeset", "-ri", "PPID", NULL,
-	"typeset", "-i", "OPTIND=1", "MAILCHECK=600",
+	"typeset", "-i", "OPTIND=1",
 #ifdef KSH
-	    "SECONDS=0", "RANDOM", "TMOUT=0",
+	    "MAILCHECK=600", "RANDOM", "SECONDS=0", "TMOUT=0",
 #endif /* KSH */
 	    NULL,
 	"alias",
 	 /* Standard ksh aliases */
-	  "hash=alias -t --",
+	  "hash=alias -t",	/* not "alias -t --": hash -r needs to work */
+	  "type=whence -v",
 #ifdef JOBS
 	  "stop=kill -STOP",
 	  "suspend=kill -STOP $$",
@@ -57,7 +60,6 @@ static	const	char *initcoms [] = {
 	  "nohup=nohup ",
 	  "local=typeset",
 	  "r=fc -e -",
-	  "type=whence -v",
 #endif /* KSH */
 #ifdef KSH
 	 /* Aliases that are builtin commands in at&t */
@@ -70,14 +72,16 @@ static	const	char *initcoms [] = {
 	  "cat", "cc", "chmod", "cp", "date", "ed", "emacs", "grep", "ls",
 	  "mail", "make", "mv", "pr", "rm", "sed", "sh", "vi", "who",
 	  NULL,
+#ifdef EXTRA_INITCOMS
+	EXTRA_INITCOMS, NULL,
+#endif /* EXTRA_INITCOMS */
 	NULL
 };
 
 int
-main(argc, argv, envp)
+main(argc, argv)
 	int argc;
 	register char **argv;
-	char **envp;
 {
 	register int i;
 	int argi;
@@ -86,17 +90,25 @@ main(argc, argv, envp)
 	int restricted;
 	char **wp;
 	struct env env;
+	int euid;
 
 #ifdef MEM_DEBUG
 	chmem_push("+c", 1);
 	/*chmem_push("+cd", 1);*/
 #endif
 
+#ifdef OS2
+	setmode (0, O_BINARY);
+	setmode (1, O_TEXT);
+#endif
+
 	/* make sure argv[] is sane */
 	if (!*argv) {
-		static	char	*empty_argv[] = { "pdksh", (char *) 0 };
+		static const char	*empty_argv[] = {
+					    "pdksh", (char *) 0
+					};
 
-		argv = empty_argv;
+		argv = (char **) empty_argv;
 		argc = 1;
 	}
 	kshname = *argv;
@@ -121,7 +133,9 @@ main(argc, argv, envp)
 
 	inittraps();
 
+#ifdef KSH
 	coproc_init();
+#endif /* KSH */
 
 	/* set up variable and command dictionaries */
 	tinit(&taliases, APERM, 0);
@@ -144,10 +158,11 @@ main(argc, argv, envp)
 #if defined(HAVE_CONFSTR) && defined(_CS_PATH)
 	{
 		size_t len = confstr(_CS_PATH, (char *) 0, 0);
+		char *new;
 
 		if (len > 0) {
-			def_path = alloc(len + 1, APERM);
-			confstr(_CS_PATH, def_path, len + 1);
+			confstr(_CS_PATH, new = alloc(len + 1, APERM), len + 1);
+			def_path = new;
 		}
 	}
 #endif /* HAVE_CONFSTR && _CS_PATH */
@@ -166,9 +181,9 @@ main(argc, argv, envp)
 	 * brace expansion, so set this before setting up FPOSIX
 	 * (change_flag() clears FBRACEEXPAND when FPOSIX is set).
 	 */
-#ifdef BRACEEXPAND
+#ifdef BRACE_EXPAND
 	Flag(FBRACEEXPAND) = 1;
-#endif /* BRACEEXPAND */
+#endif /* BRACE_EXPAND */
 
 	/* set posix flag just before environment so that it will have
 	 * exactly the same effect as the POSIXLY_CORRECT environment
@@ -181,8 +196,8 @@ main(argc, argv, envp)
 #endif /* POSIXLY_CORRECT */
 
 	/* import enviroment */
-	if (envp != NULL)
-		for (wp = envp; *wp != NULL; wp++)
+	if (environ != NULL)
+		for (wp = environ; *wp != NULL; wp++)
 			typeset(*wp, IMPORT|EXPORT, 0, 0, 0);
 
 	kshpid = procpid = getpid();
@@ -195,7 +210,7 @@ main(argc, argv, envp)
 	{
 		struct stat s_pwd, s_dot;
 		struct tbl *pwd_v = global("PWD");
-		char *pwd = strval(pwd_v);
+		char *pwd = str_val(pwd_v);
 		char *pwdx = pwd;
 
 		/* Try to use existing $PWD if it is valid */
@@ -226,31 +241,47 @@ main(argc, argv, envp)
 			;
 	}
 
-	if (geteuid() == 0)
-		safe_prompt = "# ";
-	else
-		safe_prompt = "$ ";
-	setstr(global("PS1"), safe_prompt);
+	euid = geteuid();
+	safe_prompt = euid ? "$ " : "# ";
+	{
+		struct tbl *vp = global("PS1");
+
+		/* Set PS1 if it isn't set, or we are root and prompt doesn't
+		 * contain a #.
+		 */
+		if (!(vp->flag & ISSET) || (!euid && !strchr(str_val(vp), '#')))
+			setstr(vp, safe_prompt);
+	}
 
 	/* Set this before parsing arguments */
-	Flag(FPRIVILEGED) = getuid() != geteuid() || getgid() != getegid();
+	Flag(FPRIVILEGED) = getuid() != euid || getgid() != getegid();
 
 	/* this to note if monitor is set on command line (see below) */
 	Flag(FMONITOR) = 127;
-
 	argi = parse_args(argv, OF_CMDLINE, (int *) 0);
 	if (argi < 0)
 		exit(1);
 
 	if (Flag(FCOMMAND)) {
 		s = pushs(SSTRING, ATEMP);
-		if (!(s->str = argv[argi++]))
+		if (!(s->start = s->str = argv[argi++]))
 			errorf("-c requires an argument");
 		if (argv[argi])
 			kshname = argv[argi++];
 	} else if (argi < argc && !Flag(FSTDIN)) {
 		s = pushs(SFILE, ATEMP);
+#ifdef OS2
+		/* a bug in os2 extproc shell processing doesn't
+		 * pass full pathnames so we have to search for it.
+		 * This changes the behavior of 'ksh arg' to search
+		 * the users search path but it can't be helped.
+		 */
+		s->file = search(argv[argi++], path, R_OK, (int *) 0);
+		if (!s->file || !*s->file)
+		        s->file = argv[argi - 1];
+#else
 		s->file = argv[argi++];
+#endif /* OS2 */
 		s->u.shf = shf_open(s->file, O_RDONLY, 0, SHF_MAPHI|SHF_CLEXEC);
 		if (s->u.shf == NULL) {
 			exstat = 127; /* POSIX */
@@ -259,18 +290,16 @@ main(argc, argv, envp)
 		kshname = s->file;
 	} else {
 		Flag(FSTDIN) = 1;
-		if (isatty(0) && isatty(2))
+		s = pushs(SSTDIN, ATEMP);
+		s->file = "<stdin>";
+		s->u.shf = shf_fdopen(0, SHF_RD | can_seek(0),
+				      (struct shf *) 0);
+		if (isatty(0) && isatty(2)) {
 			Flag(FTALKING) = 1;
-		if (Flag(FTALKING)) {
-			s = pushs(STTY, ATEMP);
-#ifdef EDIT
-			x_init();
-#endif
-		} else {
-			s = pushs(SSTDIN, ATEMP);
-			s->file = "<stdin>";
-			s->u.shf = shf_fdopen(0, SHF_RD | can_seek(0),
-				(struct shf *) 0);
+			/* The following only if isatty(0) */
+			s->flags |= SF_TTY;
+			s->u.shf->flags |= SHF_INTERRUPT;
+			s->file = (char *) 0;
 		}
 	}
 
@@ -286,11 +315,16 @@ main(argc, argv, envp)
 	i = Flag(FMONITOR) != 127;
 	Flag(FMONITOR) = 0;
 	j_init(i);
+#ifdef EDIT
+	/* Do this after j_init(), as tty_fd is not initialized 'til then */
+	if (Flag(FTALKING))
+		x_init();
+#endif
 
 	l = e->loc;
 	l->argv = &argv[argi - 1];
 	l->argc = argc - argi;
-	l->argv[0] = kshname;
+	l->argv[0] = (char *) kshname;
 	getopts_reset(1);
 
 	/* Disable during .profile/ENV reading */
@@ -313,27 +347,33 @@ main(argc, argv, envp)
 		if (!Flag(FPRIVILEGED)
 		    && strcmp(profile = substitute("$INIT/profile.ksh", 0),
 			      "/profile.ksh"))
-			include(profile, 0, (char **) 0);
-		else if (include("/etc/profile.ksh", 0, (char **) 0) < 0)
-			include("c:/usr/etc/profile.ksh", 0, (char **) 0);
+			include(profile, 0, (char **) 0, 1);
+		else if (include("/etc/profile.ksh", 0, (char **) 0, 1) < 0)
+			include("c:/usr/etc/profile.ksh", 0, (char **) 0, 1);
 		if (!Flag(FPRIVILEGED))
 			include(substitute("$HOME/profile.ksh", 0), 0,
-				(char **) 0);
+				(char **) 0, 1);
 #else /* OS2 */
-		include("/etc/profile", 0, (char **) 0);
+		include("/etc/profile", 0, (char **) 0, 1);
 		if (!Flag(FPRIVILEGED))
 			include(substitute("$HOME/.profile", 0), 0,
-				(char **) 0);
+				(char **) 0, 1);
 #endif /* OS2 */
 	}
 
 	if (Flag(FPRIVILEGED))
-		include("/etc/suid_profile", 0, (char **) 0);
+		include("/etc/suid_profile", 0, (char **) 0, 1);
 	else {
 		char *env_file;
 
-		/* include $ENV */
-		env_file = strval(global("ENV"));
+#ifndef KSH
+		if (!Flag(FPOSIX))
+			env_file = null;
+		else
+#endif /* !KSH */
+			/* include $ENV */
+			env_file = str_val(global("ENV"));
+
 #ifdef DEFAULT_ENV
 		/* If env isn't set, include default environment */
 		if (env_file == null)
@@ -341,18 +381,18 @@ main(argc, argv, envp)
 #endif /* DEFAULT_ENV */
 		env_file = substitute(env_file, DOTILDE);
 		if (*env_file != '\0')
-			include(env_file, 0, (char **) 0);
+			include(env_file, 0, (char **) 0, 1);
 #ifdef OS2
 		else if (Flag(FTALKING))
 			include(substitute("$HOME/kshrc.ksh", 0), 0,
-				(char **) 0);
+				(char **) 0, 1);
 #endif /* OS2 */
 	}
 
-	if (is_restricted(argv[0]) || is_restricted(strval(global("SHELL"))))
+	if (is_restricted(argv[0]) || is_restricted(str_val(global("SHELL"))))
 		restricted = 1;
 	if (restricted) {
-		static const char *restr_com[] = {
+		static const char *const restr_com[] = {
 						"typeset", "-r", "PATH",
 						    "ENV", "SHELL",
 						(char *) 0
@@ -364,7 +404,9 @@ main(argc, argv, envp)
 
 	if (Flag(FTALKING)) {
 		hist_init(s);
+#ifdef KSH
 		alarm_init();
+#endif /* KSH */
 	} else
 		Flag(FTRACKALL) = 1;	/* set after ENV */
 
@@ -373,10 +415,11 @@ main(argc, argv, envp)
 }
 
 int
-include(name, argc, argv)
-	register char *name;
+include(name, argc, argv, intr_ok)
+	const char *name;
 	int argc;
 	char **argv;
+	int intr_ok;
 {
 	register Source *volatile s = NULL;
 	Source *volatile sold;
@@ -398,7 +441,8 @@ include(name, argc, argv)
 	}
 	sold = source;
 	newenv(E_INCL);
-	if ((i = setjmp(e->jbuf))) {
+	i = ksh_sigsetjmp(e->jbuf, 0);
+	if (i) {
 		quitenv();
 		source = sold;
 		if (s)
@@ -412,6 +456,12 @@ include(name, argc, argv)
 		  case LERROR:
 			return exstat & 0xff; /* see below */
 		  case LINTR:
+			/* intr_ok is set if we are including .profile or $ENV.
+			 * If user ^C's out, we don't want to kill the shell...
+			 */
+			if (intr_ok && (exstat - 128) != SIGTERM)
+				return 1;
+			/* fall through... */
 		  case LEXIT:
 		  case LLEAVE:
 		  case LSHELL:
@@ -428,7 +478,7 @@ include(name, argc, argv)
 	}
 	s = pushs(SFILE, ATEMP);
 	s->u.shf = shf;
-	s->file = strsave(name, ATEMP);
+	s->file = str_save(name, ATEMP);
 	i = shell(s, FALSE);
 	quitenv();
 	source = sold;
@@ -442,12 +492,12 @@ include(name, argc, argv)
 
 int
 command(comm)
-	register char *comm;
+	const char *comm;
 {
 	register Source *s;
 
 	s = pushs(SSTRING, ATEMP);
-	s->str = comm;
+	s->start = s->str = comm;
 	return shell(s, FALSE);
 }
 
@@ -455,22 +505,22 @@ command(comm)
  * run the commands from the input source, returning status.
  */
 int
-shell(s, exit_atend)
+shell(s, toplevel)
 	Source *volatile s;		/* input source */
-	int volatile exit_atend;
+	int volatile toplevel;
 {
 	struct op *t;
-	int wastty;
+	volatile int wastty = s->flags & SF_TTY;
 	volatile int attempts = 13;
-	volatile int interactive = Flag(FTALKING) && s->type == STTY;
+	volatile int interactive = Flag(FTALKING) && toplevel;
 	int i;
 
 	newenv(E_PARSE);
-	exstat = 0;
 	if (interactive)
 		really_exit = 0;
-	if ((i = setjmp(e->jbuf))) {
-		s->str = null;
+	i = ksh_sigsetjmp(e->jbuf, 0);
+	if (i) {
+		s->start = s->str = null;
 		switch (i) {
 		  case LINTR: /* we get here if SIGINT not caught or ignored */
 		  case LERROR:
@@ -481,13 +531,14 @@ shell(s, exit_atend)
 				/* Reset any eof that was read as part of a
 				 * multiline command.
 				 */
-				if (Flag(FIGNOREEOF) && s->type == SEOF)
-					s->type = STTY;
+				if (Flag(FIGNOREEOF) && s->type == SEOF
+				    && wastty)
+					s->type = SSTDIN;
 				/* Used by exit command to get back to
 				 * top level shell.  Kind of strange since
 				 * interactive is set if we are reading from
 				 * a tty, but to have stopped jobs, one only
-				 * needs FMONITOR set (not FTALKING/STTY)...
+				 * needs FMONITOR set (not FTALKING/SF_TTY)...
 				 */
 				break;
 			}
@@ -499,6 +550,7 @@ shell(s, exit_atend)
 			unwind(i);	/* keep on going */
 			/*NOREACHED*/
 		  default:
+			quitenv();
 			internal_errorf(1, "shell: %d", i);
 			/*NOREACHED*/
 		}
@@ -514,37 +566,37 @@ shell(s, exit_atend)
 			else
 				s->flags &= ~SF_ECHO;
 
-		if (interactive)
+		if (interactive) {
 			j_notify();
-
-		if ((wastty = (s->type == STTY))) {
-			set_prompt(PS1, s);
+#ifdef KSH
 			mcheck();
+#endif /* KSH */
+			set_prompt(PS1, s);
 		}
 
 		t = compile(s);
 		if (t != NULL && t->type == TEOF) {
 			if (wastty && Flag(FIGNOREEOF) && --attempts > 0) {
 				shellf("Use `exit' to leave ksh\n");
-				s->type = STTY;
+				s->type = SSTDIN;
 			} else if (wastty && !really_exit
 				   && j_stopped_running())
 			{
 				really_exit = 1;
-				s->type = STTY;
+				s->type = SSTDIN;
 			} else {
 				/* this for POSIX, which says EXIT traps
 				 * shall be taken in the environment
 				 * immediately after the last command
 				 * executed.
 				 */
-				if (exit_atend)
+				if (toplevel)
 					unwind(LEXIT);
 				break;
 			}
 		}
 
-		if (t && (!Flag(FNOEXEC) || s->type == STTY))
+		if (t && (!Flag(FNOEXEC) || (s->flags & SF_TTY)))
 			exstat = execute(t, 0);
 
 		if (t != NULL && t->type != TEOF && interactive && really_exit)
@@ -578,7 +630,7 @@ unwind(i)
 		  case E_INCL:
 		  case E_LOOP:
 		  case E_ERRH:
-			longjmp(e->jbuf, i);
+			ksh_siglongjmp(e->jbuf, i);
 			/*NOTREACHED*/
 
 		  case E_NONE: 	/* bottom of the stack */
@@ -686,9 +738,26 @@ static void
 remove_temps(tp)
 	struct temp *tp;
 {
+#ifdef OS2
+  static char tmpfile[30];
+  int status;
+
+  if (strlen (tmpfile) > 0 ) {
+    unlink(tmpfile);
+    *tmpfile=0;
+  }
+#endif /* OS2 */
+
 	for (; tp != NULL; tp = tp->next)
 		if (tp->pid == procpid)
+#ifdef OS2
+		  { status=unlink(tp->name);
+		    if (status < 0)
+		      strcpy(tmpfile, tp->name);
+		  }
+#else /* OS2 */
 			unlink(tp->name);
+#endif /* OS2 */
 }
 
 /* Returns true if name refers to a restricted shell */
@@ -698,7 +767,7 @@ is_restricted(name)
 {
 	char *p;
 
-	if ((p = strrchr_dirsep(name)))
+	if ((p = ksh_strrchr_dirsep(name)))
 		name = p;
 	/* accepts rsh, rksh, rpdksh, pdrksh, etc. */
 	return (p = strchr(name, 'r')) && strstr(p, "sh");
@@ -710,6 +779,6 @@ aerror(ap, msg)
 	const char *msg;
 {
 	internal_errorf(1, "alloc: %s", msg);
-	errorf((char *) 0); /* this is never executed - keeps gcc quiet */
+	errorf(null); /* this is never executed - keeps gcc quiet */
 	/*NOTREACHED*/
 }

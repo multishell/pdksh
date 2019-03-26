@@ -1,5 +1,10 @@
 '\" t
 .\"{{{}}}
+.\"{{{  Notes about man page
+.\"     - use the pseudo-macros .sh( and .sh) to begin and end sh-specific
+.\"       text and .ksh( and .ksh) for ksh specific text.
+.\"     - put i.e., e.g. and etc. in italics
+.\"}}}
 .\"{{{  To do
 .\" todo: Things not covered that should be:
 .\"	- distinguish (POSIX) special built-in's, (POSIX) regular built-in's,
@@ -10,35 +15,47 @@
 .\"	- need to use the term `external command' meaning `a command that is 
 .\"       executed using execve(2)' (as opposed to a built-in command or 
 .\"       function) for more clear description.
-.\"     - use .if "\n(sh"0" \{A special ksh feature\} more to mark ksh-only
-.\"       (non-sh) features.
 .\"}}}
 .\"{{{  Title
-.\" To get a sh (not ksh) manual, set this to 1.
-.nr sh 0
-.if "\n(sh"0" \{.TH KSH 1 "May 19, 1995" "" "User commands"\}
-.if "\n(sh"1" \{.TH SH 1 "May 19, 1995" "" "User commands"\}
+.ksh(
+.TH KSH 1 "May 19, 1995" "" "User commands"
+.ksh)
+.sh(
+.TH SH 1 "May 19, 1995" "" "User commands"
+.sh)
 .\"}}}
 .\"{{{  Name
 .SH NAME
-.if "\n(sh"0" \{ksh \- Public domain Korn shell\}
-.if "\n(sh"1" \{sh \- Public domain Bourne shell\}
+.ksh(
+ksh \- Public domain Korn shell
+.ksh)
+.sh(
+sh \- Public domain Bourne shell
+.sh)
 .\"}}}
 .\"{{{  Synopsis
 .SH SYNOPSIS
 .ad l
-.if "\n(sh"0" \{\fBksh\fP\}
-.if "\n(sh"1" \{\fBsh\fP\}
+.ksh(
+\fBksh\fP
+.ksh)
+.sh(
+\fBsh\fP
+.sh)
 [\fB\(+-abCefhikmnprsuvxX\fP] [\fB\(+-o\fP \fIoption\fP] [ [ \fB\-c\fP \fIcommand-string\fP [\fIcommand-name\fP] | \fB\-s\fP | \fIfile\fP ] [\fIargument\fP ...] ]
 .ad b
 .\"}}}
 .\"{{{  Description
 .SH DESCRIPTION
-.if "\n(sh"0" \{\fBksh\fP is a command interpreter that is intended for both 
+.ksh(
+\fBksh\fP is a command interpreter that is intended for both 
 interactive and shell script use.  Its command language is a superset
-of the \fIsh\fP(1) shell language.\}
-.if "\n(sh"1" \{\fBsh\fP is a reimplementation of the Bourne shell, a command
-interpreter for both interactive and script use.\}
+of the \fIsh\fP(1) shell language.
+.ksh)
+.sh(
+\fBsh\fP is a reimplementation of the Bourne shell, a command
+interpreter for both interactive and script use.
+.sh)
 .\"{{{  Shell Startup
 .SS "Shell Startup"
 The following options can be specified only on the command line:
@@ -62,13 +79,13 @@ If neither the \fB\-c\fP nor the \fB\-s\fP options are specified, the
 first non-option argument specifies the name of a file the shell reads
 commands from; if there are no non-option arguments, the shell reads
 commands from standard input.
-The name of the shell (i.e., the contents of the \fB$0\fP) parameter
+The name of the shell (\fIi.e.\fP, the contents of the \fB$0\fP) parameter
 is determined as follows: if the \fB\-c\fP option is used and there is
 a non-option argument, it is used as the name; if commands are being
 read from a file, the file is used as the name; otherwise the name
-the shell was called with (i.e., argv[0]) is used.
+the shell was called with (\fIi.e.\fP, argv[0]) is used.
 .PP
-A shell is \fIinteractive\fP if the \fB\-i\fP option is used or
+A shell is \fBinteractive\fP if the \fB\-i\fP option is used or
 if both standard input and standard error are attached to a tty.
 An interactive shell has job control enabled (if available),
 ignores the INT, QUIT and TERM signals, and prints prompts before
@@ -78,7 +95,7 @@ For non-interactive shells, the \fBtrackall\fP option is on by default
 .PP
 A shell is \fBrestricted\fP if the \fB\-r\fP option is used or if either
 the basename of the name the shell is invoked with or the \fBSHELL\fP
-parameter match the pattern *r*sh (e.g., rsh, rksh, rpdksh, etc.).
+parameter match the pattern *r*sh (\fIe.g.\fP, rsh, rksh, rpdksh, \fIetc.\fP).
 The following restrictions come into effect after the shell processes
 any profile and \fB$ENV\fP files:
 .nr P2 \n(PD
@@ -92,7 +109,7 @@ command names can't be specified with absolute or relative paths
 .IP \ \ \(bu
 the \fB\-p\fP option of the \fBcommand\fP built-in can't be used
 .IP \ \ \(bu
-redirections that create files can't be used (i.e., \fB>\fP,
+redirections that create files can't be used (\fIi.e.\fP, \fB>\fP,
 \fB>|\fP, \fB>>\fP, \fB<>\fP)
 .nr PD \n(P2
 .PP
@@ -104,9 +121,9 @@ parameter (see below), instead the file /etc/suid_profile is processed.
 Clearing the privileged option causes the shell to set its effective
 user-id (group-id) to its real user-id (group-id).
 .PP
-If the basename of the name the shell is called with (i.e., argv[0]) starts
-with \fB\-\fP or if the \fB\-l\fP option is used, the shell is assumed to be
-a login shell and the shell reads and executes the contents of
+If the basename of the name the shell is called with (\fIi.e.\fP, argv[0])
+starts with \fB\-\fP or if the \fB\-l\fP option is used, the shell is assumed
+to be a login shell and the shell reads and executes the contents of
 \fB/etc/profile\fP and \fB$HOME/.profile\fP if they exist and are readable.
 .PP
 If the \fBENV\fP parameter is set when the shell starts (or, in the
@@ -133,17 +150,19 @@ Words, which are sequences of characters, are delimited by unquoted
 Aside from delimiting words, spaces and tabs are ignored, while
 newlines usually delimit commands.
 The meta-characters are used in building the following tokens:
-\fB<\fP, \fB<&\fP, \fB<<\fP, \fB>\fP, \fB>&\fP, \fB>>\fP, etc. used to
-specify redirections (see Input/Output Redirection below);
-\fB|\fP used to create pipelines;
-\fB|&\fP used to create co-processes (see Co-Processes below);
-\fB;\fP used to separate commands;
-\fB&\fP used to create asynchronous pipelines;
-\fB&&\fP and \fB||\fP used to specify conditional execution;
-\fB;;\fP used in \fBcase\fP statements;
-\fB(\fP .. \fB)\fP used to start subshells;
+\fB<\fP, \fB<&\fP, \fB<<\fP, \fB>\fP, \fB>&\fP, \fB>>\fP, \fIetc.\fP are
+used to specify redirections (see Input/Output Redirection below);
+\fB|\fP is used to create pipelines;
+.ksh(
+\fB|&\fP is used to create co-processes (see Co-Processes below);
+.ksh)
+\fB;\fP is used to separate commands;
+\fB&\fP is used to create asynchronous pipelines;
+\fB&&\fP and \fB||\fP are used to specify conditional execution;
+\fB;;\fP is used in \fBcase\fP statements;
+\fB(\fP .. \fB)\fP are used to create subshells;
 and lastly,
-\fB((\fP .. \fB))\fP which are used in arithmetic expressions;
+\fB((\fP .. \fB))\fP are used in arithmetic expressions;
 .PP
 White-space and meta-characters can be quoted individually using
 backslash (\fB\e\fP), or in groups using double (\fB"\fP) or single (\fB'\fP)
@@ -180,12 +199,12 @@ come before any command words.
 The command words, if any, define the command that is to be executed and its
 arguments.
 The command may be a shell built-in command, a function or an \fIexternal
-command\fP, i.e., a separate executable file that is located using the
+command\fP, \fIi.e.\fP, a separate executable file that is located using the
 \fBPATH\fP parameter (see Command Execution below).
 Note that all command constructs have an \fIexit status\fP: for external
 commands, this is related to the status returned by \fIwait\fP(2);
 the exit status of other command constructs (built-in commands, functions,
-compound-commands, pipelines, lists, etc.) are all well defined and are
+compound-commands, pipelines, lists, \fIetc.\fP) are all well defined and are
 described where the construct is described.
 The exit status of a command consisting only of parameter assignments is that
 of the last command substitution performed during the parameter assignment
@@ -218,12 +237,14 @@ The \fB&\fP token causes the preceding command to be executed asynchronously,
 that is, the shell starts the command, but does not wait for it to complete
 (the shell does keep track of the status of asynchronous commands \(em see
 Job Control below).
-When an asynchronous command is started when job control is disabled (i.e.,
-in most scripts), the command is started with signals INT and QUIT ignored
-and with input redirected from /dev/null (however, redirections specified in
-the asynchronous command have precedence).
+When an asynchronous command is started when job control is disabled
+(\fIi.e.\fP, in most scripts), the command is started with signals INT
+and QUIT ignored and with input redirected from /dev/null
+(however, redirections specified in the asynchronous command have precedence).
+.ksh(
 The \fB|&\fP operator starts a \fIco-process\fP which is special kind of
 asynchronous process (see Co-Processes below).
+.ksh)
 Note that a command must follow the \fB&&\fP and \fB||\fP operators, while
 a command need not follow \fB&\fP, \fB|&\fP and \fB;\fP.
 The exit status of a list is that of the last command executed, with the
@@ -233,11 +254,11 @@ exception of asynchronous lists, for which the exit status is 0.
 .PP
 Compound commands are created using the following reserved words \(em these
 words are only recognized if they are unquoted and if they are used as
-the first word of a command (i.e., they can't be preceded by parameter
+the first word of a command (\fIi.e.\fP, they can't be preceded by parameter
 assignments or redirections):
 .TS
 center;
-lfB lfB lfB lfB lfB.
+lfB lfB lfB lfB lfB .
 case	else	function	then	!
 do	esac	if	time	[[
 done	fi	in	until	{
@@ -248,18 +269,22 @@ in a subshell when one or more of their file descriptors are redirected, so
 any environment changes inside them may fail.
 To be portable, the \fBexec\fP statement should be used instead to redirect
 file descriptors before the control structure.
-.P
+.PP
 In the following compound command descriptions, command lists (denoted as
 \fIlist\fP) that are followed by reserved words must end with a
 semi-colon, a newline or a (syntactically correct) reserved word.
 For example,
-.ce 3
+.RS
 \fB{ echo foo; echo bar; }\fP
+.br
 \fB{ echo foo; echo bar<newline>}\fP
+.br
 \fB{ { echo foo; echo bar; } }\fP
+.RE
 are all valid, but
-.ce 1
-\fB{ echo foo; echo bar }
+.RS
+\fB{ echo foo; echo bar }\fP
+.RE
 is not.
 .\"{{{  ( list )
 .IP "\fB(\fP \fIlist\fP \fB)\fP"
@@ -280,52 +305,61 @@ those used for file name patterns except that the restrictions regarding
 \fB\&.\fP and \fB/\fP are dropped.  Note that any unquoted space before and
 after a pattern is stripped; any space with a pattern must be quoted.  Both the
 word and the patterns are subject to parameter, command, and arithmetic
-substitution as well as tilde substitution.  The exit status of a \fBcase\fP
-statement is that of the executed \fIlist\fP; if no \fIlist\fP is executed,
-the exit status is zero.
+substitution as well as tilde substitution.
+For historical reasons, open and close braces may be used instead
+of \fBin\fP and \fBesac\fP (\fIe.g.\fP, \fBcase $foo { *) echo bar; }\fP).
+The exit status of a \fBcase\fP statement is that of the executed \fIlist\fP;
+if no \fIlist\fP is executed, the exit status is zero.
 .\"}}}
 .\"{{{  for name [ in word ... term ] do list done
 .IP "\fBfor\fP \fIname\fP [ \fBin\fP \fIword\fP ... \fIterm\fP ] \fBdo\fP \fIlist\fP \fBdone\fP"
 where \fIterm\fP is either a newline or a \fB;\fP.
 For each \fIword\fP in the specified word list, the parameter \fIname\fP is
 set to the word and \fIlist\fP is executed.  If \fBin\fP is not used to
-specify a word list, the positional parameters (\fB"$1"\fP, \fB"$2"\fP, etc.)
-are used instead.
+specify a word list, the positional parameters (\fB"$1"\fP, \fB"$2"\fP,
+\fIetc.\fP) are used instead.
 For historical reasons, open and close braces may be used instead
-of \fBdo\fP and \fBdone\fP (e.g., \fBfor i; { echo $i; }\fP).
+of \fBdo\fP and \fBdone\fP (\fIe.g.\fP, \fBfor i; { echo $i; }\fP).
 The exit status of a \fBfor\fP statement is the last exit status
 of \fIlist\fP; if \fIlist\fP is never executed, the exit status is zero.
 .\"}}}
 .\"{{{  if list then list [ elif list then list ] ... [ else list ] fi
-.IP "\fBif\fP \fIlist\fP \fBthen\fP \fIlist\fP [\fBelif\fP \fIlist\fP \fBthen\fP \fIlist\fP] ... [\fBelse\fP \fIlist\fP] \fBfi\fP
+.IP "\fBif\fP \fIlist\fP \fBthen\fP \fIlist\fP [\fBelif\fP \fIlist\fP \fBthen\fP \fIlist\fP] ... [\fBelse\fP \fIlist\fP] \fBfi\fP"
 If the exit status of the first \fIlist\fP is zero, the second \fIlist\fP
 is executed; otherwise the \fIlist\fP following the \fBelif\fP, if any, is
 executed with similar consequences.  If all the lists following the \fBif\fP
-and \fBelif\fPs fail (i.e., exit with non-zero status), the \fIlist\fP following
-the \fBelse\fP is executed.  The exit status of an \fBif\fP statement is that
+and \fBelif\fPs fail (\fIi.e.\fP, exit with non-zero status), the \fIlist\fP
+following the \fBelse\fP is executed.
+The exit status of an \fBif\fP statement is that
 of non-conditional \fIlist\fP that is executed; if no non-conditional
 \fIlist\fP is executed, the exit status is zero.
 .\"}}}
 .\"{{{  select name [ in word ... ] do list done
-.if "\n(sh"0"\{.IP "\fBselect\fP \fIname\fP [ \fBin\fP \fIword\fP ... \fIterm\fP ] \fBdo\fP \fIlist\fP \fBdone\fP"
+.ksh(
+.IP "\fBselect\fP \fIname\fP [ \fBin\fP \fIword\fP ... \fIterm\fP ] \fBdo\fP \fIlist\fP \fBdone\fP"
 where \fIterm\fP is either a newline or a \fB;\fP.
 The \fBselect\fP statement provides an automatic method of presenting
 the user with a menu and selecting from it.
-An enumerated list of the specified \fIwords\fP are printed on standard
+An enumerated list of the specified \fIwords\fP is printed on standard
 error, followed by a prompt (\fBPS3\fP, normally `\fB#? \fP').
 A number corresponding to one of the enumerated words is then read
 from standard input, \fIname\fP is set to the selected word (or is
 unset if the selection is not valid), \fBREPLY\fP
-is set to what was read, and \fIlist\fP is executed.
-This process is repeated until an end-of-file is read, an interrupt is
+is set to what was read (leading/trailing space is stripped),
+and \fIlist\fP is executed.
+If a blank line (\fIi.e.\fP, zero or more \fBIFS\fP characters) is entered,
+the menu is re-printed without executing \fIlist\fP.
+When \fIlist\fP completes, the enumerated list is printed if \fBREPLY\fP
+is null, the prompt is printed and so on.
+This process is continues until an end-of-file is read, an interrupt is
 received or a break statement is executed inside the loop.
 If \fBin\fP \fIword\fP \fB\&...\fP is omitted, the positional parameters
-are used (i.e., \fB"$1"\fP, \fB"$2"\fP, etc.).
+are used (\fIi.e.\fP, \fB"$1"\fP, \fB"$2"\fP, \fIetc.\fP).
 For historical reasons, open and close braces may be used instead
-of \fBdo\fP and \fBdone\fP (e.g., \fBselect i; { echo $i; }\fP).
+of \fBdo\fP and \fBdone\fP (\fIe.g.\fP, \fBselect i; { echo $i; }\fP).
 The exit status of a \fBselect\fP statement is zero if a break statement
 is used to exit the loop, non-zero otherwise.
-\}
+.ksh)
 .\"}}}
 .\"{{{  until list do list done
 .IP "\fBuntil\fP \fIlist\fP \fBdo\fP \fIlist\fP \fBdone\fP"
@@ -360,6 +394,7 @@ equivalent to \fBlet "\fP\fIexpression\fP\fB"\fP.
 See Arithmetic Expressions and the \fBlet\fP command below.
 .\"}}}
 .\"{{{  [[ expression ]]
+.ksh(
 .IP "\fB[[\fP \fIexpression\fP \fB]]\fP"
 Similar to the \fBtest\fP and \fB[\fP \&... \fB]\fP commands (described later),
 with the following exceptions:
@@ -373,11 +408,13 @@ arguments.
 The \fB\-a\fP (and) and \fB\-o\fP (or) operators are replaced with
 \fB&&\fP and \fB||\fP, respectively.
 .IP \ \ \(bu
-Operators (e.g. \fB\-f\fP, \fB=\fP, \fB!\fP, etc.) must be unquoted.
+Operators (\fIe.g.\fP, \fB\-f\fP, \fB=\fP, \fB!\fP, \fIetc.\fP) must be unquoted.
 .IP \ \ \(bu
 The second operand of \fB!=\fP and \fB=\fP
-expressions are patterns (e.g., the comparison in \fB[[ foobar = f*r ]]\fP
-succeeds)
+expressions are patterns (\fIe.g.\fP, the comparison in
+.ce
+\fB[[ foobar = f*r ]]\fP
+succeeds).
 .IP \ \ \(bu
 There are two additional binary operators: \fB<\fP and \fB>\fP
 which return true if their first string operand is less than,
@@ -385,20 +422,24 @@ or greater than, their second string operand, respectively.
 .IP \ \ \(bu
 The single argument form
 of \fBtest\fP, which tests if the argument has non-zero length, is not valid
-- explicit operators must be always be used, e.g., instead of
+- explicit operators must be always be used, \fIe.g.\fP, instead of
 .ce
 \fB[\fP \fIstr\fP \fB]\fP
 use
 .ce
-\fB[[ -n\fP\fIstr\fP\fB ]]\fP
+\fB[[ \-n \fP\fIstr\fP\fB ]]\fP
 .IP \ \ \(bu
 Parameter, command and arithmetic substitutions are performed as
 expressions are evaluated and lazy expression evaluation is used for
 the \fB&&\fP and \fB||\fP operators.
-This means that in the statement \fB[[ -r foo && $(< foo) = b*r ]]\fP, the
-\fB$(< foo)\fP is evaluated if and only if the file \fBfoo\fP exists.
+This means that in the statement
+.ce
+\fB[[ -r foo && $(< foo) = b*r ]]\fP
+the \fB$(< foo)\fP is evaluated if and only if the file \fBfoo\fP exists
+and is readable.
 .nr PD \n(P2
 .RE
+.ksh)
 .\"}}}
 .\"}}}
 .\"}}}
@@ -413,7 +454,7 @@ Second, a single quote (\fB'\fP) quotes everything up to the next single
 quote (this may span lines).
 Third, a double quote (\fB"\fP) quotes all characters,
 except \fB$\fP, \fB`\fP and \fB\e\fP, up to the next unquoted double quote.
-\fB$\fP and \fB`\fP inside double quotes have their usual meaning (i.e.,
+\fB$\fP and \fB`\fP inside double quotes have their usual meaning (\fIi.e.\fP,
 parameter, command or arithmetic substitution) except no field splitting
 is carried out on the results of double-quoted substitutions.
 If a \fB\e\fP inside a double-quoted string is followed by \fB\e\fP, \fB$\fP,
@@ -428,35 +469,49 @@ of the form \fB"\fP...\fB`\fP...\fB\e"\fP...\fB`\fP..\fB"\fP.
 .SS "Aliases"
 There are two types of aliases: normal command aliases and tracked
 aliases.  Command aliases are normally used as a short hand for a long
-or often used command.  The shell expands command aliases (i.e.,
+or often used command.  The shell expands command aliases (\fIi.e.\fP,
 substitutes the alias name for its value) when it reads the first word
 of a command.  An expanded alias is re-processed to check for more
 aliases.  If a command alias ends in a space or tab, the following word
 is also checked for alias expansion.  The alias expansion process stops
 when a word that is not an alias is found, when a quoted word is found
 or when an alias word that is currently being expanded is found.
-.sp
+.PP
 The following command aliases are defined automatically by the shell:
 .ft B
 .RS
-.nf
+.ksh(
 autoload='typeset \-fu'
+.br
 functions='typeset \-f'
-hash='alias \-t \-\-'
+.br
+.ksh)
+hash='alias \-t'
+.ksh(
+.br
 history='fc \-l'
+.br
 integer='typeset \-i'
+.br
 local='typeset'
+.br
 login='exec login'
+.br
 newgrp='exec newgrp'
+.br
 nohup='nohup '
+.br
 r='fc \-e \-'
+.br
 stop='kill \-STOP'
+.br
 suspend='kill \-STOP $$'
+.ksh)
+.br
 type='whence \-v'
-.fi
 .RE
 .ft P
-.sp
+.PP
 Tracked aliases allow the shell to remember where it found a particular
 command.  The first time the shell does a path search for a command that
 is marked as a tracked alias, it saves the full path of the command.
@@ -464,7 +519,7 @@ The next time the command is executed, the shell checks the saved path
 to see that it is still valid, and if so, avoids repeating the path
 search.  Tracked aliases can be listed and created using \fBalias
 \-t\fP.  Note that changing the \fBPATH\fP parameter clears the saved
-paths for all tracked aliases.  If the \fBtrackall\fP option is set (i.e.,
+paths for all tracked aliases.  If the \fBtrackall\fP option is set (\fIi.e.\fP,
 \fBset \-o trackall\fP or \fBset \-h\fP), the shell tracks all
 commands.  This option is set automatically for non-interactive shells.
 For interactive shells, only the following commands are automatically
@@ -491,7 +546,7 @@ any characters from the set space, tab and newline that appear in the
 IFS characters are called \fIIFS white space\fP.
 Sequences of one or more IFS white space characters, in combination with
 zero or one non-IFS white space characters delimit a field.
-As a special case, leading and trailing IFS white space is stripped (i.e.,
+As a special case, leading and trailing IFS white space is stripped (\fIi.e.\fP,
 no leading or trailing empty field is created by it); leading or trailing
 non-IFS white space does create an empty field.
 Example: if \fBIFS\fP is set to `<space>:', the sequence of characters
@@ -604,8 +659,11 @@ The following forms of parameter substitution can also be used:
 .IP \fB${#\fP\fIname\fP\fB}\fP
 The number of positional parameters if \fIname\fP is \fB*\fP, \fB@\fP or
 is not specified,
-the number of elements in the named array if \fIname\fP is an array,
-or finally, the length of the string value of parameter \fIname\fP.
+or the length of the string value of parameter \fIname\fP.
+.\"}}}
+.\"{{{  ${#name[*]}, ${#name[@]}
+.IP "\fB${#\fP\fIname\fP\fB[*]}\fP, \fB${#\fP\fIname\fP\fB[@]}\fP"
+The number of elements in the array \fIname\fP.
 .\"}}}
 .\"{{{  ${name#pattern}, ${name##pattern}
 .IP "\fB${\fP\fIname\fP\fB#\fP\fIpattern\fP\fB}\fP, \fB${\fP\fIname\fP\fB##\fP\fIpattern\fP\fB}\fP"
@@ -630,7 +688,8 @@ processes have been started, the parameter is not set.
 .\"}}}
 .\"{{{  #
 .IP \fB#\fP
-The number of positional parameters (i.e., \fB$1\fP, \fB$2\fP, etc.).
+The number of positional parameters (\fIi.e.\fP, \fB$1\fP, \fB$2\fP,
+\fIetc.\fP).
 .\"}}}
 .\"{{{  $
 .IP \fB$\fP
@@ -650,7 +709,7 @@ the signal number.
 .\"}}}
 .\"{{{  0
 .IP "\fB0\fP"
-The name the shell was invoked with (i.e., \fBargv[0]\fP), or the
+The name the shell was invoked with (\fIi.e.\fP, \fBargv[0]\fP), or the
 \fBcommand-name\fP if it was invoked with the \fB\-c\fP option and the
 \fBcommand-name\fP was supplied, or the \fIfile\fP argument, if it was
 supplied.
@@ -667,10 +726,10 @@ Further positional parameters may be accessed using
 .\"{{{  *
 .IP \fB*\fP
 All positional parameters (except parameter 0), 
-i.e., \fB$1 $2 $3\fP....
+\fIi.e.\fP, \fB$1 $2 $3\fP....
 If used outside of double quotes, parameters are separate words
 (which are subjected to word splitting); if used within double quotes,
-parameters are separated by the first character if the \fBIFS\fP parameter
+parameters are separated by the first character of the \fBIFS\fP parameter
 (or the empty string if \fBIFS\fP is null).
 .\"}}}
 .\"{{{  @
@@ -690,8 +749,10 @@ The following parameters are set and/or used by the shell:
 In interactive use, this parameter is set to the last word of the
 previous command.  When a command is executed, this parameter is set to
 the full path of the command and is placed in the command's environment.
+.ksh(
 When \fBMAILPATH\fP messages are evaluated, this parameter contains
 the name of the file that changed (see \fBMAILPATH\fP parameter below).
+.ksh)
 .\"}}}
 .\"{{{  CDPATH
 .IP \fBCDPATH\fP
@@ -711,10 +772,12 @@ This parameter is used by the interactive line editing modes, and by
 to format information in columns.
 .\"}}}
 .\"{{{  EDITOR
+.ksh(
 .IP \fBEDITOR\fP
 If the \fBVISUAL\fP parameter is not set, this parameter controls the
 command line editing mode for interactive shells.
 See \fBVISUAL\fP parameter below for how this works.
+.ksh)
 .\"}}}
 .\"{{{  ENV
 .IP \fBENV\fP
@@ -748,6 +811,7 @@ It is also searched when a command can't be found using \fBPATH\fP.
 See Functions below for more information.
 .\"}}}
 .\"{{{  HISTFILE
+.ksh(
 .IP \fBHISTFILE\fP
 The name of the file used to store history.
 When assigned to, history is loaded from the specified file.
@@ -758,10 +822,13 @@ shell running on the same machine will share history if their
 NOTE: if HISTFILE isn't set, no history file is used.  This is
 different from the original Korn shell, which uses \fB$HOME/.sh_history\fP;
 in future, pdksh may also use a default history file.
+.ksh)
 .\"}}}
 .\"{{{  HISTSIZE
+.ksh(
 .IP \fBHISTSIZE\fP
 The number of commands normally stored for history, default 128.
+.ksh)
 .\"}}}
 .\"{{{  HOME
 .IP \fBHOME\fP
@@ -778,10 +845,18 @@ space, tab and newline.  See Substitution above for details.
 when the shell is started.
 .\"}}}
 .\"{{{  KSH_VERSION
+.ksh(
 .IP \fBKSH_VERSION\fP
 The version of shell and the date the version was created (readonly).
 See also the version commands in Emacs Interactive Input Line Editing
 and Vi Interactive Input Line Editing, below.
+.ksh)
+.\"}}}
+.\"{{{  SH_VERSION
+.sh(
+.IP \fBSH_VERSION\fP
+The version of shell and the date the version was created (readonly).
+.sh)
 .\"}}}
 .\"{{{  LINENO
 .IP \fBLINENO\fP
@@ -801,24 +876,30 @@ Set to the number of lines on the terminal or window.
 Not implemented yet.
 .\"}}}
 .\"{{{  MAIL
+.ksh(
 .IP \fBMAIL\fP
 If set, the user will be informed of the arrival of mail in the named
 file.  This parameter is ignored if the \fBMAILPATH\fP parameter is set.
+.ksh)
 .\"}}}
 .\"{{{  MAILCHECK
+.ksh(
 .IP \fBMAILCHECK\fP
 How often, in seconds, the shell will check for mail in the file(s)
 specified by \fBMAIL\fP or \fBMAILPATH\fP.  If 0, the shell checks
 before each prompt.  The default is 600 (10 minutes).
+.ksh)
 .\"}}}
 .\"{{{  MAILPATH
+.ksh(
 .IP \fBMAILPATH\fP
 A list of files to be checked for mail.  The list is colon separated,
 and each file may be followed by a \fB?\fP and a message to be printed
-if new mail has arrived.  Command and parameter substitution is
+if new mail has arrived.  Command, parameter and arithmetic substitution is
 performed on the message, and, during substitution, the parameter \fB$_\fP
 contains the name of the file.
 The default message is \fByou have mail in $_\fP.
+.ksh)
 .\"}}}
 .\"{{{  OLDPWD
 .IP \fBOLDPWD\fP
@@ -856,10 +937,15 @@ The process ID of the shell's parent (readonly).
 .\"{{{  PS1
 .IP \fBPS1\fP
 \fBPS1\fP is the primary prompt for interactive shells.
+.ksh(
 Parameter, command and arithmetic substitutions are performed, and
 \fB!\fP is replaced with the current command number (see \fBfc\fP
 command below).  A literal ! can be put in the prompt by placing !! in PS1.
-Default is `\fB$\ \fP'.
+.ksh)
+.sh(
+The prompt is printed verbatum (\fIi.e.\fP, no substitutions are done).
+.sh)
+Default is `\fB$\ \fP' for non-root users, `\fB#\ \fP' for root..
 .\"}}}
 .\"{{{  PS2
 .IP \fBPS2\fP
@@ -867,19 +953,24 @@ Secondary prompt string, by default `\fB>\fP ', used when more input is
 needed to complete a command.
 .\"}}}
 .\"{{{  PS3
-.if "\n(sh"0" \{.IP \fBPS3\fP
+.ksh(
+.IP \fBPS3\fP
 Prompt used by \fBselect\fP statement when reading a menu selection.
 Default is `\fB#?\ \fP'.
-\}
+.ksh)
 .\"}}}
 .\"{{{  PS4
-.if "\n(sh"0" \{.IP \fBPS4\fP
+.IP \fBPS4\fP
 Used to prefix commands that are printed during execution tracing
 (see \fBset \-x\fP command below).
+.ksh(
 Parameter, command and arithmetic substitutions are performed
 before it is printed.
+.ksh)
+.sh(
+The prompt is printed verbatum (\fIi.e.\fP, no substitutions are done).
+.sh)
 Default is `\fB+\ \fP'.
-\}
 .\"}}}
 .\"{{{  PWD
 .IP \fBPWD\fP
@@ -887,12 +978,13 @@ The current working directory.  Maybe unset or null if shell doesn't
 know where it is.
 .\"}}}
 .\"{{{  RANDOM
-.if "\n(sh"0" \{.IP \fBRANDOM\fP
+.ksh(
+.IP \fBRANDOM\fP
 A simple random number generator.  Every time \fBRANDOM\fP is
 referenced, it is assigned the next number in a random number series.
 The point in the series can be set by assigning a number to
 \fBRANDOM\fP (see \fIrand\fP(3)).
-\}
+.ksh)
 .\"}}}
 .\"{{{  REPLY
 .IP \fBREPLY\fP
@@ -901,19 +993,21 @@ Also used in \fBselect\fP loops to store the value that is read from
 standard input.
 .\"}}}
 .\"{{{  SECONDS
-.if "\n(sh"0" \{.IP \fBSECONDS\fP
+.ksh(
+.IP \fBSECONDS\fP
 The number of seconds since the shell started or, if the parameter has been
 assigned an integer value, the number of seconds since the assignment plus
 the value that was assigned.
-\}
+.ksh)
 .\"}}}
 .\"{{{  TMOUT
-.if "\n(sh"0" \{.IP \fBTMOUT\fP
+.ksh(
+.IP \fBTMOUT\fP
 If set to a positive integer in an interactive shell, it specifies
 the maximum number of seconds the shell will wait for input after
 printing the primary prompt (\fBPS1\fP).  If the time is exceeded, the
 shell exits.
-\}
+.ksh)
 .\"}}}
 .\"{{{  TMPDIR
 .IP \fBTMPDIR\fP
@@ -922,16 +1016,18 @@ is not set, or does not contain the absolute path of a writable
 directory, temporary files are created in \fB/tmp\fP.
 .\"}}}
 .\"{{{  VISUAL
+.ksh(
 .IP \fBVISUAL\fP
 If set, this parameter controls the command line editing mode for
 interactive shells.  If the last component of the path specified in this
 parameter contains the string \fBvi\fP, \fBemacs\fP or \fBgmacs\fP, the
 vi, emacs or gmacs (Gosling emacs) editing mode is enabled, respectively.
+.ksh)
 .\"}}}
 .\"}}}
 .\"}}}
 .\"{{{  Tilde Expansion
-.if "\n(sh"0"\{.SS "Tilde Expansion"
+.SS "Tilde Expansion"
 Tilde expansion, which is done in parallel with parameter substitution,
 is done on words starting with an unquoted \fB~\fP.  The characters
 following the tilde, up to the first \fB/\fP, if any, are assumed to be
@@ -950,23 +1046,26 @@ and \fBtypeset\fP), tilde expansion is done after any unquoted colon
 .PP
 The home directory of previously expanded login names are cached and
 re-used.  The \fBalias \-d\fP command may be used to list, change and
-add to this cache (e.g., `alias \-d fac=/usr/local/facilities; cd
-~fac/bin').\}
+add to this cache (\fIe.g.\fP, `alias \-d fac=/usr/local/facilities; cd
+~fac/bin').
 .\"}}}
 .\"{{{  Brace Expansion
-.if "\n(sh"0" \{.SS "Brace Expansion (alternation)"
+.ksh(
+.SS "Brace Expansion (alternation)"
 Brace expressions, which take the form
-.ce
+.RS
 \fIprefix\fP\fB{\fP\fIstr\fP1\fB,\fP...\fB,\fP\fIstr\fPN\fB}\fP\fIsuffix\fP
+.RE
 are expanded to N words, each of which is the concatenation of
 \fIprefix\fP, \fIstr\fPi and \fIsuffix\fP
-(e.g., `a{c,b{X,Y},d}e' expands to four word: ace, abXe, abYe, and ade).
+(\fIe.g.\fP, `a{c,b{X,Y},d}e' expands to four word: ace, abXe, abYe, and ade).
 As noted in the example, brace expressions can be nested and the resulting
 words are not sorted.
 Brace expressions must contain an unquoted comma (\fB,\fP) for expansion
-to occur (i.e., \fB{}\fP and \fB{foo}\fP are not expanded).
+to occur (\fIi.e.\fP, \fB{}\fP and \fB{foo}\fP are not expanded).
 Brace expansion is carried out after parameter substitution and before
-file name generation.\}
+file name generation.
+.ksh)
 .\"}}}
 .\"{{{  File Name Patterns
 .SS "File Name Patterns"
@@ -982,8 +1081,9 @@ matches any single character.
 matches any sequence of characters.
 .IP \fB[\fP..\fB]\fP
 matches any of the characters inside the brackets.  Ranges of characters
-can be specified by separating two characters by a \fB\-\fP, e.g., \fB[a0\-9]\fP
-matches the letter \fBa\fP or any digit.  In order to represent itself, a
+can be specified by separating two characters by a \fB\-\fP, \fIe.g.\fP,
+\fB[a0\-9]\fP matches the letter \fBa\fP or any digit.
+In order to represent itself, a
 \fB\-\fP must either be quoted or the first or last character in the character
 list.  Similarly, a \fB]\fP must be quoted or the first character in the list
 if it is represent itself instead of the end of the list.  Also, a \fB!\fP
@@ -991,6 +1091,34 @@ appearing at the start of the list has special meaning (see below), so to
 represent itself it must be quoted or appear later in the list.
 .IP \fB[!\fP..\fB]\fP
 like \fB[\fP..\fB]\fP, except it matches any character not inside the brackets.
+.ksh(
+.IP "\fB*(\fP\fIpattern\fP\fB|\fP ... \fP|\fP\fIpattern\fP\fB)\fP"
+matches any string of characters that matches zero or more occurances
+of the specified patterns.
+Example: the pattern \fB*(foo|bar)\fP matches the strings
+`', `foo', `bar', `foobarfoo', \fIetc.\fP.
+.IP "\fB+(\fP\fIpattern\fP\fB|\fP ... \fP|\fP\fIpattern\fP\fB)\fP"
+matches any string of characters that matches one or more occurances
+of the specified patterns.
+Example: the pattern \fB+(foo|bar)\fP matches the strings
+`foo', `bar', `foobarfoo', \fIetc.\fP.
+.IP "\fB?(\fP\fIpattern\fP\fB|\fP ... \fP|\fP\fIpattern\fP\fB)\fP"
+matches the empty string or a string that matches one of the
+specified patterns.
+Example: the pattern \fB?(foo|bar)\fP only matches the strings
+`', `foo' and `bar'.
+.IP "\fB@(\fP\fIpattern\fP\fB|\fP ... \fP|\fP\fIpattern\fP\fB)\fP"
+matches a string that matches one of the
+specified patterns.
+Example: the pattern \fB@(foo|bar)\fP only matches the strings
+`foo' and `bar'.
+.IP "\fB!(\fP\fIpattern\fP\fB|\fP ... \fP|\fP\fIpattern\fP\fB)\fP"
+matches any string that does not match one of the specified
+patterns.
+Examples: the pattern \fB!(foo|bar)\fP matches all strings except
+`foo' and `bar'; the pattern \fB!(*)\fP matches no strings;
+the pattern \fB!(?)*\fP matches all strings (think about it).
+.ksh)
 .PP
 Note that pdksh currently never matches \fB.\fP and \fB..\fP, but the original
 ksh, Bourne sh and bash do, so this may have to change (too bad).
@@ -1003,12 +1131,10 @@ are never matched, even by the pattern \fB.*\fP.
 If the \fBmarkdirs\fP option is set, any directories that result from
 file name generation are marked with a trailing \fB/\fP.
 .PP
-.\" todo: implement this (?(pattern-list), [[:alpha:]], etc.)
-The \fB?(\fP\fIpattern-list\fP\fB)\fP, \fB*(\fP\fIp-l\fP\fB)\fP,
-\fB+(\fP\fIp-l\fP\fB)\fP, \fB@(\fP\fIp-l\fP\fB)\fP and \fB!(\fP\fIp-l\fP\fB)\fP
-elements found in the original Korn shell are not yet implemented; the same
-is true for the POSIX character classes (i.e.,
-\fB[:\fP\fIclass-name\fP\fB:]\fP inside a \fB[\fP..\fB]\fP expression).
+.\" todo: implement this ([[:alpha:]], \fIetc.\fP)
+The POSIX character classes (\fIi.e.\fP,
+\fB[:\fP\fIclass-name\fP\fB:]\fP inside a \fB[\fP..\fB]\fP expression)
+are not yet implemented.
 .\"}}}
 .\"{{{  Input/Output Redirection
 .SS "Input/Output Redirection"
@@ -1022,8 +1148,8 @@ set to be from \fB/dev/null\fP, and commands for which any of the following
 redirections have been specified:
 .IP "\fB>\fP \fIfile\fP"
 standard output is redirected to \fIfile\fP.  If \fIfile\fP does not exist,
-it is created; if it does exist and the \fBnoclobber\fP option is set, an
-error occurs, otherwise the file is truncated.
+it is created; if it does exist, is a regular file and the \fBnoclobber\fP
+option is set, an error occurs, otherwise the file is truncated.
 Note that this means the command \fIcmd < foo > foo\fP will open
 \fIfoo\fP for reading and then truncate it when it opens it for writing,
 before \fIcmd\fP gets a chance to actually read \fIfoo\fP.
@@ -1064,8 +1190,8 @@ the character \fB\-\fP, indicating standard input is to be closed.
 same as \fB<&\fP, except the operation is done on standard output.
 .PP
 In any of the above redirections, the file descriptor that is redirected
-(i.e., standard input or standard output) can be explicitly given by preceding
-the redirection with a single digit.
+(\fIi.e.\fP, standard input or standard output) can be explicitly given by
+preceding the redirection with a single digit.
 Parameter, command and arithmetic substitutions, tilde substitutions and
 file name generation are all performed on the \fIfile\fP, \fImarker\fP and
 \fIfd\fP arguments of redirections.
@@ -1076,19 +1202,20 @@ Note that in restricted shells, redirections which can create files cannot
 be used.
 .PP
 For simple-commands, redirections may appear anywhere in the command, for
-compound-commands (\fBif\fP statements, etc.), any redirections must
+compound-commands (\fBif\fP statements, \fIetc.\fP), any redirections must
 appear at the end.
 Redirections are processed after pipelines are created and in the order they
 are given, so
-.ce
+.RS
 \fBcat /foo/bar 2>&1 > /dev/null | cat \-n\fP
+.RE
 will print an error with a line number prepended to it.
 .\"}}}
 .\"{{{  Arithmetic Expressions
 .SS "Arithmetic Expressions"
 Integer arithmetic expressions can be used with the \fBlet\fP command,
 inside \fB$((\fP..\fB))\fP expressions,
-inside array references (e.g., \fIname\fP\fB[\fP\fIexpr\fP\fB]\fP),
+inside array references (\fIe.g.\fP, \fIname\fP\fB[\fP\fIexpr\fP\fB]\fP),
 as numeric arguments to the \fBtest\fP command,
 and as the value of an assignment to an integer parameter.
 .PP
@@ -1097,9 +1224,11 @@ references, and integer constants and may be combined with the
 following C operators (listed and grouped in increasing order of precedence).
 .TP
 Unary operators:
-\fB+ \- ! ~\fP
+\fB+ \- ! ~ ++ --\fP
 .TP
 Binary operators:
+\fB,\fP
+.br
 \fB= *= /= %= += \-= <<= >>= &= ^= |=\fP
 .br
 \fB||\fP
@@ -1142,7 +1271,7 @@ negation.
 logical not; the result is 1 if argument is zero, 0 if not.
 .IP "\fB~\fP"
 arithmetic (bit-wise) not.
-.IP "\fB="
+.IP "\fB=\fP"
 assignment; variable on the left is set to the value on the right.
 .IP "\fB*= /= %= += \-= <<= >>= &= ^= |=\fP"
 assignment operators; \fI<var> <op>\fP\fB=\fP \fI<expr>\fP is the same as
@@ -1183,42 +1312,58 @@ otherwise \fI<arg3>\fP.
 .RE
 .\"}}}
 .\"{{{  Co-Processes
-.if "\n(sh"0" \{.SS "Co-Processes"
-A Co-process, which is a pipeline created with the \fB|&\fP operator,
+.ksh(
+.SS "Co-Processes"
+A co-process, which is a pipeline created with the \fB|&\fP operator,
 is an asynchronous process that the shell can both write to
 (using \fBprint \-p\fP) and read from (using \fBread \-p\fP).
-Only one co-process may be active at any given time, unless the input
-of an existing co-process has been duplicated using a \fB>&p\fP redirection.
-In this case, the shell closes its copy of the co-process input (note
-that a \fB<&p\fP redirection does not cause the shell to close its copy
-of the co-process output).
-Once \fBread \-p\fP has read the end-of-file, the co-process input is
-closed, and further attempts to read will produce diagnostics.
-Similarly, once \fBprint \-p\fP fails due to an EPIPE, the co-process
-output is closed.
-Note also, that \fBprint \-p\fP will ignore SIGPIPE signals during writes
+The input and output of the co-process can also be manipulated
+using \fB>&p\fP and \fB<&p\fP redirections, respectively.
+Once a co-process has been started, another can't be started until
+the co-process exits, or until the co-process input has been redirected using
+an \fBexec \fP\fIn\fP\fB>&p\fP redirection.
+If a co-process's input is redirected in this way, the next 
+co-process to be started will share the output with the first co-process,
+unless the output of the initial co-process has been redirected using an
+\fBexec \fP\fIn\fP\fB<&p\fP redirection.
+.PP
+Some notes concerning co-processes:
+.nr P2 \n(PD
+.nr PD 0
+.IP \ \ \(bu
+the only way to close the co-process input (so the co-process reads
+an end-of-file) is to redirect the input to a numbered file descriptor
+and then close that file descriptor (\fIe.g.\fP, \fBexec 3>&p;exec 3>&-\fP).
+.IP \ \ \(bu
+in order for co-processes to share a common output, the shell must keep
+the write portion of the output pipe open.
+This means that end of file will not be detected until all co-processes
+sharing the co-process output have exited (when they all exit, the shell
+closes its copy of the pipe).
+This can be avoided by redirecting the output to a numbered
+file descriptor (as this also causes the shell to close its copy).
+Note that this behaviour is slightly different from the original Korn shell
+which closes its copy of the write portion of the co-processs output when the
+most recently started co-process (instead of when all sharing co-processes)
+exits.
+.IP \ \ \(bu
+\fBprint \-p\fP will ignore SIGPIPE signals during writes
 if the signal is not being trapped or ignored; the same is not true if
 the co-process input has been duplicated to another file descriptor and
 \fBprint \-u\fP\fIn\fP is used.
-.PP
-If another co-process is started before doing a read or \fB<&p\fP redirection
-from existing co-processes, the output of the co-processes will be shared
-(e.g., \fBecho hi |& echo there|& cat <&p\fP will print both "hi" and "there").
-This is slightly different from the original Korn shell in which output is
-shared as long as the existing co-process job has not exited.
-As a side affect, end-of-file can not be read reliably in the original Korn
-shell (e.g., if the co-process closes its output but does not exit, the
-end of file will not be read).\}
+.nr PD \n(P2
+.ksh)
 .\"}}}
 .\"{{{  Functions
 .SS "Functions"
 Functions are defined using either Korn shell \fBfunction\fP \fIname\fP
-syntax or the Bourne/POSIX shell \fIname\fP\fB()\fP syntax.
-At the moment, there is no difference between the two, but see below.
+syntax or the Bourne/POSIX shell \fIname\fP\fB()\fP syntax
+(see below for the difference between the two forms).
 Functions are like \fB.\fP-scripts in that they are executed in
 the current environment, however, unlike \fB.\fP-scripts, shell arguments
-(i.e., positional parameters, \fB$1\fP, etc.) are never visible inside them.
-When the shell is determining the location of as command, functions are
+(\fIi.e.\fP, positional parameters, \fB$1\fP, \fIetc.\fP) are never visible
+inside them.
+When the shell is determining the location of a command, functions are
 searched after special built-in commands, and before regular and non-regular
 built-ins, and before the \fBPATH\fP is searched.
 .PP
@@ -1231,7 +1376,8 @@ shell searches the path specified in the \fBFPATH\fP parameter for a file
 with the same name as the function, which, if found is read and executed.
 If after executing the file, the named function is found to be defined, the
 function is executed, otherwise, the normal command search is continued
-(i.e., the shell searches the regular built-in command table and \fBPATH\fP).
+(\fIi.e.\fP, the shell searches the regular built-in command table
+and \fBPATH\fP).
 Note that if a command is not found using \fBPATH\fP, an attempt is
 made to autoload a function using \fBFPATH\fP (this is an undocumented
 feature of the original Korn shell).
@@ -1247,17 +1393,28 @@ Since functions are executed in the current shell environment, parameter
 assignments made inside functions are visible after the function completes.
 If this is not the desired effect, the \fBtypeset\fP command can be used
 inside a function to create a local parameter.
-Note that special parameters (e.g., \fB$$\fP, \fB$!\fP) can't be scoped in
-this way.
+Note that special parameters (\fIe.g.\fP, \fB$$\fP, \fB$!\fP) can't be
+scoped in this way.
 .PP
 The exit status of a function is that of the last command executed in
 the function.
 A function can be made to finish immediately using the \fBreturn\fP command;
 this may also be used to explicitly specify the exit status.
 .PP
-In the future, functions defined with the \fBfunction\fP reserved word will
-be treated differently in the following ways from functions defined with
+Functions defined with the \fBfunction\fP reserved word are
+treated differently in the following ways from functions defined with
 the \fB()\fP notation:
+.nr P2 \n(PD
+.nr PD 0
+.IP \ \ \(bu
+the \fB$0\fP parameter is set to the name of the function
+(Bourne-style functions leave \fB$0\fP untouched).
+.IP \ \ \(bu
+parameter assignments preceeding function calls are not kept in
+the shell environment
+(executing Bourne-style functions will keep assignments).
+.nr PD \n(P2
+In the future, the following differences will also be added:
 .nr P2 \n(PD
 .nr PD 0
 .IP \ \ \(bu
@@ -1269,9 +1426,6 @@ have their default effect in a function.
 .IP \ \ \(bu
 The EXIT trap, if set in a function, will be executed after the function
 returns.
-.IP \ \ \(bu
-the \fB$0\fP parameter will be set to the name of the function (this is
-currently the case for both styles of function).
 .nr PD \n(P2
 .\"}}}
 .\"{{{  POSIX mode
@@ -1291,6 +1445,11 @@ The following is a list of things that are affected by the state of
 the \fBposix\fP option:
 .nr P2 \n(PD
 .nr PD 0
+.sh(
+.IP \ \ \(bu
+reading of \fB$ENV\fP: if not in posix mode, the \fBENV\fP parameter
+is not expanded and included when the shell starts.
+.sh)
 .IP \ \ \(bu
 \fB\e"\fP inside double quoted \fB`\fP..\fB`\fP command substitutions:
 in posix mode, the \fB\e"\fP is interpreted when the command is interpreted;
@@ -1307,10 +1466,6 @@ the two behaviours.
 .IP \ \ \(bu
 \fBfg\fP exit status: in posix mode, the exit status is 0 if no errors occur;
 in non-posix mode, the exit status is that of the last foregrounded job.
-.IP \ \ \(bu
-\fB$0\fP: in posix mode, it is always the name of the shell; in non-posix
-mode, it is the name of the current function or script while a function or
-script is being executed.
 .IP \ \ \(bu
 \fBgetopts\fP: in posix mode, options must start with a \fB\-\fP; in non-posix
 mode, options can start with either \fB\-\fP or \fB+\fP.
@@ -1338,7 +1493,7 @@ in non-posix mode, field splitting, file globing, brace expansion and
 is turned on.
 .IP \ \ \(bu
 signal specification: in posix mode, signals can be specified as digits only
-if signal numbers match POSIX values (i.e., HUP=1, INT=2, QUIT=3, ABRT=6,
+if signal numbers match POSIX values (\fIi.e.\fP, HUP=1, INT=2, QUIT=3, ABRT=6,
 KILL=9, ALRM=14, and TERM=15); in non-posix mode, signals can be always digits.
 .IP \ \ \(bu
 alias expansion: in posix mode, alias expansion is only carried out when
@@ -1347,10 +1502,9 @@ on any word following an alias that ended in a space.
 For example, the following for loop
 .RS
 .ft B
-.nf
 alias a='for ' i='j'
+.br
 a i in 1 2; do echo i=$i j=$j; done
-.fi
 .ft P
 .RE
 uses parameter \fBi\fP in posix mode, \fBj\fP in non-posix mode.
@@ -1379,31 +1533,31 @@ The original ksh and POSIX differ somewhat in which commands are considered
 special or regular:
 .IP "POSIX special commands"
 .TS
-lw(8m)fB lw(8m)fB lw(8m)fB lw(8m)fB lw(8m)fB.
+lw(8m)fB lw(8m)fB lw(8m)fB lw(8m)fB lw(8m)fB .
 \&.	continue	exit	return	trap
 :	eval	export	set	unset
 break	exec	readonly	shift
 .TE
-.IP "Addition ksh special commands"
+.IP "Additional ksh special commands"
 .TS
-lw(8m)fB lw(8m)fB lw(8m)fB lw(8m)fB lw(8m)fB.
+lw(8m)fB lw(8m)fB lw(8m)fB lw(8m)fB lw(8m)fB .
 builtin	times	typeset		
 .TE
 .IP "Very special commands (non-posix mode)"
 .TS
-lw(8m)fB lw(8m)fB lw(8m)fB lw(8m)fB lw(8m)fB.
+lw(8m)fB lw(8m)fB lw(8m)fB lw(8m)fB lw(8m)fB .
 alias	readonly	set	typeset	
 .TE
 .IP "POSIX regular commands"
 .TS
-lw(8m)fB lw(8m)fB lw(8m)fB lw(8m)fB lw(8m)fB.
+lw(8m)fB lw(8m)fB lw(8m)fB lw(8m)fB lw(8m)fB .
 alias	command	fg	kill	umask
 bg	false	getopts	read	unalias
 cd	fc	jobs	true	wait
 .TE
-.IP "Addition ksh regular commands"
+.IP "Additional ksh regular commands"
 .TS
-lw(8m)fB lw(8m)fB lw(8m)fB lw(8m)fB lw(8m)fB.
+lw(8m)fB lw(8m)fB lw(8m)fB lw(8m)fB lw(8m)fB .
 [	let	pwd	ulimit	
 echo	print	test	whence	
 .TE
@@ -1472,7 +1626,7 @@ Execute the built-in command \fIcommand\fP.
 .IP "\fBcd\fP [\fB\-LP\fP] [\fIdir\fP]"
 Set the working directory to \fIdir\fP.  If the parameter \fBCDPATH\fP
 is set, it lists the search path for the directory containing
-\fIdir\fP.  A null path mans the current directory.  If \fIdir\fP is
+\fIdir\fP.  A null path means the current directory.  If \fIdir\fP is
 missing, the home directory \fB$HOME\fP is used.  If \fIdir\fP is
 \fB\-\fP, the previous working directory is used (see OLDPWD parameter).
 If \fB\-L\fP option (logical path) is used or if the \fBphysical\fP option
@@ -1489,13 +1643,19 @@ The string \fInew\fP is substituted for \fIold\fP in the current
 directory, and the shell attempts to change to the new directory.
 .\"}}}
 .\"{{{  command [ -pvV ] cmd [arg1 ...]
+.ksh(
 .IP "\fBcommand\fP [\fB\-pvV\fP] \fIcmd\fP [\fIarg1\fP ...]"
-If neither the \fB\-v\fP nor \fB\-V\fP options are given, \fIcmd\fP
+If neither the \fB\-v\fP nor \fB\-V\fP options are given,
+.ksh)
+.sh(
+.IP "\fBcommand\fP [\fB\-p\fP] \fIcmd\fP [\fIarg1\fP ...]"
+.sh)
+\fIcmd\fP
 is executed exactly as if the \fBcommand\fP had not been specified,
 with two exceptions: first, \fIcmd\fP cannot be a shell function, and
-second, special built-in commands lose their specialness (i.e., redirection
-and utility errors do not cause the shell to exit, and command assignments
-are not permanent).
+second, special built-in commands lose their specialness (\fIi.e.\fP,
+redirection and utility errors do not cause the shell to exit, and command
+assignments are not permanent).
 If the \fB\-p\fP option is given, a default search path is used instead of
 the current value of \fBPATH\fP (the actual value of the default path is
 system dependent: on POSIXish systems, it is the value returned by
@@ -1503,17 +1663,19 @@ system dependent: on POSIXish systems, it is the value returned by
 \fBgetconf CS_PATH\fP
 ).
 .sp
+.ksh(
 If the \fB\-v\fP option is given, instead of executing \fIcmd\fP, information
-about what would be executed is given (and the same is done for \fIarg1\fP
-...):
+about what would be executed is given (and the same is done for
+\fIarg1\fP ...):
 for special and regular built-in commands and functions,
 their names are simply printed,
 for aliases, a command that defines them is printed,
 and for commands found by searching the \fBPATH\fP parameter,
 the full path of the command is printed.
-If no command is be found, (i.e., the path search fails), nothing is printed
-and \fBcommand\fP exits with a non-zero status.
+If no command is be found, (\fIi.e.\fP, the path search fails), nothing
+is printed and \fBcommand\fP exits with a non-zero status.
 The \fB\-V\fP option is like the \fB\-v\fP option, except it is more verbose.
+.ksh)
 .\"}}}
 .\"{{{  continue [levels]
 .IP "\fBcontinue\fP [\fIlevels\fP]"
@@ -1548,7 +1710,7 @@ The command is executed without forking, replacing the shell process.
 If no arguments are given, any IO redirection is permanent and the shell
 is not replaced.
 Any file descriptors greater than 2 which are opened or \fIdup\fP(2)-ed
-in this way are not made available to other executed commands (i.e.,
+in this way are not made available to other executed commands (\fIi.e.\fP,
 commands that are not built-in to the shell).
 .\"}}}
 .\"{{{  exit [status]
@@ -1573,6 +1735,7 @@ parameters, including their values, are printed.
 A command that exits with a non-zero status.
 .\"}}}
 .\"{{{  fc [-e editor | -l [-n]] [-r] [first [ last ]]
+.ksh(
 .IP "\fBfc\fP [\fB\-e\fP \fIeditor\fP | \fB\-l\fP [\fB\-n\fP]] [\fB\-r\fP] [\fIfirst\fP [\fIlast\fP]]"
 \fIfirst\fP and \fIlast\fP select commands from the history.
 Commands can be selected by
@@ -1584,9 +1747,10 @@ commands are edited by the editor specified with the \fB\-e\fP
 option, or if no \fB\-e\fP is specified, the editor specified by the
 \fBFCEDIT\fP parameter (if this parameter is not set, \fB/bin/ed\fP is used),
 and then executed by the shell.
+.ksh)
 .\"}}}
 .\"{{{  fc [-e - | -s] [-g] [old=new] [prefix]
-.IP "\fBfc\fP [\fB\-e \-\fP | \fB\-s\fP] [\fB\-g\fP] [\fIold\fB=\fInew\fR] [\fIprefix\fP]"
+.IP "\fBfc\fP [\fB\-e \-\fP | \fB\-s\fP] [\fB\-g\fP] [\fIold\fP\fB=\fP\fInew\fP] [\fIprefix\fP]"
 Re-execute the selected command (the previous command by default) after
 performing the optional substitution of \fIold\fP with \fInew\fP.  If
 \fB\-g\fP is specified, all occurrences of \fIold\fP are replaced with
@@ -1662,14 +1826,14 @@ The \fB\-p\fP option causes only the process group of each job to be printed.
 See Job Control below for the format of \fIjob\fP and the displayed job.
 .\"}}}
 .\"{{{  kill [-s signame | -signum | -signame] { job | pid | -pgrp } ...
-.IP "\fBkill\fP [\fB\-s\fP \fIsigname\fP | \fB\-signum\fP | \fB\-signame\fP ] { \fIjob\fP | \fIpid\fP | \fB\-\fP\fIpgrp\fP } ...
+.IP "\fBkill\fP [\fB\-s\fP \fIsigname\fP | \fB\-signum\fP | \fB\-signame\fP ] { \fIjob\fP | \fIpid\fP | \fB\-\fP\fIpgrp\fP } ..."
 Send the specified signal to the specified jobs, process ids, or process groups.
 If no signal is specified, the signal TERM is sent.
 If a job is specified, the signal is sent to the job's process group.
 See Job Control below for the format of \fIjob\fP.
 .\"}}}
 .\"{{{  kill -l [exit-status ...]
-.IP "\fBkill \-l\fP [\fIexit-status\fP ...]
+.IP "\fBkill \-l\fP [\fIexit-status\fP ...]"
 Print the name of the signal that killed a process which exited with
 the specified \fIexit-status\fPes.
 If no arguments are specified, a list of all the signals, their numbers and
@@ -1687,11 +1851,12 @@ quoted, \fB((\fP \fIexpr\fP \fB))\fP is syntactic sugar for \fBlet
 "\fP\fIexpr\fP\fB"\fP.
 .\"}}}
 .\"{{{  print [-nprsun | -R [-en]] [argument ...]
-.IP "\fBprint\fP [\fB\-nprsu\fIn\fP | \fB\-R\fP [\fB\-en\fP]] [\fIargument ...\fP]"
+.IP "\fBprint\fP [\fB\-nprsu\fP\fIn\fP | \fB\-R\fP [\fB\-en\fP]] [\fIargument ...\fP]"
 \fBPrint\fP prints its arguments on the standard output, separated by
 spaces, and terminated with a newline.  The \fB\-n\fP option suppresses
 the newline.  By default, certain C escapes are translated.  These
-include \eb, \ef, \en, \er, \et, \ev, and \e### (# is an octal digit).
+include \eb, \ef, \en, \er, \et, \ev, and \e0### (# is an octal digit, of
+which there may be 0 to 3).
 \ec is equivalent to using the \fB\-n\fP option.  \e expansion may be
 inhibited with the \fB\-r\fP option.
 The \fB\-s\fP option prints to the history file instead of standard output,
@@ -1709,13 +1874,13 @@ As above, the \fB\-n\fP option suppresses the trailing newline.
 Print the present working directory.
 If \fB\-L\fP option is used or if the \fBphysical\fP option
 (see \fBset\fP command below) isn't set, the logical path is printed
-(i.e., the path used to \fBcd\fP to the current directory).
+(\fIi.e.\fP, the path used to \fBcd\fP to the current directory).
 If \fB\-P\fP option (physical path) is used or if the \fBphysical\fP option
 is set, the path determined from the filesystem (by following \fB..\fP
 directories to the root directory) is printed.
 .\"}}}
 .\"{{{  read [-prsun] [parameter ...]
-.IP "\fBread\fP [\fB\-prsu\fIn\fR] [\fIparameter ...\fP]"
+.IP "\fBread\fP [\fB\-prsu\fP\fIn\fP] [\fIparameter ...\fP]"
 Reads a line of input from standard input, separate the line into fields using
 the \fBIFS\fP parameter (see Substitution above), and assign each field to the
 specified parameters.
@@ -1729,10 +1894,11 @@ If no input is read, \fBread\fP exits with a non-zero status.
 .sp
 A prompt, which is printed to standard error before any input is read, may be
 specified by appending and question mark and the prompt to the
-first parameter (e.g., \fBread nfoo?'number of foos: '\fP).
+first parameter (\fIe.g.\fP, \fBread nfoo?'number of foos: '\fP).
 .sp
 The \fB\-u\fP\fIn\fP and \fB\-p\fP options cause input to be read
-from file descriptor \fIn\fP or the current co-process, respectively.
+from file descriptor \fIn\fP or the current co-process (see Co-Processes above
+for comments on this), respectively.
 If the \fB\-s\fP option is used, input is saved to the history file.
 .\"}}}
 .\"{{{  readonly [-p] [parameter[=value] ...]
@@ -1759,14 +1925,21 @@ while the original Korn shell only treats profiles as \fB.\fP scripts.
 .\"}}}
 .\"{{{  set [+-abCefhkmnpsuvxX] [+-o [option]] [+-A name] [--] [arg ...]
 .IP "\fBset\fP [\fB\(+-abCefhkmnpsuvxX\fP] [\fB\(+-o\fP [\fIoption\fP]] [\fB\(+-A\fP \fIname\fP] [\fB\-\-\fP] [\fIarg\fP ...]"
-Set (\fB\-\fP) or clear (\fB+\fP) a shell option:
+The set command can be used to set (\fB\-\fP) or clear (\fB+\fP) shell options,
+set the positional parameters, or set an array parameter.
+Options can be changed using the \fB\(+-o\fP \fIoption\fP syntax,
+where \fIoption\fP is the long name of an option, or using
+the \fB\(+-\fP\fIletter\fP syntax, where \fIletter\fP is the
+option's single letter name (not all options have a single letter name).
+The following table lists both option letters (if they exist) and long names
+along with a description of what the option does.
 .sp
 .TS
 expand;
 afB lfB lw(3i).
 \-A		T{
 Sets the elements of the array parameter \fIname\fP to \fIarg\fP ...;
-If \fB\-A\fP is used, the array is reset (i.e., emptied) first;
+If \fB\-A\fP is used, the array is reset (\fIi.e.\fP, emptied) first;
 if \fB+A\fP is used, the first N elements are set (where N is the number
 of \fIarg\fPs), the rest are left untouched.
 T}
@@ -1784,19 +1957,13 @@ be used to force an overwrite).
 T}
 \-e	errexit	T{
 Exit (after executing the \fBERR\fP trap) as soon as an error occurs or
-a command fails (i.e., exits with a non-zero status).
+a command fails (\fIi.e.\fP, exits with a non-zero status).
 This does not apply to commands whose exit status is explicitly tested by a
 shell construct such as \fBif\fP, \fBuntil\fP, \fBwhile\fP, \fB&&\fP or
 \fB||\fP statements.
 T}
 \-f	noglob	T{
 Do not expand file name patterns.
-T}
-\-f	nohup	T{
-Do not kill running jobs with a \fBHUP\fP signal when a login shell exists.
-Currently set by default, but this will change in the future to be compatible
-with the original Korn shell (which doesn't have this option, but does
-send the \fBHUP\fP signal).
 T}
 \-h	trackall	T{
 Create tracked aliases for all executed commands (see Aliases above).
@@ -1831,8 +1998,6 @@ Enable restricted mode \(em this option can only be used when the shell is
 invoked.  See Shell Startup above for a description of what this
 means.
 T}
-\-s		T{
-T}
 \-s	stdin	T{
 If used when the shell is invoked, commands are read from standard input.
 Set automatically if the shell is invoked with no arguments.
@@ -1858,9 +2023,12 @@ T}
 	bgnice	T{
 Background jobs are run with lower priority.
 T}
+.ksh(
 	braceexpand	T{
 Enable brace expansion (aka, alternation).
 T}
+.ksh)
+.ksh(
 	emacs	T{
 Enable BRL emacs-like command line editing (interactive shells only);
 see Emacs Interactive Input Line Editing.
@@ -1871,8 +2039,15 @@ only);
 currently identical to emacs editing except that transpose (^T) acts
 slightly differently.
 T}
+.ksh)
 	ignoreeof	T{
 The shell will not exit on when end-of-file is read, \fBexit\fP must be used.
+T}
+	nohup	T{
+Do not kill running jobs with a \fBHUP\fP signal when a login shell exists.
+Currently set by default, but this will change in the future to be compatible
+with the original Korn shell (which doesn't have this option, but does
+send the \fBHUP\fP signal).
 T}
 	nolog	T{
 No effect \- in the original Korn shell, this prevents function definitions
@@ -1880,9 +2055,10 @@ from being stored in the history file.
 T}
 	physical	T{
 Causes the \fBcd\fP and \fBpwd\fP commands to use `physical'
-(i.e., the filesystem's) \fB..\fP directories instead of `logical' directories
-(i.e.,  the shell handles \fB..\fP, which allows the user to be obliveous of
-symlink links to directories).  Clear by default.  Note that setting
+(\fIi.e.\fP, the filesystem's) \fB..\fP directories instead of `logical'
+directories (\fIi.e.\fP,  the shell handles \fB..\fP, which allows the user
+to be obliveous of symlink links to directories).
+Clear by default.  Note that setting
 this option does not effect the current value of the \fBPWD\fP parameter;
 only the \fBcd\fP command changes \fBPWD\fP.
 See the \fBcd\fP and \fBpwd\fP commands above for more details.
@@ -1904,15 +2080,21 @@ If this option is not set, characters in the range
 128-160 are printed as is, which may cause problems.
 T}
 	vi-tabcomplete	T{
-In vi command line editing, do file name completion when tab (^I) is entered
-in insert mode.
+In vi command line editing, do command / file name completion when
+tab (^I) is entered in insert mode.
 T}
 .TE
 .sp
 These options can also be used upon invocation of the shell.  The current
-set of options can be found in the parameter \fB\-\fP.  Remaining
-arguments, if any, are positional parameters and are assigned, in order, to the
-positional parameters (i.e., \fB1\fP, \fB2\fP, etc.).
+set of options (with single letter names) can be found in the
+parameter \fB\-\fP.
+\fBset -o\fP with no option name will list all the options and whether each
+is on or off; \fBset +o\fP will print the long names of all options that
+are currently on.
+.sp
+Remaining arguments, if any, are positional parameters and are assigned,
+in order, to the
+positional parameters (\fIi.e.\fP, \fB1\fP, \fB2\fP, \fIetc.\fP).
 If options are ended with \fB\-\-\fP and there are no remaining arguments,
 all positional parameters are cleared.
 If no options or arguments are given, then the values of all names are printed.
@@ -1921,8 +2103,8 @@ it clears both the \fB\-x\fP and \fB\-v\fP options.
 .\"}}}
 .\"{{{  shift [number]
 .IP "\fBshift\fP [\fInumber\fP]"
-The positional parameters \fInumber\fP+1, \fInumber\fP+2 etc.\& are renamed
-to \fB1\fP, \fB2\fP, etc.
+The positional parameters \fInumber\fP+1, \fInumber\fP+2 \fIetc.\fP\& are
+renamed to \fB1\fP, \fB2\fP, \fIetc.\fP
 \fInumber\fP defaults to 1.
 .\"}}}
 .\"{{{  test expression, [ expression ]
@@ -1938,10 +2120,11 @@ The following basic expressions are available:
 afB ltw(2.8i).
 \fIstr\fP	T{
 \fIstr\fP has non-zero length.  Note that there is the potential
-for problems if \fIstr\fP turns out to be an operator (e.g., \fB-r\fP)
+for problems if \fIstr\fP turns out to be an operator (\fIe.g.\fP, \fB-r\fP)
 - it is generally better to use a test like
-.ce
+.RS
 \fB[ X"\fP\fIstr\fP\fB" != X ]\fP
+.RE
 instead (double quotes are used in case \fIstr\fP contains spaces or file
 globing characters).
 T}
@@ -2009,8 +2192,9 @@ T}
 shell \fIoption\fP is set (see \fBset\fP command above for list of options).
 As a non-standard extension, if the option starts with a \fB!\fP, the test
 is negated; the test always fails if option doesn't exist (thus
-.ce
-\fB[ -o \fP\fIfoo\fP \fB-o -o \fP\fIfoo\fP \fB]\fP
+.RS
+\fB[ -o \fP\fIfoo\fP \fB-o -o !\fP\fIfoo\fP \fB]\fP
+.RE
 returns true if and only if option \fIfoo\fP exists).
 T}
 \fIfile\fP \-nt \fIfile\fP	T{
@@ -2038,6 +2222,11 @@ T}
 \fIstring\fP = \fIstring\fP	T{
 strings are equal
 T}
+.ksh(
+\fIstring\fP == \fIstring\fP	T{
+strings are equal
+T}
+.ksh)
 \fIstring\fP != \fIstring\fP	T{
 strings are not equal
 T}
@@ -2073,6 +2262,12 @@ afB l.
 ( \fIexpr\fP )	grouping
 .TE
 .sp
+On operating systems not supporting \fB/dev/fd/\fP\fIn\fP devices
+(where \fIn\fP is a file descriptor number),
+the \fBtest\fP command will attempt to fake it for all tests that
+operate on files (except the \fB-e\fP test).
+I.e., \fB[ -w /dev/fd/2 ]\fP tests if file descriptor 2 is writable.
+.sp
 Note that some special rules are applied (courtesy of POSIX) if the
 number of arguments to \fBtest\fP or \fB[\fP \&... \fB]\fP is less than
 five: if leading \fB!\fP arguments can be stripped such that only one
@@ -2085,7 +2280,7 @@ operator, including an unstripped \fB!\fP).
 .sp
 \fBNote:\fP A common mistake is to use \fBif [ $foo = bar ]\fP which
 fails if parameter \fBfoo\fP is null or unset, if it has embedded spaces
-(i.e., \fBIFS\fP characters), or if it is a unary operator like \fB!\fP or
+(\fIi.e.\fP, \fBIFS\fP characters), or if it is a unary operator like \fB!\fP or
 \fB\-n\fP.  Use tests like \fBif [ "X$foo" = Xbar ]\fP instead.
 .\"}}}
 .\"{{{  times
@@ -2100,10 +2295,10 @@ are received.
 \fBHandler\fP is either a null string, indicating the signals are to
 be ignored, a minus (\fB\-\fP), indicating that the default action is to
 be taken for the signals (see signal(2 or 3)), or a string containing shell
-commands to be evaluated and executed at the first opportunity (i.e., when the
-current command completes, or before printing the next \fBPS1\fP prompt) after
-receipt of one of the signals.
-\fBSignal\fP is the name of a signal (e.g., PIPE or ALRM) or the number
+commands to be evaluated and executed at the first opportunity (\fIi.e.\fP,
+when the current command completes, or before printing the next \fBPS1\fP
+prompt) after receipt of one of the signals.
+\fBSignal\fP is the name of a signal (\fIe.g.\fP, PIPE or ALRM) or the number
 of the signal (see \fBkill \-l\fP command above).
 There are two special signals: \fBEXIT\fP (also known as \fB0\fP), which
 is executed when the shell is about to exit, and \fBERR\fP which is
@@ -2143,7 +2338,7 @@ to the function.
 .sp
 When \fB\-f\fP is used, typeset operates on the attributes of functions.
 As with parameters, if no \fIname\fPs are given, functions are listed
-with their values (i.e., definitions) unless options are introduced with
+with their values (\fIi.e.\fP, definitions) unless options are introduced with
 \fB+\fP, in which case only the function names are reported.
 .sp
 .TS
@@ -2218,8 +2413,8 @@ any executed commands.  Exported functions are not implemented yet.
 T}
 .TE
 .\"}}}
-.\"{{{  ulimit [-acdfHmnsStvw] [value]
-.IP "\fBulimit\fP [\fB\-acdfHmnsStvw\fP] [\fIvalue\fP]"
+.\"{{{  ulimit [-acdfHlmnpsStvw] [value]
+.IP "\fBulimit\fP [\fB\-acdfHlmnpsStvw\fP] [\fIvalue\fP]"
 Display or set process limits.
 If no options are used, the file size limit (\fB\-f\fP) is assumed.
 \fBvalue\fP, if specified, may be either be an arithmetic expression or the
@@ -2232,7 +2427,7 @@ Also note that the types of limits available are system dependent \- some
 systems have only the \fB\-f\fP limit.
 .RS
 .IP \fB\-a\fP
-Displays all limits.
+Displays all limits; unless \fB\-H\fP is used, soft limits are displayed.
 .IP \fB\-H\fP
 Set the hard limit only (default is to set both hard and soft limits).
 .IP \fB\-S\fP
@@ -2244,14 +2439,20 @@ Impose a size limit of \fIn\fP kbytes on the size of the data area.
 .IP \fB\-f\fP
 Impose a size limit of \fIn\fP blocks on files written by the shell and
 its child processes (files of any size may be read).
+.IP \fB\-l\fP
+Impose a limit of \fIn\fP kbytes on the amount of locked (wired) physical
+memory.
 .IP \fB\-m\fP
 Impose a limit of \fIn\fP kbytes on the amount of physical memory used.
 .IP \fB\-n\fP
 Impose a limit of \fIn\fP file descriptors that can be open at once.
+.IP \fB\-p\fP
+Impose a limit of \fIn\fP processes that can be run by the user at any one
+time.
 .IP \fB\-s\fP
 Impose a size limit of \fIn\fP kbytes on the size of the stack area.
 .IP \fB\-t\fP
-Impose a time limit of \fIn\fP seconds to be used by each process.
+Impose a time limit of \fIn\fP cpu seconds to be used by each process.
 .IP \fB\-v\fP
 Impose a limit of \fIn\fP kbytes on the amount of virtual memory used;
 on some systems this is the maximum allowable virtual address (in bytes,
@@ -2270,8 +2471,9 @@ If the \fB\-S\fP option is used, the mask displayed or set is symbolic,
 otherwise it is an octal number.
 .sp
 Symbolic masks are like those used by \fIchmod\fP(1):
-.ce
+.RS
 [\fBugoa\fP]{{\fB=+-\fP}{\fBrwx\fP}*}+[\fB,\fP...]
+.RE
 in which the first group of characters is the \fIwho\fP part, the second
 group is the \fIop\fP part, and the last group is the \fIperm\fP part.
 The \fIwho\fP part specifies which part of the umask is to be modified.
@@ -2325,6 +2527,8 @@ are carried out on tracked or directory aliases, respectively.
 .\"{{{  unset [-fv] parameter ...
 .IP "\fBunset\fP [\fB\-fv\fP] \fIparameter\fP ..."
 Unset the named parameters (\fB\-v\fP, the default) or functions (\fB\-f\fP).
+The exit status is non-zero if any of the parameters were already unset,
+zero otherwise.
 .\"}}}
 .\"{{{  wait [job]
 .IP "\fBwait\fP [\fIjob\fP]"
@@ -2348,7 +2552,7 @@ printed (this is not the case when jobs are explicitly specified).
 For each name, the type of command is listed (reserved word, built-in, alias,
 function, tracked alias or executable).
 If the \fB\-p\fP option is used, a path search done even if \fIname\fP
-is a reserved word, alias, etc.
+is a reserved word, alias, \fIetc.\fP
 Without the \fB\-v\fP option, \fBwhence\fP is similar to \fBcommand \-v\fP
 except that \fBwhence\fP will find reserved words and won't print aliases
 as alias commands;
@@ -2364,7 +2568,7 @@ exit status is non-zero.
 Job control refers to the shell's ability to monitor and control \fBjobs\fP,
 which are processes or groups of processes created for commands or pipelines.
 At a minimum, the shell keeps track of the status of the background
-(i.e., asynchronous) jobs that currently exist; this information can be
+(\fIi.e.\fP, asynchronous) jobs that currently exist; this information can be
 displayed using the \fBjobs\fP command.
 If job control is fully enabled (using \fBset \-m\fP or
 \fBset \-o monitor\fP), as it is for interactive shells,
@@ -2376,9 +2580,9 @@ or background, using the \fBfg\fP and \fBbg\fP commands, respectively,
 and the state of the terminal is saved or restored when a foreground
 job is stopped or restarted, respectively.
 .sp
-Note that only commands that create processes (e.g., asynchronous commands,
-subshell commands, and non-built-in, non-function commands) can be
-stopped; commands like \fBread\fP cannot be.
+Note that only commands that create processes (\fIe.g.\fP,
+asynchronous commands, subshell commands, and non-built-in,
+non-function commands) can be stopped; commands like \fBread\fP cannot be.
 .sp
 When a job is created, it is assigned a job-number.
 For interactive shells, this number is printed inside \fB[\fP..\fB]\fP,
@@ -2416,10 +2620,11 @@ are matched).
 T}
 .TE
 .sp
-When a job changes state (e.g., a background job finishes or foreground
+When a job changes state (\fIe.g.\fP, a background job finishes or foreground
 job is stopped), the shell prints the following status information:
-.ce 1
+.RS
 \fB[\fP\fInumber\fP\fB]\fP \fIflag status command\fP
+.RE
 where
 .IP "\ \fInumber\fP"
 is the job-number of the job.
@@ -2429,18 +2634,19 @@ respectively, or space if it is neither.
 .IP "\ \fIstatus\fP"
 indicates the current state of the job and can be
 .RS
-.IP "\fBRunning\fP
+.IP "\fBRunning\fP"
 the job has neither stopped or exited (note that running does not
 necessarily mean consuming CPU time \(em the process could be blocked waiting
 for some event).
 .IP "\fBDone\fP [\fB(\fP\fInumber\fP\fB)\fP]"
 the job exited. \fInumber\fP is the exit status of the job, which is
 omitted if the status is zero.
-.IP "\fBStopped\fP [\fB(\fP\fIsignal\fP\fB)\fP]
+.IP "\fBStopped\fP [\fB(\fP\fIsignal\fP\fB)\fP]"
 the job was stopped by the indicated \fIsignal\fP (if no signal is given,
 the job was stopped by SIGTSTP).
 .IP "\fIsignal-description\fP [\fB(core dumped)\fP]"
-the job was killed by a signal (e.g., Memory\ fault, Hangup, etc. \(em use
+the job was killed by a signal (\fIe.g.\fP, Memory\ fault,
+Hangup, \fIetc.\fP \(em use
 \fBkill \-l\fP for a list of signal descriptions).
 The \fB(core\ dumped)\fP message indicates the process created a core file.
 .RE
@@ -2462,6 +2668,7 @@ If another attempt is immediately made to exit the shell, the running
 jobs are sent a \fBHUP\fP signal and the shell exits.
 .\"}}}
 .\"{{{  Emacs Interactive Input Line Editing
+.ksh(
 .SS "Emacs Interactive Input Line Editing"
 When the \fBemacs\fP option is set, interactive input line editing is
 enabled.  \fBWarning\fP: This mode is slightly different from the emacs
@@ -2476,7 +2683,7 @@ using the following commands:
 The current bindings are listed.
 .\"}}}
 .\"{{{  bind string=[editing-command]
-.IP "\fBbind\fP \fIstring\fP\fB=\fP[\fIediting-command\fP]
+.IP "\fBbind\fP \fIstring\fP\fB=\fP[\fIediting-command\fP]"
 The specified editing command is bound to the given \fBstring\fP, which
 should consist of a control character (which may be written using caret
 notation \fB^\fP\fIX\fP), optionally preceded by one of the two prefix
@@ -2514,7 +2721,7 @@ The following is a list of editing commands available.
 Each description starts with the name of the command,
 a \fIn\fP, if the command can be prefixed with a count,
 and any keys the command is bound to by default (written using
-caret notation, e.g., ASCII ESC character is written as ^[).
+caret notation, \fIe.g.\fP, ASCII ESC character is written as ^[).
 A count prefix for a command is entered using the sequence
 \fB^[\fP\fIn\fP, where \fIn\fP is a sequence of 1 or more digits;
 unless otherwise specified, if a count is omitted, it defaults to 1.
@@ -2522,7 +2729,7 @@ Note that editing command names are
 used only with the \fBbind\fP command.  Furthermore, many editing
 commands are useful only on terminals with a visible cursor.  The
 default bindings were chosen to resemble corresponding EMACS key
-bindings.  The users tty characters (e.g., ERASE) are bound to
+bindings.  The users tty characters (\fIe.g.\fP, ERASE) are bound to
 reasonable substitutes and override the default bindings.
 .\"{{{  abort ^G
 .IP "\fBabort ^G\fP"
@@ -2556,23 +2763,26 @@ Moves the cursor to the beginning of the edited input line.
 Uppercase the first character in the next \fIn\fP words,
 leaving the cursor past the end of the last word.
 .\"}}}
+.\"{{{  comment ^[#
+If the current line does not begin with a comment character, one
+is added at the beginning of the line and the line is entered (as if
+return had been pressed), otherwise the existing comment characters
+are removed and the cursor is placed at the beginning of the line.
+.\"}}}
 .\"{{{  complete ^[^[
 .IP "\fBcomplete ^[^[\fP"
-Automatically completes as much as is unique of the hashed command name
+Automatically completes as much as is unique of the command name
 or the file name containing the cursor.  If the entire remaining command
 or file name is unique a space is printed after its completion, unless
 it is a directory name in which case \fB/\fP is appended.  If there is
-no hashed command or file name with the current partial word as its
+no command or file name with the current partial word as its
 prefix, a bell character is output (usually causing a audio beep).
 .\"}}}
 .\"{{{  complete-command ^X^[
 .IP "\fBcomplete-command ^X^[\fP"
-Automatically completes as much as is unique of the hashed command name
+Automatically completes as much as is unique of the command name
 having the partial word up to the cursor as its prefix, as in the
-\fBcomplete\fP command described above.  Only command and function names
-seen since the last \fBhash \-r\fP command are available for
-completion; the \fBhash\fP command may be used to register additional
-names.
+\fBcomplete\fP command described above.
 .\"}}}
 .\"{{{  complete-file ^[^X
 .IP "\fBcomplete-file ^[^X\fP"
@@ -2637,6 +2847,12 @@ Error (ring the bell).
 Places the cursor where the mark is, and sets the mark to where the
 cursor was.
 .\"}}}
+.\"{{{  expand-file ^[*
+.IP "\fBexpand-file ^[*\fP"
+Appends a * to the current word and replaces the word with
+the result of performing file globbing on the word.
+If no files match the pattern, the bell is rung.
+.\"}}}
 .\"{{{  forward-char n ^F
 .IP "\fBforward-char\fP \fIn\fP \fB^F\fP"
 Moves the cursor forward \fIn\fP characters.
@@ -2665,14 +2881,13 @@ column \fIn\fP.
 .\"}}}
 .\"{{{  list ^[?
 .IP "\fBlist ^[?\fP"
-Prints a sorted, columnated list of hashed command names or file names
+Prints a sorted, columnated list of command names or file names
 (if any) that can complete the partial word containing the cursor.
-Directory names have \fB/\fP appended to them, and executable file
-names are followed by a \fB*\fP.
+Directory names have \fB/\fP appended to them.
 .\"}}}
 .\"{{{  list-command ^X?
 .IP "\fBlist-command ^X?\fP"
-Prints a sorted, columnated list of hashed command names (if any) that
+Prints a sorted, columnated list of command names (if any) that
 can complete the partial word containing the cursor.
 .\"}}}
 .\"{{{  list-file ^X^Y
@@ -2782,8 +2997,10 @@ Inserts the most recently killed text string at the current cursor position.
 Immediately after a \fByank\fP, replaces the inserted text string with
 the next previous killed text string.
 .\"}}}
+.ksh)
 .\"}}}
 .\"{{{  Vi Interactive Input Line Editing
+.ksh(
 .\"{{{  introduction
 .SS "Vi Interactive Input Line Editing"
 The vi command line editor in ksh has basically the same commands as the
@@ -2792,8 +3009,9 @@ vi editor (see \fIvi\fP(1)), with the following exceptions:
 .IP \ \ \(bu
 you start out in insert mode,
 .IP \ \ \(bu
-there are file name completion commands (\fB=\fP, \fB\e\fP, \fB*\fP, \fB^X\fP,
-\fB^E\fP, \fB^F\fP and, optionally, \fB<tab>\fP),
+there are file name and command completion commands
+(\fB=\fP, \fB\e\fP, \fB*\fP, \fB^X\fP, \fB^E\fP, \fB^F\fP and,
+optionally, \fB<tab>\fP),
 .IP \ \ \(bu
 the \fB_\fP command is different (in ksh it is the last argument command,
 in vi it goes to the start of the current line),
@@ -2802,7 +3020,7 @@ the \fB/\fP and \fBG\fP commands move in the opposite direction as the \fBj\fP
 command
 .IP \ \ \(bu
 and commands which don't make sense in a single line editor are not available
-(e.g., screen movement commands, ex \fB:\fP commands, etc.).
+(\fIe.g.\fP, screen movement commands, ex \fB:\fP commands, \fIetc.\fP).
 .nr PD \n(P2
 .LP
 Note that the \fB^X\fP stands for control-X; also \fB<esc>\fP, \fB<space>\fP
@@ -2838,16 +3056,18 @@ T}
 puts the editor in command mode (see below)
 T}
 ^E	T{
-file name enumeration (see below)
+command and file name enumeration (see below)
 T}
 ^F	T{
-file name completion (see below)
+command and file name completion (see below).
+If used twice in a row, the list of possible completions is displayed;
+if used a third time, the completion is undone.
 T}
 ^X	T{
-file name expansion (see below)
+command and file name expansion (see below)
 T}
 <tab>	T{
-optional file name completion (see below), enabled with
+optional file name and command completion (see \fB^F\fP above), enabled with
 \fBset \-o vi-tabcomplete\fP
 T}
 .TE
@@ -2866,14 +3086,14 @@ In command mode, each character is interpreted as a command.
 Characters that don't correspond to commands, are illegal combinations of
 commands or are commands that can't be carried out all cause beeps.
 In the following command descriptions, a \fIn\fP indicates the
-command may be prefixed by a number (e.g., \fB10l\fP moves right 10
+command may be prefixed by a number (\fIe.g.\fP, \fB10l\fP moves right 10
 characters); if no number prefix is used, \fIn\fP is assumed to be 1
 unless otherwise specified.
 The term `current position' refers to the position between the cursor
 and the character preceding the cursor.
 A `word' is a sequence of letters, digits and underscore characters or a
 sequence of non-letter, non-digit, non-underscore, non-white-space characters
-(e.g., ab2*&^ contains two words) and a `big-word' is a sequence of
+(\fIe.g.\fP, ab2*&^ contains two words) and a `big-word' is a sequence of
 non-white-space characters.
 .\"{{{  Special ksh vi commands
 .IP "Special ksh vi commands"
@@ -2896,17 +3116,35 @@ if \fIn\fP is not specified, the current line is edited.
 The actual command executed is
 `\fBfc \-e ${VISUAL:-${EDITOR:-vi}}\fP \fIn\fP'.
 .IP "\fB*\fP and \fB^X\fP"
-file name expansion: replace the current big-word with the words obtained by
-appending a * to it and doing file name expansion.  After expansion, the
-cursor is placed just past the last word and the editor is in insert mode.
-.IP "\fB\e\fP and \fB^F\fP"
-file name completion: replace the current big-word with the longest unique
-match obtained after performing file name expansion.
+command or file name expansion is applied to the current big-word
+(with an appended *, if the word contains no file globing characters) - the
+big-word is replaced with the resulting words.
+If the current big-word is the first on the line (or follows one
+of the following characters: \fB;\fP, \fB|\fP, \fB&\fP, \fB(\fP, \fB)\fP)
+and does not contain a slash (\fB/\fP) then command expansion is done,
+otherwise file name expansion is done.
+Command expansion will match the big-word against all aliases, functions
+and built-in commands as well as any executable files found by searching
+the directories in the \fBPATH\fP parameter.
+File name expansion matches the big-word against the files in the
+current directory.
+After expansion, the cursor is placed just past the last word and the editor
+is in insert mode.
+.IP "\fIn\fP\fB\e\fP, \fIn\fP\fB^F\fP and \fIn\fP\fB<tab>\fP"
+command/file name completion: 
+replace the current big-word with the longest unique
+match obtained after performing command/file name expansion.
+\fB<tab>\fP is only recognized if the \fBvi-tabcomplete\fP option
+is set (see \fBset \-o\fP).
+If \fIn\fP is specified, the \fIn\fPth possible
+completion is selected (as reported by the command/file name enumeration
+command).
+.IP "\fB=\fP and \fB^E\fP"
+command/file name enumeration: list all the commands or files that match
+the current big-word.
 .IP "\fB^V\fP"
 display the version of pdksh; it is displayed until another key is pressed
 (this key is ignored).
-.IP "\fB=\fP and \fB^E\fP"
-file name enumeration: list all the files that match the current big-word.
 .IP "\fB@\fP\fIc\fP"
 macro expansion: execute the commands found in the alias _\fIc\fP.
 .RE
@@ -2990,31 +3228,32 @@ direction of the search is the opposite of the last search.
 .IP "\fIn\fP\fBa\fP"
 append text \fIn\fP times: goes into insert mode just after the current
 position.
-The append is only replicated if command mode is re-entered (i.e., <esc> is
-used).
+The append is only replicated if command mode is re-entered (\fIi.e.\fP,
+<esc> is used).
 .IP "\fIn\fP\fBA\fP"
 same as \fBa\fP, except it appends at the end of the line.
 .IP "\fIn\fP\fBi\fP"
 insert text \fIn\fP times: goes into insert mode at the current
 position.
-The insertion is only replicated if command mode is re-entered (i.e., <esc> is
-used).
+The insertion is only replicated if command mode is re-entered (\fIi.e.\fP,
+<esc> is used).
 .IP "\fIn\fP\fBI\fP"
 same as \fBi\fP, except the insertion is done just before the first non-blank
 character.
 .IP "\fIn\fP\fBs\fP"
-substitute the next \fIn\fP characters (i.e., delete the characters
+substitute the next \fIn\fP characters (\fIi.e.\fP, delete the characters
 and go into insert mode).
 .IP "\fBS\fP"
 substitute whole line: all characters from the first non-blank character
 to the end of line are deleted and insert mode is entered.
 .IP "\fIn\fP\fBc\fP\fImove-cmd\fP"
 change from the current position to the position resulting from \fIn\fP
-\fImove-cmd\fPs (i.e., delete the indicated region and go into insert mode);
+\fImove-cmd\fPs (\fIi.e.\fP, delete the indicated region and go into insert
+mode);
 if \fImove-cmd\fP is \fBc\fP, the line starting from the first non-blank
 character is changed.
 .IP "\fBC\fP"
-change from the current position to the end of the line (i.e., delete to
+change from the current position to the end of the line (\fIi.e.\fP, delete to
 the end of the line and go into insert mode).
 .IP "\fIn\fP\fBx\fP"
 delete the next \fIn\fP characters.
@@ -3059,6 +3298,8 @@ redraw the current line.
 redo the last edit command \fIn\fP times.
 .IP "\fBu\fP"
 undo the last edit command.
+.IP "\fBU\fP"
+undo all changes that have been made to the current line.
 .IP "\fIintr\fP and \fIquit\fP"
 the interrupt and quit terminal characters cause the current line to
 be deleted and a new prompt to be printed.
@@ -3073,16 +3314,8 @@ be deleted and a new prompt to be printed.
 .\"    shift commands: << >>
 .\"    status command: ^G
 .\"}}}
-.\"{{{  Missing vi commands
-.IP "Missing vi commands"
-The following vi commands are in the original Korn shell, but are not
-yet in pdksh:
-.RS
-.IP "\fBU\fP"
-undo all changes that have been made to the current line.
-.RE
 .\"}}}
-.\"}}}
+.ksh)
 .\"}}}
 .\"}}}
 .\"{{{  Files
@@ -3120,8 +3353,12 @@ list of people and their part in the shell's development.
 .\"{{{  See also
 .SH "SEE ALSO"
 awk(1), 
-.if "\n(sh"0" sh(1),
-.if "\n(sh"1" ksh(1),
+.ksh(
+sh(1),
+.ksh)
+.sh(
+ksh(1),
+.sh)
 csh(1), ed(1), getconf(1), getopt(1), sed(1), stty(1), vi(1),
 dup(2), execve(2), getgid(2), getuid(2), open(2), pipe(2), wait(2),
 getopt(3), rand(3), signal(3), system(3),

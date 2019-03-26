@@ -2,7 +2,22 @@
 
 #include "config.h"
 #include <stdio.h>
+#include <sys/types.h>
 #include <signal.h>
+#include <errno.h>
+#ifdef HAVE_STRING_H
+# include <string.h>
+#else
+# include <strings.h>
+# define strchr index
+# define strrchr rindex
+#endif /* HAVE_STRING_H */
+#ifdef HAVE_STDLIB_H
+# include <stdlib.h>
+#endif /* HAVE_STDLIB_H */
+#ifdef HAVE_UNISTD_H
+# include <unistd.h>
+#endif /* HAVE_UNISTD_H */
 
 #ifndef SIG_ERR
 # define SIG_ERR	((RETSIGTYPE (*)()) -1)
@@ -162,6 +177,7 @@ sig_catcher(sig)
 	int sig;
 {
 	caught_sigs |= sigmask(sig);
+	return RETSIGVAL;
 }
 #endif /* 0 */
 

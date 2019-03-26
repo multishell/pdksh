@@ -12,6 +12,7 @@
 # define	ARGS(args)	()	/* K&R declaration */
 #endif
 
+
 /* Start of common headers */
 
 #include <stdio.h>
@@ -82,7 +83,7 @@ extern int setpgrp ARGS((void));
 # define strrchr rindex
 #endif /* HAVE_STRING_H */
 #ifndef HAVE_STRSTR
-char *strstr ARGS((char *s, char *p));
+char *strstr ARGS((const char *s, const char *p));
 #endif /* HAVE_STRSTR */
 #ifndef HAVE_STRCASECMP
 int strcasecmp ARGS((const char *s1, const char *s2));
@@ -177,6 +178,8 @@ extern int errno;
 # define KSH_SA_FLAGS	0
 #endif /* SA_INTERRUPT */
 
+typedef	RETSIGTYPE (*handler_t) ARGS((int));	/* signal handler */
+
 #ifdef USE_FAKE_SIGACT
 # include "sigact.h"			/* use sjg's fake sigaction() */
 #endif
@@ -200,7 +203,7 @@ extern int errno;
 
 /* Special cases for execve(2) */
 #ifdef OS2
-# define ksh_execve(p, av, ev)	_execve(p, av, ev)
+extern int ksh_execve(char *cmd, char **args, char **env);
 #else /* OS2 */
 # if defined(OS_ISC) && defined(_POSIX_SOURCE)
 /* Kludge for ISC 3.2 (and other versions?) so programs will run correctly.  */
@@ -217,12 +220,28 @@ extern int errno;
 /* this is a hang-over from older versions of the os2 port */
 #define ksh_dupbase(fd, base) fcntl(fd, F_DUPFD, base)
 
-/* Find a 32 bit integer type (or die) - SIZEOF_* defined by autoconf
- * (assumes 8 bit byte, but I'm not concerned) */
-#if SIZEOF_INT == 4
+#ifdef HAVE_SIGSETJMP
+# define ksh_sigsetjmp(env,sm)	sigsetjmp((env), (sm))
+# define ksh_siglongjmp(env,v)	siglongjmp((env), (v))
+# define ksh_jmp_buf		sigjmp_buf
+#else /* HAVE_SIGSETJMP */
+# ifdef HAVE__SETJMP
+#  define ksh_sigsetjmp(env,sm)	_setjmp(env)
+#  define ksh_siglongjmp(env,v)	_longjmp((env), (v))
+# else /* HAVE__SETJMP */
+#  define ksh_sigsetjmp(env,sm)	setjmp(env)
+#  define ksh_siglongjmp(env,v)	longjmp((env), (v))
+# endif /* HAVE__SETJMP */
+# define ksh_jmp_buf		jmp_buf
+#endif /* HAVE_SIGSETJMP */
+
+/* Find a integer type that is at least 32 bits (or die) - SIZEOF_* defined
+ * by autoconf (assumes an 8 bit byte, but I'm not concerned)
+ */
+#if SIZEOF_INT >= 4
 # define INT32	int
 #else /* SIZEOF_INT */
-# if SIZEOF_LONG == 4
+# if SIZEOF_LONG >= 4
 #  define INT32	long
 # else /* SIZEOF_LONG */
    #error cannot find 32 bit type...
@@ -240,9 +259,9 @@ extern int errno;
 
 /* some useful #defines */
 #ifdef EXTERN
-# define _I_(i) = i
+# define I__(i) = i
 #else
-# define _I_(i)
+# define I__(i)
 # define EXTERN extern
 # define EXTERN_DEFINED
 #endif
@@ -274,17 +293,17 @@ extern int errno;
  */
 #ifdef OS2
 # define PATHSEP        ';'
-# define DIRSEP         '\\'
+# define DIRSEP         '/'	/* even though \ is native */
 # define DIRSEPSTR      "\\"
 # define ISDIRSEP(c)    ((c) == '\\' || (c) == '/')
 # define ISABSPATH(s)	(((s)[0] && (s)[1] == ':' && ISDIRSEP((s)[2])))
 # define ISROOTEDPATH(s) (ISDIRSEP((s)[0]) || ISABSPATH(s))
 # define ISRELPATH(s)	(!(s)[0] || ((s)[1] != ':' && !ISDIRSEP((s)[0])))
-# define FILECHCONV(c)	(isupper(c) ? tolower(c) : c)
+# define FILECHCONV(c)	(isascii(c) && isupper(c) ? tolower(c) : c)
 # define FILECMP(s1, s2) stricmp(s1, s2)
 # define FILENCMP(s1, s2, n) strnicmp(s1, s2, n)
-extern char *strchr_dirsep(char *path);
-extern char *strrchr_dirsep(char *path);
+extern char *ksh_strchr_dirsep(const char *path);
+extern char *ksh_strrchr_dirsep(const char *path);
 # define chdir          _chdir2
 # define getcwd         _getcwd2
 #else
@@ -298,8 +317,8 @@ extern char *strrchr_dirsep(char *path);
 # define FILECHCONV(c)	c
 # define FILECMP(s1, s2) strcmp(s1, s2)
 # define FILENCMP(s1, s2, n) strncmp(s1, s2, n)
-# define strchr_dirsep(p)   strchr(p, DIRSEP)
-# define strrchr_dirsep(p)  strrchr(p, DIRSEP)
+# define ksh_strchr_dirsep(p)   strchr(p, DIRSEP)
+# define ksh_strrchr_dirsep(p)  strrchr(p, DIRSEP)
 #endif
 
 typedef int bool_t;
@@ -310,26 +329,33 @@ typedef int bool_t;
 #define	sizeofN(type, n) (sizeof(type) * (n))
 #define	BIT(i)	(1<<(i))	/* define bit in flag */
 
+/* Table flag type - needs > 16 and < 32 bits */
+typedef INT32 Tflag;
+
 #define	NUFILE	10		/* Number of user-accessible files */
 #define	FDBASE	10		/* First file usable by Shell */
 
 /* you're not going to run setuid shell scripts, are you? */
 #define	eaccess(path, mode)	access(path, mode)
 
-/* make MAGIC a char that might be printed to make bugs more obvious */
-#define	MAGIC	(char)(0x80+'!')/* prefix for *?[!{,} during expand */
-#define	NOT	'!'		/* might use ^ (ie, [!...] vs [^..]) */
+/* Make MAGIC a char that might be printed to make bugs more obvious, but
+ * not a char that is used often.  Also, can't use the high bit as it causes
+ * portability problems (calling strchr(x, 0x80|'x') is error prone).
+ */
+#define	MAGIC		(7)/* prefix for *?[!{,} during expand */
+#define ISMAGIC(c)	((unsigned char)(c) == MAGIC)
+#define	NOT		'!'	/* might use ^ (ie, [!...] vs [^..]) */
 
 #define	LINE	1024		/* input line size */
 #define	PATH	1024		/* pathname size (todo: PATH_MAX/pathconf()) */
 #define ARRAYMAX 1023		/* max array index */
 
-EXTERN	char	*kshname;	/* $0 */
+EXTERN	const char *kshname;	/* $0 */
 EXTERN	pid_t	kshpid;		/* $$, shell pid */
 EXTERN	pid_t	procpid;	/* pid of executing process */
 EXTERN	int	exstat;		/* exit status */
 EXTERN	int	subst_exstat;	/* exit status of last $(..)/`..` */
-EXTERN	char	*safe_prompt;	/* safe prompt if PS1 substitution fails */
+EXTERN	const char *safe_prompt; /* safe prompt if PS1 substitution fails */
 
 
 /*
@@ -359,7 +385,7 @@ EXTERN	struct env {
 	struct	block *loc;		/* local variables and functions */
 	short  *savefd;			/* original redirected fd's */
 	struct	env *oenv;		/* link to previous enviroment */
-	jmp_buf	jbuf;			/* long jump back to env creator */
+	ksh_jmp_buf jbuf;		/* long jump back to env creator */
 	struct temp *temps;		/* temp files */
 } *e;
 
@@ -383,7 +409,7 @@ EXTERN	struct env {
 /* Do returns stop at env type e? */
 #define STOP_RETURN(t)	((t) == E_FUNC || (t) == E_INCL)
 
-/* values for longjmp(e->jbuf) */
+/* values for ksh_siglongjmp(e->jbuf, 0) */
 #define LRETURN	1		/* return statement */
 #define	LEXIT	2		/* exit statement */
 #define LERROR	3		/* errorf() called */
@@ -402,19 +428,19 @@ EXTERN	struct env {
 #define OF_ANY		(OF_CMDLINE | OF_SET | OF_SPECIAL)
 
 struct option {
-    char	*name;	/* long name of option */
+    const char	*name;	/* long name of option */
     char	c;	/* character flag (if any) */
     short	flags;	/* OF_* */
 };
-extern struct option options[];
+extern const struct option options[];
 
 /*
  * flags (the order of these enums MUST match the order in misc.c(options[]))
  */
 enum sh_flag {
 	FEXPORT = 0,	/* -a: export all */
-#ifdef BRACEEXPAND
-	FBRACEEXPAND,	/* enable {} globing */
+#ifdef BRACE_EXPAND
+	FBRACEEXPAND,	/* enable {} globbing */
 #endif
 	FBGNICE,	/* bgnice */
 	FCOMMAND,	/* -c: (invocation) execute specified command */
@@ -452,6 +478,7 @@ enum sh_flag {
 	FVIRAW,		/* always read in raw mode (ignored) */
 	FVISHOW8,	/* display chars with 8th bit set as is (versus M-) */
 	FVITABCOMPLETE,	/* enable tab as file name completion char */
+	FVIESCCOMPLETE,	/* enable ESC as file name completion in command mode */
 #endif
 	FXTRACE,	/* -x: execution trace */
 	FNFLAGS /* (place holder: how many flags are there) */
@@ -461,16 +488,15 @@ enum sh_flag {
 
 EXTERN	char shell_flags [FNFLAGS];
 
-EXTERN	char	null [] _I_("");	/* null value for variable */
-EXTERN	char	space [] _I_(" ");
-EXTERN	char	newline [] _I_("\n");
-EXTERN	char	slash [] _I_("/");
-
-typedef	RETSIGTYPE (*handler_t)();	/* signal handler */
+EXTERN	char	null [] I__("");	/* null value for variable */
+EXTERN	char	space [] I__(" ");
+EXTERN	char	newline [] I__("\n");
+EXTERN	char	slash [] I__("/");
 
 /* temp/here files. the file is removed when the struct is freed */
 struct temp {
 	struct temp	*next;
+	struct shf	*shf;
 	int		pid;		/* pid of process parsed here-doc */
 	char		*name;
 };
@@ -493,12 +519,13 @@ EXTERN int shl_stdout_ok;
  */
 typedef struct trap {
 	int	signal;		/* signal number */
-	char   *name;		/* short name */
+	const char *name;	/* short name */
 	const char *mess;	/* descriptive name */
 	char   *trap;		/* trap command */
 	int	volatile set;	/* trap pending */
 	int	flags;		/* TF_* */
-	RETSIGTYPE (*cursig)();	/* current handler (valid if TF_ORIG_* set) */
+	handler_t cursig;	/* current handler (valid if TF_ORIG_* set) */
+	handler_t shtrap;	/* shell signal handler */
 } Trap;
 
 /* values for Trap.flags */
@@ -517,10 +544,11 @@ typedef struct trap {
 #define SS_RESTORE_MASK	0x3	/* how to restore a signal before an exec() */
 #define SS_RESTORE_CURR	0	/* leave current handler in place */
 #define SS_RESTORE_ORIG	1	/* restore original handler */
-#define SS_RESTORE_DFL	2	/* restore SIG_DFL */
-#define SS_RESTORE_IGN	3	/* restore SIG_IGN */
+#define SS_RESTORE_DFL	2	/* restore to SIG_DFL */
+#define SS_RESTORE_IGN	3	/* restore to SIG_IGN */
 #define SS_FORCE	BIT(3)	/* set signal even if original signal ignored */
 #define SS_USER		BIT(4)	/* user is doing the set (ie, trap command) */
+#define SS_SHTRAP	BIT(5)	/* trap for internal use (CHLD,ALRM,WINCH) */
 
 #define SIGEXIT_	0	/* for trap EXIT */
 #define SIGERR_		SIGNALS	/* for trap ERR */
@@ -528,9 +556,13 @@ typedef struct trap {
 EXTERN	int volatile trap;	/* traps pending? */
 EXTERN	int volatile intrsig;	/* pending trap interrupts executing command */
 EXTERN	int volatile fatal_trap;/* received a fatal signal */
+#ifndef FROM_TRAP_C
+/* Kludge to avoid bogus re-declaration of sigtraps[] error on AIX 3.2.5 */
 extern	Trap	sigtraps[SIGNALS+1];
+#endif /* !FROM_TRAP_C */
 
 
+#ifdef KSH
 /*
  * TMOUT support
  */
@@ -540,8 +572,9 @@ enum tmout_enum {
 		TMOUT_READING,		/* waiting for input */
 		TMOUT_LEAVING		/* have timed out */
 	};
-EXTERN unsigned int ksh_tmout _I_(0);
-EXTERN enum tmout_enum ksh_tmout_state _I_(TMOUT_EXECUTING);
+EXTERN unsigned int ksh_tmout;
+EXTERN enum tmout_enum ksh_tmout_state I__(TMOUT_EXECUTING);
+#endif /* KSH */
 
 
 /* For "You have stopped jobs" message */
@@ -551,23 +584,24 @@ EXTERN int really_exit;
 /*
  * fast character classes
  */
-#define	C_ALPHA	0x01		/* a-z_A-Z */
-#define	C_DIGIT	0x02		/* 0-9 */
-#define	C_LEX1	0x04		/* \0 \t\n|&;<>() */
-#define	C_VAR1	0x08		/* *@#!$-? */
-#define	C_IFSWS	0x10		/* \t \n (IFS white space) */
-#define	C_SUBOP1 0x20		/* "=-+?" */
-#define	C_SUBOP2 0x40		/* "#%" */
-#define	C_IFS	0x80		/* $IFS */
+#define	C_ALPHA	 BIT(0)		/* a-z_A-Z */
+#define	C_DIGIT	 BIT(1)		/* 0-9 */
+#define	C_LEX1	 BIT(2)		/* \0 \t\n|&;<>() */
+#define	C_VAR1	 BIT(3)		/* *@#!$-? */
+#define	C_IFSWS	 BIT(4)		/* \t \n (IFS white space) */
+#define	C_SUBOP1 BIT(5)		/* "=-+?" */
+#define	C_SUBOP2 BIT(6)		/* "#%" */
+#define	C_IFS	 BIT(7)		/* $IFS */
+#define	C_QUOTE	 BIT(8)		/*  \n\t"#$&'()*;<>?[\`| (needing quoting) */
 
-extern	char ctypes [];
+extern	short ctypes [];
 
 #define	ctype(c, t)	!!(ctypes[(unsigned char)(c)]&(t))
 #define	letter(c)	ctype(c, C_ALPHA)
 #define	digit(c)	ctype(c, C_DIGIT)
 #define	letnum(c)	ctype(c, C_ALPHA|C_DIGIT)
 
-EXTERN int ifs0 _I_(' ');	/* for "$*" */
+EXTERN int ifs0 I__(' ');	/* for "$*" */
 
 
 /* Argument parsing for built-in commands and getopts command */
@@ -575,39 +609,50 @@ EXTERN int ifs0 _I_(' ');	/* for "$*" */
 /* Values for Getopt.flags */
 #define GF_ERROR	BIT(0)	/* call errorf() if there is an error */
 #define GF_PLUSOPT	BIT(1)	/* allow +c as an option */
+#define GF_NONAME	BIT(2)	/* don't print argv[0] in errors */
 
 /* Values for Getopt.info */
-#define GI_NONAME	BIT(0)	/* don't print argv[0] in errors */
-#define GI_MINUS	BIT(1)	/* an option started with -... */
-#define GI_PLUS		BIT(2)	/* an option started with +... */
-#define GI_MINUSMINUS	BIT(3)	/* arguments were ended with -- */
+#define GI_MINUS	BIT(0)	/* an option started with -... */
+#define GI_PLUS		BIT(1)	/* an option started with +... */
+#define GI_MINUSMINUS	BIT(2)	/* arguments were ended with -- */
 
 typedef struct {
-	int	optind;
-	char	*optarg;
-	int	flags;		/* see GF_* */
-	int	info;		/* see GI_* */
-	int	p;		/* 0 or index into argv[optind - 1] */
-	char	buf[2];		/* for bad option OPTARG value */
+	int		optind;
+	char		*optarg;
+	int		flags;	/* see GF_* */
+	int		info;	/* see GI_* */
+	unsigned int	p;	/* 0 or index into argv[optind - 1] */
+	char		buf[2];	/* for bad option OPTARG value */
 } Getopt;
 
 EXTERN Getopt builtin_opt;	/* for shell builtin commands */
 
 
+#ifdef KSH
 /* This for co-processes */
+
+typedef INT32 Coproc_id; /* something that won't (realisticly) wrap */
 struct coproc {
 	int	read;		/* pipe from co-process's stdout */
 	int	readw;		/* other side of read (saved temporarily) */
 	int	write;		/* pipe to co-process's stdin */
-	void	*job;		/* 0 if no co-process, or co-process died */
+	Coproc_id id;		/* id of current output pipe */
+	int	njobs;		/* number of live jobs using output pipe */
+	void    *job;           /* 0 or job of co-process using input pipe */
 };
 EXTERN struct coproc coproc;
+#endif /* KSH */
 
-extern char ksh_version[];
+/* Used in jobs.c and by coprocess stuff in exec.c */
+#ifdef JOB_SIGS
+EXTERN sigset_t		sm_default, sm_sigchld;
+#endif /* JOB_SIGS */
+
+extern const char ksh_version[];
 
 /* name of called builtin function (used by error functions) */
 EXTERN char	*builtin_argv0;
-EXTERN int	builtin_flag;	/* flags of called builtin (SPEC_BI, etc.) */
+EXTERN Tflag	builtin_flag;	/* flags of called builtin (SPEC_BI, etc.) */
 
 /* current working directory, and size of memory allocated for same */
 EXTERN char	*current_wd;
@@ -621,7 +666,7 @@ EXTERN int	current_wd_size;
 /* Minimium allowed value for x_cols: 2 for prompt, 3 for " < " at end of line
  */
 # define MIN_COLS	(2 + MIN_EDIT_SPACE + 3)
-EXTERN	int	x_cols _I_(80);	/* tty columns */
+EXTERN	int	x_cols I__(80);	/* tty columns */
 #else
 # define x_cols 80		/* for pr_menu(exec.c) */
 #endif
@@ -648,4 +693,4 @@ EXTERN	int	x_cols _I_(80);	/* tty columns */
 # undef EXTERN_DEFINED
 # undef EXTERN
 #endif
-#undef _I_
+#undef I__

@@ -45,7 +45,7 @@
  */
 
 #ifdef S_ISLNK
-static char	*do_phys_path ARGS((XString *xsp, char *xp, char *path));
+static char	*do_phys_path ARGS((XString *xsp, char *xp, const char *path));
 #endif /* S_ISLNK */
 
 /*
@@ -65,8 +65,8 @@ static char	*do_phys_path ARGS((XString *xsp, char *xp, char *path));
  */
 int
 make_path(cwd, file, cdpathp, xsp, phys_pathp)
-	char	*cwd;
-	char	*file;
+	const char *cwd;
+	const char *file;
 	char	**cdpathp;	/* & of : seperated list */
 	XString	*xsp;
 	int	*phys_pathp;
@@ -240,7 +240,7 @@ set_current_wd(path)
 #ifdef S_ISLNK
 char *
 get_phys_path(path)
-	char *path;
+	const char *path;
 {
 	XString xs;
 	char *xp;
@@ -263,9 +263,9 @@ static char *
 do_phys_path(xsp, xp, path)
 	XString *xsp;
 	char *xp;
-	char *path;
+	const char *path;
 {
-	char *p, *q;
+	const char *p, *q;
 	int len, llen;
 	int savepos;
 	char lbuf[PATH];
@@ -276,7 +276,7 @@ do_phys_path(xsp, xp, path)
 			p++;
 		if (!*p)
 			break;
-		len = (q = strchr_dirsep(p)) ? q - p : strlen(p);
+		len = (q = ksh_strchr_dirsep(p)) ? q - p : strlen(p);
 		if (len == 1 && p[0] == '.')
 			continue;
 		if (len == 2 && p[0] == '.' && p[1] == '.') {

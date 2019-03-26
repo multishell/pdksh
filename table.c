@@ -6,11 +6,6 @@
 
 #define	INIT_TBLS	8	/* initial table size (power of 2) */
 
-static struct tstate {
-	int left;
-	struct tbl **next;
-} tstate;
-
 static void     texpand     ARGS((struct table *tp, int nsize));
 static int      tnamecmp    ARGS((void *p1, void *p2));
 
@@ -67,7 +62,7 @@ texpand(tp, nsize)
 						p += tp->size;
 				*p = tblp;
 				tp->nfree--;
-			} else {
+			} else if (!(tblp->flag & FINUSE)) {
 				afree((void*)tblp, tp->areap);
 			}
 	afree((void*)otblp, tp->areap);
@@ -123,11 +118,12 @@ tenter(tp, n, h)
 
 	/* create new tbl entry */
 	len = strlen(n) + 1;
-	p = (struct tbl *) alloc(offsetof(struct tbl, name[len]), tp->areap);
+	p = (struct tbl *) alloc(offsetof(struct tbl, name[0]) + len,
+				 tp->areap);
 	p->flag = 0;
 	p->type = 0;
 	p->areap = tp->areap;
-	p->field = 0;
+	p->u2.field = 0;
 	p->u.array = (struct tbl *)0;
 	memcpy(p->name, n, len);
 
@@ -145,18 +141,20 @@ tdelete(p)
 }
 
 void
-twalk(tp)
-	register struct table *tp;
+twalk(ts, tp)
+	struct tstate *ts;
+	struct table *tp;
 {
-	tstate.left = tp->size;
-	tstate.next = tp->tbls;
+	ts->left = tp->size;
+	ts->next = tp->tbls;
 }
 
 struct tbl *
-tnext()
+tnext(ts)
+	struct tstate *ts;
 {
-	while (--tstate.left >= 0) {
-		struct tbl *p = *tstate.next++;
+	while (--ts->left >= 0) {
+		struct tbl *p = *ts->next++;
 		if (p != NULL && (p->flag&DEFINED))
 			return p;
 	}
@@ -192,6 +190,8 @@ tsort(tp)
 
 #ifdef PERF_DEBUG /* performance debugging */
 
+void tprintinfo ARGS((struct table *tp));
+
 void
 tprintinfo(tp)
 	struct table *tp;
@@ -202,11 +202,12 @@ tprintinfo(tp)
 	int ncmp;
 	int totncmp = 0, maxncmp = 0;
 	int nentries = 0;
+	struct tstate ts;
 
 	shellf("table size %d, nfree %d\n", tp->size, tp->nfree);
 	shellf("    Ncmp name\n");
-	twalk(tp);
-	while ((te = tnext())) {
+	twalk(&ts, tp);
+	while ((te = tnext(&ts))) {
 		register struct tbl **pp, *p;
 
 		h = hash(n = te->name);

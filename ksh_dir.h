@@ -19,7 +19,7 @@
 #endif /* HAVE_DIRENT_H */
 
 #ifdef OPENDIR_DOES_NONDIR
-extern DIR *ksh_opendir ARGS((char *d));
+extern DIR *ksh_opendir ARGS((const char *d));
 #else /* OPENDIR_DOES_NONDIR */
 # define ksh_opendir(d)	opendir(d)
 #endif /* OPENDIR_DOES_NONDIR */

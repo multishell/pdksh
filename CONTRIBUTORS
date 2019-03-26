@@ -22,7 +22,7 @@ Release history:
       Released versions: 4.0 .. 4.9
     * Michael Rendell (michael@cs.mun.ca) takes over as maintainer
       July, 1994
-      Released versions: 5.0 .. 5.1
+      Released versions: 5.0 .. 5.2
 
 Major contributions:
     * John R MacMillan (@yonge.csri.toronto.edu:chance!john@sq.sq.com), ?:
@@ -40,12 +40,12 @@ Major contributions:
       bug fixes/enhancements.
     * Jeff Sparkes (jsparkes@bnr.ca), Mar '89..Mar '90: added arrays,
       merged John Rochester's vi code into pdksh, misc bug fixes.
-    * Michael Harrdt (u31b3hs@POOL.Informatik.RWTH-Aachen.DE), Sept '94:
+    * Michael Haardt (u31b3hs@POOL.Informatik.RWTH-Aachen.DE), Sept '94:
       organized man page, filled in many of its copious blank spots; added
       KSH ifdefs.
     * Dale DePriest (daled@cadence.com): ported to OS/2 (initially based on
       port of pdksh4.9 to OS/2 by Kai Rommel (rommel@ars.muc.de)); maintains
-      OS/2 port.
+      OS/2 port; misc bug fixes.
 
 Other contributors:
     * Piercarlo Grandi (pcg@aber.ac.uk), Dec '93: fixes for linux port
@@ -53,7 +53,7 @@ Other contributors:
       filename completion.
     * Mike Jetzer [mlj] (jetzer@studsys.mscs.mu.edu), ?;Nov '94: fixes for vi
       mode (see misc/Changes.mlj), added v to vi, fixes for history; fixed
-      command redoing in vi; fixes to vi globing.
+      command redoing in vi; fixes to vi globbing.
     * Robert J Gibson: mailbox checking code that was adapted for pdksh by
       John R. MacMillan.
     * ? (guy@demon.co.uk), ?: promptlen() function.
@@ -82,3 +82,14 @@ Other contributors:
     * Gabor Zahemszky (<zgabor@CoDe.hu>): SVR3_PGRP vs SYSV_PGRP, many
       bug reports and man page fixes.
     * Dave Kinchlea (<kinch@julian.uwo.ca>): DEFAULT_ENV patches.
+    * Paul Borman (<prb@bsdi.com>): j_exit: send HUP, then CONT; HUP fg process.
+    * DaviD W. Sanderson (<dws@ssec.wisc.edu>): patches to allow { .. } instead
+      of in .. esac in case statements.
+    * ? (<ra@rhi.hi.is>): partial patches to handle SIGWINCH for command line
+      editing.
+    * Jason Tyler (<jason@nc.bhpese.oz.au>): fixes for bugs in fc.
+    * Stefan Dalibor (<Stefan.Dalibor@informatik.uni-erlangen.de>): fix for
+      COLUMNS never being set in x_init().
+    * Arnon Kanfi (<arnon@gilly.datatools.com>): fix for prompt.
+    * Marc Olzheim (<marcolz@stack.urc.tue.nl>): patches to ifdef KSH the
+      mail check code and aliases.

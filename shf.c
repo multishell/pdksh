@@ -3,6 +3,7 @@
  */
 
 #include "sh.h"
+#include "ksh_stat.h"
 #include "ksh_limval.h"
 
 
@@ -25,7 +26,7 @@ static int	shf_emptybuf	ARGS((struct shf *shf, int flags));
  */
 struct shf *
 shf_open(name, oflags, mode, sflags)
-	char *name;
+	const char *name;
 	int oflags;
 	int mode;
 	int sflags;
@@ -660,7 +661,7 @@ shf_putchar(c, shf)
  */
 int
 shf_puts(s, shf)
-	char *s;
+	const char *s;
 	struct shf *shf;
 {
 	if (!s)
@@ -672,7 +673,7 @@ shf_puts(s, shf)
 /* Write a buffer.  Returns nbytes if successful, EOF if there is an error. */
 int
 shf_write(buf, nbytes, shf)
-	char *buf;
+	const char *buf;
 	int nbytes;
 	struct shf *shf;
 {
@@ -753,12 +754,12 @@ shf_fprintf(shf, fmt, va_alist)
 
 int
 #ifdef HAVE_PROTOTYPES
-shf_snprintf(char *buf, int bsize, char *fmt, ...)
+shf_snprintf(char *buf, int bsize, const char *fmt, ...)
 #else
 shf_snprintf(buf, bsize, fmt, va_alist)
 	char *buf;
 	int bsize;
-	char *fmt;
+	const char *fmt;
 	va_dcl
 #endif
 {
@@ -780,7 +781,7 @@ shf_snprintf(buf, bsize, fmt, va_alist)
 
 char *
 #ifdef HAVE_PROTOTYPES
-shf_smprintf(char *fmt, ...)
+shf_smprintf(const char *fmt, ...)
 #else
 shf_smprintf(fmt, va_alist)
 	char *fmt;
@@ -789,11 +790,10 @@ shf_smprintf(fmt, va_alist)
 {
 	struct shf shf;
 	va_list args;
-	int n;
 
 	shf_sopen((char *) 0, 0, SHF_WR|SHF_DYNAMIC, &shf);
 	SH_VA_START(args, fmt);
-	n = shf_vfprintf(&shf, fmt, args);
+	shf_vfprintf(&shf, fmt, args);
 	va_end(args);
 	return shf_sclose(&shf); /* null terminates */
 }
@@ -843,11 +843,12 @@ shf_smprintf(fmt, va_alist)
 
 
 #ifdef FP
+#include <math.h>
+
 static double
 my_ceil(d)
 	double	d;
 {
-	extern double	modf();
 	double		i;
 
 	return d - modf(d, &i) + (d < 0 ? -1 : 1);
@@ -857,10 +858,10 @@ my_ceil(d)
 int
 shf_vfprintf(shf, fmt, args)
 	struct shf *shf;
-	char *fmt;
+	const char *fmt;
 	va_list args;
 {
-	char		c, *s, *p;
+	char		c, *s;
 	int		UNINITIALIZED(tmp);
 	int		field, precision;
 	int		len;
@@ -871,11 +872,13 @@ shf_vfprintf(shf, fmt, args)
 	/* this stuff for dealing with the buffer */
 	int		nwritten = 0;
 #ifdef FP
-	extern double	frexp();
-	extern char	*ecvt();
+	/* should be in <math.h>
+	 *  extern double frexp();
+	 */
+	extern char *ecvt();
 
 	double		fpnum;
-	int		exp, decpt;
+	int		expo, decpt;
 	char		style;
 	char		fpbuf[FPBUF_SIZE];
 #endif /* FP */
@@ -1021,10 +1024,12 @@ shf_vfprintf(shf, fmt, args)
 
 			case 'p':
 			case 'x':
-				p = (flags & FL_UPPER) ? "0123456789ABCDEF" :
-					"0123456789abcdef";
+			    {
+				const char *digits = (flags & FL_UPPER) ?
+						  "0123456789ABCDEF"
+						: "0123456789abcdef";
 				do {
-					*--s = p[lnum & 0xf];
+					*--s = digits[lnum & 0xf];
 					lnum >>= 4;
 				} while (lnum);
 
@@ -1032,6 +1037,7 @@ shf_vfprintf(shf, fmt, args)
 					*--s = (flags & FL_UPPER) ? 'X' : 'x';
 					*--s = '0';
 				}
+			    }
 			}
 			len = &numbuf[sizeof(numbuf)] - s;
 			if (flags & FL_DOT) {
@@ -1047,6 +1053,9 @@ shf_vfprintf(shf, fmt, args)
 		case 'e':
 		case 'g':
 		case 'f':
+		    {
+			char *p;
+
 			/*
 			 *	This could proabably be done better,
 			 *  but it seems to work.  Note that gcvt()
@@ -1066,17 +1075,17 @@ shf_vfprintf(shf, fmt, args)
 			style = c;
 			/*
 			 *  This is the same as
-			 *	exp = ceil(log10(fpnum))
+			 *	expo = ceil(log10(fpnum))
 			 *  but doesn't need -lm.  This is an
-			 *  aproximation as exp is rounded up.
+			 *  aproximation as expo is rounded up.
 			 */
-			(void) frexp(fpnum, &exp);
-			exp = my_ceil(exp / LOG2_10);
+			(void) frexp(fpnum, &expo);
+			expo = my_ceil(expo / LOG2_10);
 
-			if (exp < 0)
-				exp = 0;
+			if (expo < 0)
+				expo = 0;
 
-			p = ecvt(fpnum, precision + 1 + exp,
+			p = ecvt(fpnum, precision + 1 + expo,
 				 &decpt, &tmp);
 			if (c == 'g') {
 				if (decpt < -4 || decpt > precision)
@@ -1175,6 +1184,7 @@ shf_vfprintf(shf, fmt, args)
 			s = fpbuf;
 			precision = len;
 			break;
+		    }
 #endif /* FP */
 
 		case 's':

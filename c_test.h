@@ -39,14 +39,15 @@ struct test_env {
 		char	**wp;		/* used by ptest_* */
 		XPtrV	*av;		/* used by dbtestp_* */
 	} pos;
+	char **wp_end;			/* used by ptest_* */
 	int	(*isa) ARGS((Test_env *te, Test_meta meta));
-	char	*(*getopnd) ARGS((Test_env *te, Test_op op, int do_eval));
-	int	(*eval) ARGS((Test_env *te, Test_op op, char *opnd1,
-				 char *opnd2, int do_eval));
-	void	(*error) ARGS((Test_env *te, int offset, char *msg));
+	const char *(*getopnd) ARGS((Test_env *te, Test_op op, int do_eval));
+	int	(*eval) ARGS((Test_env *te, Test_op op, const char *opnd1,
+				 const char *opnd2, int do_eval));
+	void	(*error) ARGS((Test_env *te, int offset, const char *msg));
 };
 
-Test_op	test_isop ARGS((Test_env *te, Test_meta meta, char *s));
-int     test_eval ARGS((Test_env *te, Test_op op, char *opnd1, char *opnd2,
-			int do_eval));
+Test_op	test_isop ARGS((Test_env *te, Test_meta meta, const char *s));
+int     test_eval ARGS((Test_env *te, Test_op op, const char *opnd1,
+			const char *opnd2, int do_eval));
 int	test_parse ARGS((Test_env *te));

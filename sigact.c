@@ -123,6 +123,7 @@
 /* Changes to sigact.c for pdksh, Michael Rendell <michael@cs.mun.ca>:
  *	- sigsuspend(): pass *mask to bsd4.2 sigpause instead of mask.
  *	- changed SIG_HDLR to RETSIGTYPE for use with GNU autoconf
+ *	- added and used RETSIGVAL
  *	- include sh.h instead of signal.h (to get *_SIGNALS macros)
  *	- changed if !SA_NOCLDSTOP ... to USE_FAKE_SIGACT to avoid confusion
  *	- set the USE_* defines using the *_SIGNALS defines from autoconf
@@ -131,21 +132,26 @@
  *	  are interrupted and pdksh needs this behaviour).
  *	- define IS_KSH before including anything; ifdef out routines
  *	  not used in ksh if IS_KSH is defined (same in sigact.h).
+ *	- use ARGS() instead of __P()
+ *	- sigaction(),sigsuspend(),Signal(),signal(): use handler_t typedef
+ *	  instead of explicit type.
  */
 
 /*
-#include <signal.h>
+    #include <signal.h>
 */
 #define IS_KSH
 #include "sh.h"
 
-#ifndef __P
-# if defined(__STDC__) || defined(__cplusplus)
-#   define	__P(p)	p
-# else
-#   define	__P(p)	()
-# endif
-#endif
+/*
+    #ifndef __P
+    # if defined(__STDC__) || defined(__cplusplus)
+    #   define	__P(p)	p
+    # else
+    #   define	__P(p)	()
+    # endif
+    #endif
+*/
 
 
 /*
@@ -203,7 +209,7 @@ sigaction(sig, act, oact)
   int sig;
   struct sigaction *act, *oact;
 {
-  RETSIGTYPE (*oldh)();
+  handler_t oldh;
 
   if (act)
   {
@@ -400,7 +406,7 @@ sigsuspend(mask)
     }
   }
 # else /* signal(2) only */
-  RETSIGTYPE (*oldh)();
+  handler_t oldh;
 
   /*
    * make sure that signals in mask will not
@@ -426,6 +432,7 @@ sigsuspend(mask)
 
 #if !defined(RETSIGTYPE)
 # define RETSIGTYPE void
+# define RETSIGVAL
 #endif
 #if !defined(SIG_ERR)
 # define SIG_ERR	(RETSIGTYPE (*)())-1
@@ -436,9 +443,9 @@ sigsuspend(mask)
  */
 
 #ifndef IS_KSH
-RETSIGTYPE (*Signal(sig, handler)) __P((int))
+handler_t Signal(sig, handler)
   int sig;
-  RETSIGTYPE (*handler) __P((int));
+  handler_t handler;
 {
   struct sigaction act, oact;
 
@@ -457,9 +464,9 @@ RETSIGTYPE (*Signal(sig, handler)) __P((int))
  * ensure we avoid signal mayhem
  */
 
-RETSIGTYPE (*signal(sig, handler)) __P((int))
+handler_t signal(sig, handler)
   int sig;
-  RETSIGTYPE (*handler) __P((int));
+  handler_t handler;
 {
   return (Signal(sig, handler));
 }

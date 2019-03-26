@@ -1,3 +1,132 @@
+Version 5.2.8
+
+* bug fixes
+    * configuration: handle FreeBSD's strange S_ISSOCK.
+    * test: added == operator.
+    * configuration: fixed opendir/dirent usage.
+    * redirections before subshells handled correctly.
+    * COLUMNS/LINES are no longer exported when they are automatically set.
+    * mail checks and PS1/PS4 expansions removed if compiled as sh.
+    * subcommands in PS1 no longer genereate bogus warning messages.
+    * environment variables not longer messed up on 16-bit machines.
+    * unset: now returns non-zero if variable/function isn't set.
+    * select: only prints menu first time, if REPLY is null or on blank line.
+    * check for `cannot execute' imporved, error message says why.
+    * typeset: now reports variables with attributes but now value.
+    * vi/emacs file completion: does directory listing on zero length names.
+    * arithmetic: non-numeric parameters expanded recursively.
+    * arithmetic: identifiers in unevaluated part of ?:,&&,|| parsed correctly.
+    * functions: unsetting a function within itself is now safe.
+    * arrays: unsetting element 0 of an array no longer kills the whole array.
+    * co-processes now behave like ksh93 co-processes (and less like ksh88).
+
+* functions declared with "function foo" are treated differently (from those
+  declared with "foo()"): $0 is (not) set to the function name, assignments
+  before function calls aren't (are) kept in the parent shell.
+
+* vi: added vi-esccomplete option for people who want ESC-ESC completion.
+
+* vi/emacs: now notice window size changes (but not while editing a line).
+
+* emacs: <esc># now does the comment/uncomment thing.
+
+* arithmetic: ++, -- and , added.
+
+
+Version 5.2.7
+
+* bug fixes
+    * vi: commands can be longer that 16 chars...
+
+
+Version 5.2.6
+
+* bug fixes
+    * break/continue: if too big a number is given, last enclosing loop is used.
+    * set: set +o now generates a set command that can be saved and executed.
+    * COLUMNS/LINES are now exported when they are automatically set.
+    * emacs: completion: space not added after directory names.
+    * vi: # command inserts # after each newline; # on commented line
+      undoes the commenting.
+    * some regression tests made less sensitive to their environment.
+    * should compile on os/2 again.
+
+
+Version 5.2.5
+
+* bug fixes
+    * configuration: if sig_setjmp() being used, use sigjmp_buf.
+    * configuration: test for times() fixed.
+    * configuration: ANSI usage of setjmp() and offsetof().
+    * echo/print: octal number in \ sequence must start with a 0.
+    * echo: don't treat a lone minus as an option.
+    * typeset -f: correctly prints functions with select statements.
+    * vi: / with no pattern repeats last search.
+    * vi: repeat counts no longer effect file completion/expansion.
+    * vi: tab-completion now also works in command mode.
+    * emacs/vi: ^O key now read as ^O on suns/alphas (was eaten by tty driver).
+    * emacs: now has file expansion (^[*).
+    * emacs: ^O goes to next command, not next next command.
+    * COLUMNS/LINES: environment variables now set on start up.
+    * variables: command line assignments can't change readonly variables.
+    * arithmetic: giving multiple bases (5#4#3) no longer allowed.
+    * arithmetic: when assigning a non-integer variables, base no longer shown.
+    * history: fixed replacement bug introduced in last release.
+    * history: -1 refers to the previous command, not current fc command.
+    * parsing: correctly handles command substitutions starting with a newline.
+
+* full command completion added (both vi and emacs).
+
+
+Version 5.2.4
+
+* bug fixes
+    * PS1 imported from environment again.
+    * vi handles prompts with embedded newlines.
+    * errors redirecting stderr aren't lost.
+    * redirection errors for <&n no longer reported as to >&n.
+    * don't do globbing on re-direction targets if not interactive (POSIX).
+    * pattern matching in [[ foo = foo*bar ]] now works again.
+    * HUP signals are passed on to jobs running in the foreground.
+    * $? now valid (ie, not 0) in trap handlers, `...` expressions, etc.
+    * noclobber doesn't effect redirections to non-regular files (eg, /dev/null)
+    * \newline in here-document delimiters handled correctly.
+    * typeset -f now reports unloaded autoload functions properly.
+    * ~,~+,~- are not expanded if HOME,PWD,OLDPWD are unset.
+    * vi completion/expansion: * not appeded if word contains $.
+    * cd: error message contains correct directory string.
+    * vi expansion list: printed in column form ala at&t ksh.
+    * ^C while reading .profile/$ENV nolonger causes shell to exit.
+    * option errors for build-in commands now include command name.
+    * emacs completion/expansion: ' and " are treated as word delimiters.
+    * fc: replacements (a=b) no longer truncates the command.
+    * alias: alias -t -r now cleans out the tracked alias table.
+
+* compile-time configuration changed: configure script --enable-XXX options
+  replace the old options.h file.  Use "configure --help" for information
+  on what the options do (they are basicly the same as what was in the
+  options.h file).  Shell can be configured as a (almost) plain bourne
+  shell using the --enable-shell=sh (also generates appropriate man page).
+  Installed name of program (ksh or sh) can be modified using configure's
+  --program-* options.
+
+* ulimit: added -p (maxproc) option.
+
+* case statements can use the old syntax of {,} instead of in,esac.
+
+* extended file globbing added (eg, f*(bar|Bar) matches f, fbar fBarbar, etc).
+
+* trim expressions can be of the form ${parameter#pattern1|pattern2|...}.
+
+* if compiled as sh, $ENV included only if posix option is set.
+
+* vi: U command added (undo all changes on line).
+
+* the Bugs script has been replaced by a new regression testing system, kept
+  in the tests/ directory (contains a perl script which sets up a test
+  environment and runs tests, and a bunch of tests).
+
+
 Version 5.2.3
 
 * bug fixes
@@ -15,7 +144,7 @@ Version 5.2.3
     * history: "fc <number>" now edits <number>, not <number> to most recent.
     * cd: two argument form works again.
     * special commands taking assignments (alias,set,etc.): field splitting,
-      file globing, etc. suppressed only for args that look like assignments.
+      file globbing, etc. suppressed only for args that look like assignments.
     * command: -V now finds reserved words.
 
 * added support for Korn's /dev/fd tests
@@ -58,12 +187,12 @@ Version 5.2.1
 Version 5.2.0
 
 * bug fixes
-    * vi: completion now allows globing characters.
+    * vi: completion now allows globbing characters.
     * vi: can deal with very long prompts.
     * vi: . (redo) works after j, k, return.
     * vi: [dyc]% causing backwards motion now gets correct start/end position.
     * vi: complete_word (<ESC>\) no longer rings bell on ambiguous matches.
-    * vi: globing doesn't append * if last component of file has globing chars.
+    * vi: globbing doesn't append * if last component of file has globbing chars.
     * emacs: most commands now take arguments, arguments can be multi digit.
     * emacs: newline-and-next command works more correctly.
     * after set -u, trimming substitutions no longer automatically fail.
@@ -126,7 +255,7 @@ Version 5.1.2
 * bug fixes
     * for i; do ...; done now accepted.
     * leading non-white-space IFS chars no longer ignored (now delimit fields).
-    * fixed globing code so echo /usr/*/make works.
+    * fixed globbing code so echo /usr/*/make works.
 
 Version 5.1.1
 
@@ -136,7 +265,7 @@ Version 5.1.1
     * complex history: when shrinking history file, keeps inside buffer space.
     * vi editing: `v' on modified line no longer changes command numbering.
     * ^C in vi/emacs no longer prints two newlines.
-    * long arguments (> 255) with globing characters don't cause core dumps.
+    * long arguments (> 255) with globbing characters don't cause core dumps.
 
 * new (un)option, KSH, which compiles out ksh code (for producing minimal sh).
 
@@ -189,11 +318,11 @@ Version 5.0.10
     * emacs mode no longer entered if EDITOR/VISUAL set to null string.
     * command -p disabled in restricted mode.
     * closed file descriptors are re-closed after a redirection.
-    * lone [ (test command) no longer causes globing code to search directory.
+    * lone [ (test command) no longer causes globbing code to search directory.
     * if TIMES_BROKEN is defined, ksh_times no longer recurses infinitely.
     * `r r' no longer repeats r command forever.
     * make depend no longer generates backslash followed by a blank line.
-    * globing code now deals with symlinks that point to non-existent files.
+    * globbing code now deals with symlinks that point to non-existent files.
     * if the ] is missing in a pattern, the [ matches the [ character.
     * syntax errors in test no longer have two newlines.
     * in vi, G now goes to the oldest history (was newest).

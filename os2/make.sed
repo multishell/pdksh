@@ -1,3 +1,6 @@
+s/@SHELL_PROG@/ksh/
+s!/bin/sh!sh!
+s/@configure_input@/OS2_Makefile/
 s/@srcdir@/./
 s/@CC@/gcc/
 s/@CPP@/cpp/
@@ -8,12 +11,14 @@ s/@INSTALL_DATA@/$(INSTALL) -m 644/
 s/@DEFS@/-DHAVE_CONFIG_H/
 s/@LIBS@/-los2/
 s/@LDSTATIC@//
-s/@LDFLAGS@/-O $(LDSTATIC)/
+s/@LDFLAGS@/-O -s $(LDSTATIC)/
 s/^\(CFLAGS[	 ]*=\).*/\1 -O -DOS2/
 s/^\(prefix[	 ]*=\).*/\1 c:\/usr/
 s/^\(exec_prefix[	 ]*=\).*/\1 c:\/usr/
 s/^\(exe_suffix[	 ]*=\).*/\1.exe/
 s/^\(OBJS[	 ]*=\)/\1 os2.o/
+s/`echo $(SHELL_PROG)|sed '$(transform)'`/$(SHELL_PROG)/
+s#$(srcdir)/tests/th.sh#th.cmd#
 /^configure:/,/^$/d
 /^config.h.in:/,/^$/d
 /^config.h:/,/^$/c\

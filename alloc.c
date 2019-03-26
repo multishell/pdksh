@@ -34,7 +34,7 @@ struct Block {
 	Cell	cell [1];	/* [size] Cells for allocation */
 };
 
-Block aempty = {&aempty, aempty.cell, aempty.cell};
+static Block aempty = {&aempty, aempty.cell, aempty.cell};
 
 /* create empty Area */
 Area *
@@ -89,7 +89,8 @@ alloc(size, ap)
 
 		/* wrapped around Block list, create new Block */
 		if (bp->next == ap->freelist) {
-			bp = (Block*) malloc(offsetof(Block, cell[ICELLS + cells]));
+			bp = (Block*) malloc(offsetof(Block, cell[ICELLS])
+					     + sizeof(bp->cell[0]) * cells);
 			if (bp == NULL) {
 				aerror(ap, "cannot allocate");
 				return NULL;

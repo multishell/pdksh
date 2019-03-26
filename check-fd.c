@@ -5,6 +5,9 @@
 #include "config.h"
 #include <stdio.h>
 #include <sys/types.h>
+#ifdef HAVE_STDLIB_H
+# include <stdlib.h>
+#endif /* HAVE_STDLIB_H */
 #ifdef HAVE_UNISTD_H
 # include <unistd.h>
 #endif /* HAVE_UNISTD_H */
@@ -74,10 +77,10 @@ int
 usage(verbose)
 	int verbose;
 {
-	fprintf(stderr, "Usage: %s [-?s]\n", progname);
+	fprintf(stderr, "Usage: %s [-?c]\n", progname);
 	if (verbose)
 		fprintf(stderr, "\
-	-s	use fstat(2) instead of close(2) to check for open fds\n\
+	-c	use close(2) instead of fstat(2) to check for open fds\n\
 		(prints dev, inode and fcntl(F_GETFL) flags)\n\
 ");
 

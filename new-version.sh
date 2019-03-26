@@ -11,8 +11,7 @@
 DATEPAT='\(@(#).* \)\([0-9]*/[0-9]*/[.0-9]*\)\(.*\)'
 
 vfile=version.c
-bfile=$vfile.bak
-tfile=$vfile.new
+vfiles="version.c tests/version.t"
 
 odatev=`sed -n "s?$DATEPAT?\2?p" < $vfile`
 odate=`echo "$odatev" | sed 's?\..*??'`
@@ -47,14 +46,23 @@ if test x"$odate" = x"$date"; then
 	date="$date.$v"
 fi
 
-# try to save permissions/ownership/group
-cp -p $vfile $tfile 2> /dev/null
-if sed "s?$DATEPAT?\1$date\3?" < $vfile > $tfile; then
-	rm -f $bfile
-	ln $vfile $bfile || exit 1
-	mv $tfile $vfile
-	exit $?
-else
-	echo "$0: error creating new $vfile" 1>&2
-	exit 1
-fi
+for i in $vfiles; do
+    bfile=$i.bak
+    tfile=$i.new
+    # try to save permissions/ownership/group
+    cp -p $i $tfile 2> /dev/null
+    if sed "s?$DATEPAT?\1$date\3?" < $i > $tfile; then
+	    if cmp -s $i $tfile; then
+		echo "$i not changed, not updating"
+	    else
+		rm -f $bfile
+		ln $i $bfile || exit 1
+		mv $tfile $i || exit 1
+	    fi
+    else
+	    echo "$0: error creating new $i" 1>&2
+	    exit 1
+    fi
+done
+
+exit 0

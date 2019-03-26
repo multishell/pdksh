@@ -45,7 +45,7 @@ c_cd(wp)
 
 	if (!wp[0]) {
 		/* No arguments - go home */
-		if ((dir = strval(global("HOME"))) == null) {
+		if ((dir = str_val(global("HOME"))) == null) {
 			bi_errorf("no home directory (HOME not set)");
 			return 1;
 		}
@@ -53,7 +53,7 @@ c_cd(wp)
 		/* One argument: - or dir */
 		dir = wp[0];
 		if (strcmp(dir, "-") == 0) {
-			dir = strval(oldpwd_s);
+			dir = str_val(oldpwd_s);
 			if (dir == null) {
 				bi_errorf("no OLDPWD");
 				return 1;
@@ -98,7 +98,7 @@ c_cd(wp)
 	 */
 	xp = (char *) 0;
 
-	cdpath = strval(global("CDPATH"));
+	cdpath = str_val(global("CDPATH"));
 	do {
 		cdnode = make_path(current_wd, dir, &cdpath, &xs, &phys_path);
 #ifdef S_ISLNK
@@ -205,17 +205,18 @@ c_pwd(wp)
 
 int
 c_print(wp)
-	register char **wp;
+	char **wp;
 {
 #define PO_NL		BIT(0)	/* print newline */
 #define PO_EXPAND	BIT(1)	/* expand backslash sequences */
-#define PO_ECHO		BIT(2)	/* act (kind of) like BSD echo */
+#define PO_PMINUSMINUS	BIT(2)	/* print a -- argument */
 #define PO_HIST		BIT(3)	/* print to history instead of stdout */
 #define PO_COPROC	BIT(4)	/* printing to coprocess: block SIGPIPE */
+#define PO_FSLASH	BIT(5)  /* swap slash for backslash (for os2 ) */
 	int fd = 1;
 	int flags = PO_EXPAND|PO_NL;
 	char *s;
-	char *emsg;
+	const char *emsg;
 	XString xs;
 	char *xp;
 
@@ -232,7 +233,7 @@ c_print(wp)
 		 * by default.
 		 */
 		wp += 1;
-		while ((s = *wp) && *s == '-') {
+		while ((s = *wp) && *s == '-' && s[1]) {
 			while (*++s)
 				if (*s == 'n')
 					nflags &= ~PO_NL;
@@ -252,27 +253,37 @@ c_print(wp)
 		}
 	} else {
 		int optc;
-		char *options = "Rnprsu,";
-
+#if OS2
+		const char *options = "Rnpfrsu,"; /* added f flag */
+#else
+		const char *options = "Rnprsu,";
+#endif
 		while ((optc = ksh_getopt(wp, &builtin_opt, options)) != EOF)
 			switch (optc) {
-			  case 'R':
-				flags |= PO_ECHO; /* fake BSD echo command */
+			  case 'R': /* fake BSD echo command */
+				flags |= PO_PMINUSMINUS;
 				flags &= ~PO_EXPAND;
 				options = "ne";
 				break;
 			  case 'e':
 				flags |= PO_EXPAND;
 				break;
+#ifdef OS2
+			  case 'f':
+				flags |= PO_FSLASH;
+				break;
+#endif
 			  case 'n':
 				flags &= ~PO_NL;
 				break;
+#ifdef KSH
 			  case 'p':
-				if ((fd = get_coproc_fd(W_OK, &emsg)) < 0) {
+				if ((fd = coproc_getfd(W_OK, &emsg)) < 0) {
 					bi_errorf("-p: %s", emsg);
 					return 1;
 				}
 				break;
+#endif /* KSH */
 			  case 'r':
 				flags &= ~PO_EXPAND;
 				break;
@@ -295,7 +306,7 @@ c_print(wp)
 			if (wp[builtin_opt.optind]
 			    && strcmp(wp[builtin_opt.optind], "-") == 0)
 				builtin_opt.optind++;
-		} else if (flags & PO_ECHO)
+		} else if (flags & PO_PMINUSMINUS)
 			builtin_opt.optind--;
 		wp += builtin_opt.optind;
 	}
@@ -307,9 +318,18 @@ c_print(wp)
 		s = *wp;
 		while ((c = *s++) != '\0') {
 			Xcheck(xs, xp);
+#ifdef OS2
+			if ((flags & PO_FSLASH) && c == '\\') 
+				if (*s == '\\')
+					*s++;
+				else
+					c = '/';
+#endif /* OS2 */
 			if ((flags & PO_EXPAND) && c == '\\') {
+				int i;
+
 				switch ((c = *s++)) {
-				/* oddly enough, \007 seems more portable than
+				/* Oddly enough, \007 seems more portable than
 				 * \a (due to HP-UX cc, Ultrix cc, old pcc's,
 				 * etc.).
 				 */
@@ -322,13 +342,18 @@ c_print(wp)
 				case 'r': c = '\r'; break;
 				case 't': c = '\t'; break;
 				case 'v': c = 0x0B; break;
-				case '0': case '1': case '2': case '3':
-				case '4': case '5': case '6': case '7':
-					c = c - '0';
-					if (*s >= '0' && *s <= '7')
-						c = 8*c + *s++ - '0';
-					if (*s >= '0' && *s <= '7')
-						c = 8*c + *s++ - '0';
+				case '0':
+					/* Look for an octal number: can have
+					 * three digits (not counting the
+					 * leading 0).  Truely burnt.
+					 */
+					c = 0;
+					for (i = 0; i < 3; i++) {
+						if (*s >= '0' && *s <= '7')
+							c = c*8 + *s++ - '0';
+						else
+							break;
+					}
 					break;
 				case '\0': s--; c = '\\'; break;
 				case '\\': break;
@@ -351,6 +376,7 @@ c_print(wp)
 		Xfree(xs, xp);
 	} else {
 		int n, len = Xlength(xs, xp);
+#ifdef KSH
 		int UNINITIALIZED(opipe);
 
 		/* Ensure we aren't killed by a SIGPIPE while writing to
@@ -362,6 +388,7 @@ c_print(wp)
 			flags |= PO_COPROC;
 			opipe = block_pipe();
 		}
+#endif /* KSH */
 		for (s = Xstring(xs, xp); len > 0; ) {
 			n = write(fd, s, len);
 			if (n < 0) {
@@ -374,24 +401,31 @@ c_print(wp)
 						opipe = block_pipe();
 					continue;
 				}
-				if (errno == EPIPE)
-					coproc_write_close(fd);
+#ifdef KSH
+				/* This doesn't really make sense - could
+				 * break scripts (print -p generates
+				 * error message).
+				*if (errno == EPIPE)
+				*	coproc_write_close(fd);
+				 */
+#endif /* KSH */
 				return 1;
 			}
 			s += n;
 			len -= n;
 		}
+#ifdef KSH
 		if (flags & PO_COPROC)
 			restore_pipe(opipe);
+#endif /* KSH */
 	}
 
 	return 0;
 }
 
-#ifdef KSH
 int
 c_whence(wp)
-	register char **wp;
+	char **wp;
 {
 	struct tbl *tp;
 	char *id;
@@ -400,7 +434,7 @@ c_whence(wp)
 	int optc;
 	int iam_whence = wp[0][0] == 'w';
 	int fcflags;
-	char *options = iam_whence ? "pv" : "pvV";
+	const char *options = iam_whence ? "pv" : "pvV";
 
 	while ((optc = ksh_getopt(wp, &builtin_opt, options)) != EOF)
 		switch (optc) {
@@ -510,41 +544,32 @@ c_whence(wp)
 	}
 	return ret;
 }
-#endif /* KSH */
 
 /* Deal with command -vV - command -p dealt with in comexec() */
 int
 c_command(wp)
-	register char **wp;
+	char **wp;
 {
-#ifdef KSH
 	/* Let c_whence do the work.  Note that c_command() must be
 	 * a distinct function from c_whence() (tested in comexec()).
 	 */
 	return c_whence(wp);
-#else /* KSH */
-	/* Can't get here: command with no options taken care of in
-	 * comexec().
-	 */
-	if (ksh_getopt(wp, &builtin_opt, null) == '?')
-		return 1;
-	return 0;
-#endif /* KSH */
 }
 
 /* typeset, export, and readonly */
 int
 c_typeset(wp)
-	register char **wp;
+	char **wp;
 {
 	struct block *l = e->loc;
 	struct tbl *vp, **p;
-	int fset = 0, fclr = 0;
+	Tflag fset = 0, fclr = 0;
 	int thing = 0, func = 0, local = 0;
-	char *options = "L#R#UZ#fi#lrtux";	/* see comment below */
+	const char *options = "L#R#UZ#fi#lrtux";	/* see comment below */
 	char *fieldstr, *basestr;
 	int field, base;
-	int optc, flag;
+	int optc;
+	Tflag flag;
 	int pflag = 0;
 
 	switch (**wp) {
@@ -654,7 +679,8 @@ c_typeset(wp)
 	if (func && ((fset|fclr) & ~(TRACE|UCASEV_AL|EXPORT))) {
 		bi_errorf("only -t, -u and -x options may be used with -f");
 		return 1;
-	} else if (wp[builtin_opt.optind]) {
+	}
+	if (wp[builtin_opt.optind]) {
 		/* Take care of exclusions */
 		/* setting these attributes clears the others, unless they
 		 * are also set in this command
@@ -720,49 +746,53 @@ c_typeset(wp)
 
 	/* list variables and attributes */
 	flag = fset | fclr; /* no difference at this point.. */
-	for (l = e->loc; l; l = l->next) {
-	    for (p = tsort(func ? &l->funs : &l->vars); (vp = *p++); )
-		for (; vp; vp = vp->u.array) {
-		    if (!(vp->flag&ISSET))
-			continue;
-		    /* no arguments */
-		    if (thing == 0 && flag == 0) {
-			/* at&t ksh prints things like export, integer,
-			 * leftadj, zerofill, etc., but POSIX says must
-			 * be suitable for re-entry...
-			 */
-			shprintf("typeset ");
-			if ((vp->flag&INTEGER))
-			    shprintf("-i ");
-			if ((vp->flag&EXPORT))
-			    shprintf("-x ");
-			if ((vp->flag&RDONLY))
-			    shprintf("-r ");
-			if ((vp->flag&TRACE)) 
-			    shprintf("-t ");
-			if ((vp->flag&LJUST)) 
-			    shprintf("-L%d ", vp->field);
-			if ((vp->flag&RJUST)) 
-			    shprintf("-R%d ", vp->field);
-			if ((vp->flag&ZEROFIL)) 
-			    shprintf("-Z ");
-			if ((vp->flag&LCASEV)) 
-			    shprintf("-l ");
-			if ((vp->flag&UCASEV_AL)) 
-			    shprintf("-u ");
-			if ((vp->flag&INT_U)) 
-			    shprintf("-U ");
-			if (vp->flag&ARRAY)
-			    shprintf("%s[%d]\n", vp->name,vp->index);
-			else
-			    shprintf("%s\n", vp->name);
-		    } else {
+	if (func) {
+	    for (l = e->loc; l; l = l->next) {
+		for (p = tsort(&l->funs); (vp = *p++); ) {
+		    if (flag && (vp->flag & flag) == 0)
+			    continue;
+		    if (thing == '-')
+			fptreef(shl_stdout, 0, "function %s %T\n",
+				vp->name, vp->val.t);
+		    else
+			shprintf("%s\n", vp->name);
+		}
+	    }
+	} else {
+	    for (l = e->loc; l; l = l->next) {
+		for (p = tsort(&l->vars); (vp = *p++); )
+		    for (; vp; vp = vp->u.array) {
 			if (flag && (vp->flag & flag) == 0)
-				continue;
-			if (func) {
-			    if (thing == '-')
-				fptreef(shl_stdout, 0, "function %s %T\n",
-					vp->name, vp->val.t);
+			    continue;
+			/* no arguments */
+			if (thing == 0 && flag == 0) {
+			    /* at&t ksh prints things like export, integer,
+			     * leftadj, zerofill, etc., but POSIX says must
+			     * be suitable for re-entry...
+			     */
+			    shprintf("typeset ");
+			    if ((vp->flag&INTEGER))
+				shprintf("-i ");
+			    if ((vp->flag&EXPORT))
+				shprintf("-x ");
+			    if ((vp->flag&RDONLY))
+				shprintf("-r ");
+			    if ((vp->flag&TRACE)) 
+				shprintf("-t ");
+			    if ((vp->flag&LJUST)) 
+				shprintf("-L%d ", vp->u2.field);
+			    if ((vp->flag&RJUST)) 
+				shprintf("-R%d ", vp->u2.field);
+			    if ((vp->flag&ZEROFIL)) 
+				shprintf("-Z ");
+			    if ((vp->flag&LCASEV)) 
+				shprintf("-l ");
+			    if ((vp->flag&UCASEV_AL)) 
+				shprintf("-u ");
+			    if ((vp->flag&INT_U)) 
+				shprintf("-U ");
+			    if (vp->flag&ARRAY)
+				shprintf("%s[%d]\n", vp->name,vp->index);
 			    else
 				shprintf("%s\n", vp->name);
 			} else {
@@ -773,8 +803,8 @@ c_typeset(wp)
 				shprintf("%s[%d]", vp->name, vp->index);
 			    else
 				shprintf("%s", vp->name);
-			    if (thing == '-') {
-				char *s = strval(vp);
+			    if (thing == '-' && (vp->flag&ISSET)) {
+				char *s = str_val(vp);
 
 				shprintf("=");
 				/* at&t ksh can't have justified integers.. */
@@ -787,17 +817,18 @@ c_typeset(wp)
 			    shprintf(newline);
 			}
 		    }
-		}
+	    }
 	}
 	return 0;
 }
 	
 int
 c_alias(wp)
-	register char **wp;
+	char **wp;
 {
 	struct table *t = &aliases;
-	int rv = 0, rflag = 0, tflag, Uflag = 0, xflag = 0;
+	int rv = 0, rflag = 0, tflag, Uflag = 0;
+	Tflag xflag = 0;
 	int optc;
 
 	while ((optc = ksh_getopt(wp, &builtin_opt, "drtUx")) != EOF)
@@ -828,14 +859,17 @@ c_alias(wp)
 
 	/* "hash -r" means reset all the tracked aliases.. */
 	if (rflag) {
-		static char *args[] = { "unalias", "-ta", (char *) 0 };
+		static const char *const args[] = {
+			    "unalias", "-ta", (const char *) 0
+			};
 
 		if (!tflag || *wp) {
 			shprintf(
 	    "alias: -r flag can only be used with -t and without arguments\n");
 			return 1;
 		}
-		return c_unalias(args);
+		ksh_getopt_reset(&builtin_opt, GF_ERROR);
+		return c_unalias((char **) args);
 	}
 
 	if (*wp == NULL) {
@@ -857,7 +891,7 @@ c_alias(wp)
 		int h;
 
 		if (val)
-			alias = strnsave(alias, val++ - alias, ATEMP);
+			alias = str_nsave(alias, val++ - alias, ATEMP);
 		h = hash(alias);
 		if (val == NULL && !tflag && !xflag) {
 			ap = tsearch(t, alias, h);
@@ -880,9 +914,10 @@ c_alias(wp)
 				afree((void*)ap->val.s, APERM);
 			}
 			/* ignore values for -t (at&t ksh does this) */
-			newval = tflag ? search(alias, path, X_OK) : val;
+			newval = tflag ? search(alias, path, X_OK, (int *) 0)
+					: val;
 			if (newval) {
-				ap->val.s = strsave(newval, APERM);
+				ap->val.s = str_save(newval, APERM);
 				ap->flag |= ALLOC|ISSET;
 			} else
 				ap->flag &= ~ISSET;
@@ -897,7 +932,7 @@ c_alias(wp)
 
 int
 c_unalias(wp)
-	register char **wp;
+	char **wp;
 {
 	register struct table *t = &aliases;
 	register struct tbl *ap;
@@ -934,7 +969,9 @@ c_unalias(wp)
 	}
 
 	if (all) {
-		for (twalk(t); (ap = tnext()); ) {
+		struct tstate ts;
+
+		for (twalk(&ts, t); (ap = tnext(&ts)); ) {
 			if (ap->flag&ALLOC) {
 				ap->flag &= ~(ALLOC|ISSET);
 				afree((void*)ap->val.s, APERM);
@@ -1005,13 +1042,13 @@ c_jobs(wp)
 #ifdef JOBS
 int
 c_fgbg(wp)
-	register char **wp;
+	char **wp;
 {
 	int bg = strcmp(*wp, "bg") == 0;
 	int UNINITIALIZED(rv);
 
 	if (!Flag(FMONITOR)) {
-		bi_errorf("job control not enabled\n");
+		bi_errorf("job control not enabled");
 		return 1;
 	}
 	if (ksh_getopt(wp, &builtin_opt, null) == '?')
@@ -1033,6 +1070,7 @@ struct kill_info {
 	int num_width;
 	int name_width;
 };
+static char *kill_fmt_entry ARGS((void *arg, int i, char *buf, int buflen));
 
 /* format a single kill item */
 static char *
@@ -1061,7 +1099,7 @@ kill_fmt_entry(arg, i, buf, buflen)
 
 int
 c_kill(wp)
-	register char **wp;
+	char **wp;
 {
 	Trap *t = (Trap *) 0;
 	char *p;
@@ -1099,7 +1137,7 @@ c_kill(wp)
 "Usage: kill [ -s signame | -signum | -signame ] {pid|job}...\n\
        kill -l [exit_status]\n"
 			);
-		bi_errorf((char *) 0);
+		bi_errorf(null);
 		return 1;
 	}
 
@@ -1177,7 +1215,7 @@ getopts_reset(val)
 {
 	if (!getopts_noset && val >= 1) {
 		ksh_getopt_reset(&user_opt,
-			GI_NONAME | (Flag(FPOSIX) ? 0 : GF_PLUSOPT));
+			GF_NONAME | (Flag(FPOSIX) ? 0 : GF_PLUSOPT));
 		user_opt.optind = val;
 	}
 }
@@ -1187,8 +1225,8 @@ c_getopts(wp)
 	char **wp;
 {
 	int	argc;
-	char	*options;
-	char	*var;
+	const char *options;
+	const char *var;
 	int	optc;
 	char	buf[3];
 	struct tbl *vq;
@@ -1198,13 +1236,13 @@ c_getopts(wp)
 	wp += builtin_opt.optind;
 
 	options = *wp++;
-	if (options == (char *) 0) {
+	if (!options) {
 		bi_errorf("missing options argument");
 		return 1;
 	}
 
 	var = *wp++;
-	if (var == (char *) 0) {
+	if (!var) {
 		bi_errorf("missing name argument");
 		return 1;
 	}
@@ -1248,32 +1286,38 @@ c_getopts(wp)
 		buf[0] = optc < 0 ? '?' : optc;
 		buf[1] = '\0';
 	}
-	vq = global(var);
-	if (vq->flag & RDONLY)
-		bi_errorf("%s is readonly", var);
-	if (Flag(FEXPORT))
-		typeset(var, EXPORT, 0, 0, 0);
-	setstr(vq, buf);
 
-	getopts_noset = 1;
-	setint(global("OPTIND"), (long) user_opt.optind);
-	getopts_noset = 0;
+	/* at&t ksh does not change OPTIND if it was an unknown option.
+	 * Scripts counting on this are prone to break... (ie, don't count
+	 * on this staying).
+	 */
+	if (optc != '?') {
+		getopts_noset = 1;
+		setint(global("OPTIND"), (long) user_opt.optind);
+		getopts_noset = 0;
+	}
 
 	if (user_opt.optarg == (char *) 0)
 		unset(global("OPTARG"), 0);
 	else
 		setstr(global("OPTARG"), user_opt.optarg);
 
-	if (optc < 0)
+	vq = global(var);
+	if (vq->flag & RDONLY) {
+		bi_errorf("%s is readonly", var);
 		return 1;
+	}
+	if (Flag(FEXPORT))
+		typeset(var, EXPORT, 0, 0, 0);
+	setstr(vq, buf);
 
-	return 0;
+	return optc < 0 ? 1 : 0;
 }
 
 #ifdef EMACS
 int
 c_bind(wp)
-	register char **wp;
+	char **wp;
 {
 	int rv = 0, macro = 0, list = 0;
 	register char *cp;
@@ -1330,9 +1374,7 @@ const struct builtin kshbuiltins [] = {
  	{"*=readonly", c_typeset},
 	{"=typeset", c_typeset},
 	{"+unalias", c_unalias},
-#ifdef KSH
 	{"whence", c_whence},
-#endif /* KSH */
 #ifdef JOBS
 	{"+bg", c_fgbg},
 	{"+fg", c_fgbg},

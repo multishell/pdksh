@@ -25,7 +25,7 @@
 			   "-u"|"-g"|"-k"|"-s"|"-t"|"-z"|"-n"|"-o"|"-O"|"-G"|
 			   "-L"|"-h"|"-S"|"-H";
 
-	binary-operator ::= "="|"!="|"-eq"|"-ne"|"-ge"|"-gt"|"-le"|"-lt"|
+	binary-operator ::= "="|"=="|"!="|"-eq"|"-ne"|"-ge"|"-gt"|"-le"|"-lt"|
 			    "-nt"|"-ot"|"-ef"|
 			    "<"|">"	# rules used for [[ .. ]] expressions
 			    ;
@@ -67,6 +67,9 @@ static const struct t_op u_ops [] = {
     };
 static const struct t_op b_ops [] = {
 	{"=",	TO_STEQL },
+#ifdef KSH
+	{"==",	TO_STEQL },
+#endif /* KSH */
 	{"!=",	TO_STNEQ },
 	{"<",	TO_STLT },
 	{">",	TO_STGT },
@@ -82,17 +85,17 @@ static const struct t_op b_ops [] = {
 	{"",	TO_NONOP }
     };
 
-static int	test_stat ARGS((char *path, struct stat *statb));
-static int	test_eaccess ARGS((char *path, int mode));
+static int	test_stat ARGS((const char *path, struct stat *statb));
+static int	test_eaccess ARGS((const char *path, int mode));
 static int	test_oexpr ARGS((Test_env *te, int do_eval));
 static int	test_aexpr ARGS((Test_env *te, int do_eval));
 static int	test_nexpr ARGS((Test_env *te, int do_eval));
 static int	test_primary ARGS((Test_env *te, int do_eval));
 static int	ptest_isa ARGS((Test_env *te, Test_meta meta));
-static char	*ptest_getopnd ARGS((Test_env *te, Test_op op, int do_eval));
-static int	ptest_eval ARGS((Test_env *te, Test_op op, char *opnd1,
-				char *opnd2, int do_eval));
-static void	ptest_error ARGS((Test_env *te, int offset, char *msg));
+static const char *ptest_getopnd ARGS((Test_env *te, Test_op op, int do_eval));
+static int	ptest_eval ARGS((Test_env *te, Test_op op, const char *opnd1,
+				const char *opnd2, int do_eval));
+static void	ptest_error ARGS((Test_env *te, int offset, const char *msg));
 
 int
 c_test(wp)
@@ -116,10 +119,10 @@ c_test(wp)
 			bi_errorf("missing ]");
 			return T_ERR_EXIT;
 		}
-		wp[argc] = NULL;
 	}
 
 	te.pos.wp = wp + 1;
+	te.wp_end = wp + argc;
 
 	/* 
 	 * Handle the special cases from POSIX.2, section 4.62.4.
@@ -130,7 +133,7 @@ c_test(wp)
 		char **owp = wp;
 		int invert = 0;
 		Test_op	op;
-		char *opnd1, *opnd2;
+		const char *opnd1, *opnd2;
 
 		while (--argc >= 0) {
 			if ((*te.isa)(&te, TM_END))
@@ -177,7 +180,7 @@ Test_op
 test_isop(te, meta, s)
 	Test_env *te;
 	Test_meta meta;
-	char *s;
+	const char *s;
 {
 	char sc1;
 	const struct t_op *otab;
@@ -200,8 +203,8 @@ int
 test_eval(te, op, opnd1, opnd2, do_eval)
 	Test_env *te;
 	Test_op op;
-	char *opnd1;
-	char *opnd2;
+	const char *opnd1;
+	const char *opnd2;
 	int do_eval;
 {
 	int res;
@@ -215,11 +218,11 @@ test_eval(te, op, opnd1, opnd2, do_eval)
 	/*
 	 * Unary Operators
 	 */
-	  case TO_STNZE:
+	  case TO_STNZE: /* -n */
 		return *opnd1 != '\0';
-	  case TO_STZER:
+	  case TO_STZER: /* -z */
 		return *opnd1 == '\0';
-	  case TO_OPTION:
+	  case TO_OPTION: /* -o */
 		if ((not = *opnd1 == '!'))
 			opnd1++;
 		if ((res = option(opnd1)) < 0)
@@ -230,11 +233,11 @@ test_eval(te, op, opnd1, opnd2, do_eval)
 				res = !res;
 		}
 		return res; 
-	  case TO_FILRD:
+	  case TO_FILRD: /* -r */
 		return test_eaccess(opnd1, R_OK) == 0;
-	  case TO_FILWR:
+	  case TO_FILWR: /* -w */
 		return test_eaccess(opnd1, W_OK) == 0;
-	  case TO_FILEX:
+	  case TO_FILEX: /* -x */
 		return test_eaccess(opnd1, X_OK) == 0;
 	  case TO_FILAXST: /* -a */
 		return test_stat(opnd1, &b1) == 0;
@@ -243,41 +246,41 @@ test_eval(te, op, opnd1, opnd2, do_eval)
 		 * this (unless the os itself handles it)
 		 */
 		return stat(opnd1, &b1) == 0;
-	  case TO_FILREG:
+	  case TO_FILREG: /* -r */
 		return test_stat(opnd1, &b1) == 0 && S_ISREG(b1.st_mode);
-	  case TO_FILID:
+	  case TO_FILID: /* -d */
 		return test_stat(opnd1, &b1) == 0 && S_ISDIR(b1.st_mode);
-	  case TO_FILCDEV:
+	  case TO_FILCDEV: /* -c */
 #ifdef S_ISCHR
 		return test_stat(opnd1, &b1) == 0 && S_ISCHR(b1.st_mode);
 #else
 		return 0;
 #endif
-	  case TO_FILBDEV:
+	  case TO_FILBDEV: /* -b */
 #ifdef S_ISBLK
 		return test_stat(opnd1, &b1) == 0 && S_ISBLK(b1.st_mode);
 #else
 		return 0;
 #endif
-	  case TO_FILFIFO:
+	  case TO_FILFIFO: /* -p */
 #ifdef S_ISFIFO
 		return test_stat(opnd1, &b1) == 0 && S_ISFIFO(b1.st_mode);
 #else
 		return 0;
 #endif
-	  case TO_FILSYM:
+	  case TO_FILSYM: /* -h -L */
 #ifdef S_ISLNK
 		return lstat(opnd1, &b1) == 0 && S_ISLNK(b1.st_mode);
 #else
 		return 0;
 #endif
-	  case TO_FILSOCK:
+	  case TO_FILSOCK: /* -S */
 #ifdef S_ISSOCK
 		return test_stat(opnd1, &b1) == 0 && S_ISSOCK(b1.st_mode);
 #else
 		return 0;
 #endif
-	  case TO_FILCDF:/* HP context dependent files (actually directories) */
+	  case TO_FILCDF:/* -H HP context dependent files (directories) */
 #ifdef S_ISCDF
 	  {
 		/* Append a + to filename and check to see if result is a
@@ -289,7 +292,7 @@ test_eval(te, op, opnd1, opnd2, do_eval)
 		 * I'm wrong about this).
 		 */
 		int len = strlen(opnd1);
-		char *p = strnsave(opnd1, len + 1, ATEMP);
+		char *p = str_nsave(opnd1, len + 1, ATEMP);
 
 		p[len++] = '+';
 		p[len] = '\0';
@@ -298,57 +301,57 @@ test_eval(te, op, opnd1, opnd2, do_eval)
 #else
 		return 0;
 #endif
-	  case TO_FILSETU:
+	  case TO_FILSETU: /* -u */
 #ifdef S_ISUID
 		return test_stat(opnd1, &b1) == 0
 			&& (b1.st_mode & S_ISUID) == S_ISUID;
 #else
 		return 0;
 #endif
-	  case TO_FILSETG:
+	  case TO_FILSETG: /* -g */
 #ifdef S_ISGID
 		return test_stat(opnd1, &b1) == 0
 			&& (b1.st_mode & S_ISGID) == S_ISGID;
 #else
 		return 0;
 #endif
-	  case TO_FILSTCK:
+	  case TO_FILSTCK: /* -k */
 		return test_stat(opnd1, &b1) == 0
 			&& (b1.st_mode & S_ISVTX) == S_ISVTX;
-	  case TO_FILGZ:
+	  case TO_FILGZ: /* -s */
 		return test_stat(opnd1, &b1) == 0 && b1.st_size > 0L;
-	  case TO_FILTT:
+	  case TO_FILTT: /* -t */
 		if (opnd1 && !bi_getn(opnd1, &res)) {
 			te->flags |= TEF_ERROR;
 			res = 0;
 		} else
 			res = isatty(opnd1 ? res : 0);
 		return res;
-	  case TO_FILUID:
+	  case TO_FILUID: /* -O */
 		return test_stat(opnd1, &b1) == 0 && b1.st_uid == geteuid();
-	  case TO_FILGID:
+	  case TO_FILGID: /* -G */
 		return test_stat(opnd1, &b1) == 0 && b1.st_gid == getegid();
 	/*
 	 * Binary Operators
 	 */
-	  case TO_STEQL:
+	  case TO_STEQL: /* = */
 		if (te->flags & TEF_DBRACKET)
 			return gmatch(opnd1, opnd2, FALSE);
 		return strcmp(opnd1, opnd2) == 0;
-	  case TO_STNEQ:
+	  case TO_STNEQ: /* != */
 		if (te->flags & TEF_DBRACKET)
 			return !gmatch(opnd1, opnd2, FALSE);
 		return strcmp(opnd1, opnd2) != 0;
-	  case TO_STLT:
+	  case TO_STLT: /* < */
 		return strcmp(opnd1, opnd2) < 0;
-	  case TO_STGT:
+	  case TO_STGT: /* > */
 		return strcmp(opnd1, opnd2) > 0;
-	  case TO_INTEQ:
-	  case TO_INTNE:
-	  case TO_INTGE:
-	  case TO_INTGT:
-	  case TO_INTLE:
-	  case TO_INTLT:
+	  case TO_INTEQ: /* -eq */
+	  case TO_INTNE: /* -ne */
+	  case TO_INTGE: /* -ge */
+	  case TO_INTGT: /* -gt */
+	  case TO_INTLE: /* -le */
+	  case TO_INTLT: /* -lt */
 		{
 			long v1, v2;
 
@@ -374,13 +377,13 @@ test_eval(te, op, opnd1, opnd2, do_eval)
 				return v1 < v2;
 			}
 		}
-	  case TO_FILNT:
+	  case TO_FILNT: /* -nt */
 		return stat (opnd1, &b1) == 0 && stat (opnd2, &b2) == 0
 		       && b1.st_mtime > b2.st_mtime;
-	  case TO_FILOT:
+	  case TO_FILOT: /* -ot */
 		return stat (opnd1, &b1) == 0 && stat (opnd2, &b2) == 0
 		       && b1.st_mtime < b2.st_mtime;
-	  case TO_FILEQ:
+	  case TO_FILEQ: /* -ef */
 		return stat (opnd1, &b1) == 0 && stat (opnd2, &b2) == 0
 		       && b1.st_dev == b2.st_dev
 		       && b1.st_ino == b2.st_ino;
@@ -392,7 +395,7 @@ test_eval(te, op, opnd1, opnd2, do_eval)
 /* Nasty kludge to handle Korn's bizarre /dev/fd hack */
 static int
 test_stat(path, statb)
-	char *path;
+	const char *path;
 	struct stat *statb;
 {
 #if !defined(HAVE_DEV_FD)
@@ -408,7 +411,7 @@ test_stat(path, statb)
 /* Another nasty kludge to handle Korn's bizarre /dev/fd hack */
 static int
 test_eaccess(path, mode)
-	char *path;
+	const char *path;
 	int mode;
 {
 #if !defined(HAVE_DEV_FD)
@@ -488,7 +491,7 @@ test_primary(te, do_eval)
 	Test_env *te;
 	int do_eval;
 {
-	register char *opnd1, *opnd2;
+	const char *opnd1, *opnd2;
 	int res;
 	Test_op op;
 
@@ -512,7 +515,7 @@ test_primary(te, do_eval)
 			return 0;
 		}
 
-		return (*te->eval)(te, op, opnd1, (char *) 0, do_eval);
+		return (*te->eval)(te, op, opnd1, (const char *) 0, do_eval);
 	}
 	opnd1 = (*te->getopnd)(te, TO_NONOP, do_eval);
 	if (!opnd1) {
@@ -533,7 +536,7 @@ test_primary(te, do_eval)
 		(*te->error)(te, -1, "missing expression operator");
 		return 0;
 	}
-	return (*te->eval)(te, TO_STNZE, opnd1, (char *) 0, do_eval);
+	return (*te->eval)(te, TO_STNZE, opnd1, (const char *) 0, do_eval);
 }
 
 /*
@@ -555,7 +558,7 @@ ptest_isa(te, meta)
 			};
 	int ret;
 
-	if (!*te->pos.wp)
+	if (te->pos.wp >= te->wp_end)
 		return meta == TM_END;
 
 	if (meta == TM_UNOP || meta == TM_BINOP)
@@ -572,14 +575,14 @@ ptest_isa(te, meta)
 	return ret;
 }
 
-static char *
+static const char *
 ptest_getopnd(te, op, do_eval)
 	Test_env *te;
 	Test_op op;
 	int do_eval;
 {
-	if (!*te->pos.wp)
-		return op == TO_FILTT ? "1" : (char *) 0;
+	if (te->pos.wp >= te->wp_end)
+		return op == TO_FILTT ? "1" : (const char *) 0;
 	return *te->pos.wp++;
 }
 
@@ -587,8 +590,8 @@ static int
 ptest_eval(te, op, opnd1, opnd2, do_eval)
 	Test_env *te;
 	Test_op op;
-	char *opnd1;
-	char *opnd2;
+	const char *opnd1;
+	const char *opnd2;
 	int do_eval;
 {
 	return test_eval(te, op, opnd1, opnd2, do_eval);
@@ -598,9 +601,10 @@ static void
 ptest_error(te, offset, msg)
 	Test_env *te;
 	int offset;
-	char *msg;
+	const char *msg;
 {
-	char *op = te->pos.wp[offset];
+	const char *op = te->pos.wp + offset >= te->wp_end ?
+				(const char *) 0 : te->pos.wp[offset];
 
 	te->flags |= TEF_ERROR;
 	if (op)

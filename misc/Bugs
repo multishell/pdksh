@@ -383,7 +383,7 @@ echo "  [No automatic test for bug 24 - interactive]"
 	done
 
 #
-#   26. Check reading stdin in a while loop.  The read should read both
+#   26a. Check reading stdin in a while loop.  The read should read both
 #	lines, not just the first.
 #
 cat > $tfile << 'EOF'
@@ -395,11 +395,35 @@ cat > $sfile << 'EOF'
     while [ "$a" != xxx ] ; do
 	last=$x
 	read x
-	/bin/cat /dev/null | sed 's/x/y/'
+	cat /dev/null | sed 's/x/y/'
 	a=x$a
     done
     if [ "$last" != b ] ; then
 	echo 'Bug 26 present (reading in a while loop broken).'
+    fi
+EOF
+$THIS_KSH $sfile < $tfile
+rm -f $tfile $sfile
+
+#
+#   26b Check reading stdin in a while loop.  The read should read both
+#	lines, not just the first.  This differs from 26 in that lines
+#	are placed against the margin.
+#
+cat > $tfile << 'EOF'
+ab
+cd
+EOF
+cat > $sfile << 'EOF'
+    a=
+    while [ "$a" != xxx ] ; do
+	last=$x
+	read x
+	cat /dev/null | sed 's/x/y/'
+	a=x$a
+    done
+    if [ "$last" != cd ] ; then
+	echo "Bug 26b present (last line should be cd was $last.)"
     fi
 EOF
 $THIS_KSH $sfile < $tfile

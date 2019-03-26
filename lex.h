@@ -8,17 +8,19 @@
 
 typedef struct source Source;
 struct source {
-	char   *str;		/* input pointer */
+	const char *str;	/* input pointer */
 	int	type;		/* input type */
+	char const *start;	/* start of current buffer */
 	union {
-		char *start;	/* string */
+		char ugbuf[2];	/* buffer for ungetsc() (SREREAD) */
 		char **strv;	/* string [] */
 		struct shf *shf; /* shell file */
 		struct tbl *tblp; /* alias */
+		char *freeme;	/* also for SREREAD */
 	} u;
 	int	line;		/* line number */
 	int	errline;	/* line the error occured on (0 if not set) */
-	char   *file;		/* input file name */
+	const char *file;	/* input file name */
 	int	flags;		/* SF_* */
 	Area	*areap;
 	XString	xs;		/* input buffer */
@@ -26,21 +28,21 @@ struct source {
 };
 
 /* Source.type values */
-#define	SEOF	0		/* input EOF */
-#define	STTY	1		/* terminal input */
-#define	SFILE	2		/* file input */
-#define SSTDIN	3		/* read stdin */
-#define	SSTRING	4		/* string */
-#define	SWSTR	5		/* string without \n */
-#define	SWORDS	6		/* string[] */
-#define	SWORDSEP 7		/* string[] seperator */
-#define	SALIAS	8		/* alias expansion */
-#define SREREAD	9		/* read ahead to be re-scanned */
+#define	SEOF		0	/* input EOF */
+#define	SFILE		1	/* file input */
+#define SSTDIN		2	/* read stdin */
+#define	SSTRING		3	/* string */
+#define	SWSTR		4	/* string without \n */
+#define	SWORDS		5	/* string[] */
+#define	SWORDSEP	6	/* string[] seperator */
+#define	SALIAS		7	/* alias expansion */
+#define SREREAD		8	/* read ahead to be re-scanned */
 
 /* Source.flags values */
-#define SF_ECHO		BIT(0)	/* echo niput to shlout */
+#define SF_ECHO		BIT(0)	/* echo input to shlout */
 #define SF_ALIAS	BIT(1)	/* faking space at end of alias */
 #define SF_ALIASEND	BIT(2)	/* faking space at end of alias */
+#define SF_TTY		BIT(3)	/* type == SSTDIN & it is a tty */
 
 /*
  * states while lexing word
@@ -56,6 +58,8 @@ struct source {
 #define	SDDPAREN 8		/* inside $(( )) */
 #define SHEREDELIM 9		/* parsing <<,<<- delimiter */
 #define SHEREDQUOTE 10		/* parsing " in <<,<<- delimiter */
+#define SPATTERN 11		/* parsing *(...|...) pattern (*+?@!) */
+#define STBRACE 12		/* parsing ${..[#%]..} */
 
 typedef union {
 	int	i;

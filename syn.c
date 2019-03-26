@@ -23,22 +23,24 @@ static struct op *dogroup	ARGS((void));
 static struct op *thenpart	ARGS((void));
 static struct op *elsepart	ARGS((void));
 static struct op *caselist	ARGS((void));
-static struct op *casepart	ARGS((void));
+static struct op *casepart	ARGS((int endtok));
 static struct op *function_body	ARGS((char *name, int ksh_func));
 static char **	wordlist	ARGS((void));
 static struct op *block		ARGS((int type, struct op *t1, struct op *t2,
 				      char **wp));
 static struct op *newtp		ARGS((int type));
-static void	syntaxerr	ARGS((char *what)) GCC_FUNC_ATTR(noreturn);
+static void	syntaxerr	ARGS((const char *what))
+						GCC_FUNC_ATTR(noreturn);
 static void	multiline_push ARGS((struct multiline_state *save, int tok));
 static void	multiline_pop ARGS((struct multiline_state *saved));
 static int	assign_command ARGS((char *s));
 #ifdef KSH
 static int	dbtestp_isa ARGS((Test_env *te, Test_meta meta));
-static char	*dbtestp_getopnd ARGS((Test_env *te, Test_op op, int do_eval));
-static int	dbtestp_eval ARGS((Test_env *te, Test_op op, char *opnd1,
-				char *opnd2, int do_eval));
-static void	dbtestp_error ARGS((Test_env *te, int offset, char *msg));
+static const char *dbtestp_getopnd ARGS((Test_env *te, Test_op op,
+					int do_eval));
+static int	dbtestp_eval ARGS((Test_env *te, Test_op op, const char *opnd1,
+				const char *opnd2, int do_eval));
+static void	dbtestp_error ARGS((Test_env *te, int offset, const char *msg));
 #endif /* KSH */
 
 static	struct	op	*outtree; /* yyparse output */
@@ -58,16 +60,17 @@ static	int	symbol;		/* yylex value */
 static void
 yyparse()
 {
+	int c;
+
 	ACCEPT;
 	yynerrs = 0;
-	if ((tpeek(KEYWORD|ALIAS|VARASN)) == 0) /* EOF */
+
+	outtree = c_list();
+	c = tpeek(0);
+	if (c == 0 && !outtree)
 		outtree = newtp(TEOF);
-	else {
-		int c;
-		outtree = c_list();
-		if ((c = token(0)) != '\n' && c != 0)
-			syntaxerr((char *) 0);
-	}
+	else if (c != '\n' && c != 0)
+		syntaxerr((char *) 0);
 }
 
 static struct op *
@@ -118,8 +121,7 @@ c_list()
 	t = andor();
 	if (t != NULL) {
 		while ((c = token(0)) == ';' || c == '&' || c == COPROC ||
-		       (c == '\n' && (multiline.on || source->type == SSTRING
-				      || source->type == SALIAS)))
+		       (c == '\n' && (multiline.on || source->type == SALIAS)))
 		{
 			if (c == '&' || c == COPROC) {
 				int type = c == '&' ? TASYNC : TCOPROC;
@@ -209,6 +211,9 @@ get_command(cf)
 	switch (c = token(cf|KEYWORD|ALIAS|VARASN)) {
 	  default:
 		REJECT;
+		afree((void*) iops, ATEMP);
+		XPfree(args);
+		XPfree(vars);
 		return NULL; /* empty line */
 
 	  case LWORD:
@@ -217,7 +222,7 @@ get_command(cf)
 		syniocf &= ~(KEYWORD|ALIAS);
 		t = newtp(TCOM);
 		while (1) {
-			cf = (t->evalflags ? ARRAYVAR : 0)
+			cf = (t->u.evalflags ? ARRAYVAR : 0)
 			     | (XPsize(args) == 0 ? ALIAS|VARASN : CMDWORD);
 			switch (tpeek(cf)) {
 			  case REDIR:
@@ -234,7 +239,7 @@ get_command(cf)
 				if (iopn == 0 && XPsize(vars) == 0
 				    && XPsize(args) == 0
 				    && assign_command(ident))
-					t->evalflags = DOVACHECK;
+					t->u.evalflags = DOVACHECK;
 				if ((XPsize(args) == 0 || Flag(FKEYWORD))
 				    && is_wdvarassign(yylval.cp))
 					XPput(vars, yylval.cp);
@@ -247,7 +252,7 @@ get_command(cf)
 				 * allows (not POSIX, but not disallowed)
 				 */
 				afree(t, ATEMP);
-				if (XPsize(args) == 0 && XPsize(vars) != 0) {
+				if (XPsize(args) == 0 && XPsize(vars) == 0) {
 					ACCEPT;
 					goto Subshell;
 				}
@@ -317,7 +322,7 @@ get_command(cf)
 		if (!is_wdvarname(yylval.cp, TRUE))
 			yyerror("%s: bad identifier\n",
 				c == FOR ? "for" : "select");
-		t->str = strsave(ident, ATEMP);
+		t->str = str_save(ident, ATEMP);
 		multiline_push(&old_multiline, c);
 		t->vars = wordlist();
 		t->left = dogroup();
@@ -327,7 +332,7 @@ get_command(cf)
 	  case WHILE:
 	  case UNTIL:
 		multiline_push(&old_multiline, c);
-		t = newtp((c == WHILE) ? TWHILE: TUNTIL);
+		t = newtp((c == WHILE) ? TWHILE : TUNTIL);
 		t->left = c_list();
 		t->right = dogroup();
 		multiline_pop(&old_multiline);
@@ -338,9 +343,7 @@ get_command(cf)
 		musthave(LWORD, 0);
 		t->str = yylval.cp;
 		multiline_push(&old_multiline, c);
-		musthave(IN, CONTIN|KEYWORD|ALIAS);
 		t->left = caselist();
-		musthave(ESAC, KEYWORD|ALIAS);
 		multiline_pop(&old_multiline);
 		break;
 
@@ -458,28 +461,39 @@ elsepart()
 
 	  default:
 		REJECT;
-		return NULL;
 	}
+	return NULL;
 }
 
 static struct op *
 caselist()
 {
 	register struct op *t, *tl;
+	int c;
 
+	c = token(CONTIN|KEYWORD|ALIAS);
+	/* A {...} can be used instead of in...esac for case statements */
+	if (c == IN)
+		c = ESAC;
+	else if (c == '{')
+		c = '}';
+	else
+		syntaxerr((char *) 0);
 	t = tl = NULL;
-	while ((tpeek(CONTIN|KEYWORD|ESACONLY)) != ESAC) { /* no ALIAS here */
-		struct op *tc = casepart();
+	while ((tpeek(CONTIN|KEYWORD|ESACONLY)) != c) { /* no ALIAS here */
+		struct op *tc = casepart(c);
 		if (tl == NULL)
 			t = tl = tc, tl->right = NULL;
 		else
 			tl->right = tc, tl = tc;
 	}
+	musthave(c, KEYWORD|ALIAS);
 	return (t);
 }
 
 static struct op *
-casepart()
+casepart(endtok)
+	int endtok;
 {
 	register struct op *t;
 	register int c;
@@ -500,7 +514,7 @@ casepart()
 	musthave(')', 0);
 
 	t->left = c_list();
-	if ((tpeek(CONTIN|KEYWORD|ALIAS)) != ESAC)
+	if ((tpeek(CONTIN|KEYWORD|ALIAS)) != endtok)
 		musthave(BREAK, CONTIN|KEYWORD|ALIAS);
 	return (t);
 }
@@ -508,7 +522,7 @@ casepart()
 static struct op *
 function_body(name, ksh_func)
 	char *name;
-	int ksh_func;	/* function foo { } vs foo() { .. } */
+	int ksh_func;	/* function foo { ... } vs foo() { .. } */
 {
 	XString xs;
 	char *xp, *p;
@@ -536,6 +550,7 @@ function_body(name, ksh_func)
 	}
 	t = newtp(TFUNCT);
 	t->str = Xclose(xs, xp);
+	t->u.ksh_func = ksh_func;
 
 	/* Note that POSIX allows only compound statements after foo(), sh and
 	 * at&t ksh allow any command, go with the later since it shouldn't
@@ -608,7 +623,7 @@ block(type, t1, t2, wp)
 }
 
 const	struct tokeninfo {
-	char	*name;
+	const char *name;
 	short	val;
 	short	reserved;
 } tokentab[] = {
@@ -642,7 +657,9 @@ const	struct tokeninfo {
 	{ "||",		LOGOR,	FALSE },
 	{ ";;",		BREAK,	FALSE },
 	{ "((",		MDPAREN, FALSE },
+#ifdef KSH
 	{ "|&",		COPROC,	FALSE },
+#endif /* KSH */
 	/* and some special cases... */
 	{ "newline",	'\n',	FALSE },
 	{ 0 }
@@ -667,10 +684,10 @@ initkeywords()
 
 static void
 syntaxerr(what)
-	char *what;
+	const char *what;
 {
 	char redir[6];	/* 2<<- is the longest redirection, I think */
-	char *s;
+	const char *s;
 	struct tokeninfo const *tt;
 	int c;
 
@@ -681,7 +698,8 @@ syntaxerr(what)
     Again:
 	switch (c) {
 	case 0:
-		if (multiline.on) {
+		if (multiline.on && multiline.start_token) {
+			multiline.on = FALSE; /* avoid infinate loops */
 			c = multiline.start_token;
 			source->errline = multiline.start_line;
 			what = "unmatched";
@@ -696,7 +714,7 @@ syntaxerr(what)
 		break;
 
 	case REDIR:
-		snptreef(s = redir, sizeof(redir), "%R", yylval.iop);
+		s = snptreef(redir, sizeof(redir), "%R", yylval.iop);
 		break;
 
 	default:
@@ -707,12 +725,12 @@ syntaxerr(what)
 			s = tt->name;
 		else {
 			if (c > 0 && c < 256) {
-				s = redir;
 				redir[0] = c;
 				redir[1] = '\0';
 			} else
-				shf_snprintf(s = redir, sizeof(redir),
+				shf_snprintf(redir, sizeof(redir),
 					"?%d", c);
+			s = redir;
 		}
 	}
 	yyerror("syntax error: `%s' %s\n", s, what);
@@ -744,7 +762,7 @@ newtp(type)
 
 	t = (struct op *) alloc(sizeof(*t), ATEMP);
 	t->type = type;
-	t->evalflags = 0;
+	t->u.evalflags = 0;
 	t->args = t->vars = NULL;
 	t->ioact = NULL;
 	t->left = t->right = NULL;
@@ -757,7 +775,9 @@ compile(s)
 	Source *s;
 {
 	yynerrs = 0;
-	multiline.on = FALSE;
+	multiline.on = s->type == SSTRING;
+	multiline.start_token = 0;
+	multiline.start_line = 0;
 	herep = heres;
 	source = s;
 	yyparse();
@@ -858,7 +878,7 @@ dbtestp_isa(te, meta)
 	return ret;
 }
 
-static char *
+static const char *
 dbtestp_getopnd(te, op, do_eval)
 	Test_env *te;
 	Test_op op;
@@ -867,7 +887,7 @@ dbtestp_getopnd(te, op, do_eval)
 	int c = tpeek(ARRAYVAR);
 
 	if (c != LWORD)
-		return (char *) 0;
+		return (const char *) 0;
 
 	ACCEPT;
 	XPput(*te->pos.av, yylval.cp);
@@ -879,8 +899,8 @@ static int
 dbtestp_eval(te, op, opnd1, opnd2, do_eval)
 	Test_env *te;
 	Test_op op;
-	char *opnd1;
-	char *opnd2;
+	const char *opnd1;
+	const char *opnd2;
 	int do_eval;
 {
 	return 1;
@@ -890,7 +910,7 @@ static void
 dbtestp_error(te, offset, msg)
 	Test_env *te;
 	int offset;
-	char *msg;
+	const char *msg;
 {
 	te->flags |= TEF_ERROR;
 

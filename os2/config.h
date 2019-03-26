@@ -1,16 +1,13 @@
 /* config.h.  Generated automatically by configure.  */
 /* config.h.in.  Generated automatically from configure.in by autoheader.  */
-/* Copyright (C) 1994, Memorial University of Newfoundland.
- * This file is covered by the GNU General Public License, version 2, see
- * the file misc/COPYING for details.
- *
- * acconfig.h for the PD ksh
+/*
+ * This file, acconfig.h, which is a part of pdksh (the public domain ksh),
+ * is placed in the public domain.  It comes with no licence, warranty
+ * or guarantee of any kind (i.e., at your own risk).
  */
 
 #ifndef CONFIG_H
 #define CONFIG_H
-
-#include "options.h"
 
 
 /* Define if on AIX 3.
@@ -85,6 +82,9 @@
 /* Define if dup2() preserves the close-on-exec flag (ultrix does this) */
 /* #undef DUP2_BROKEN */
 
+/* Define as the return value of signal handlers (0 or ).  */
+#define RETSIGVAL 
+
 /* Define if you have posix signal routines (sigaction(), et. al.) */
 /* #undef POSIX_SIGNALS */
 
@@ -99,6 +99,9 @@
 
 /* Define to use the fake posix signal routines (sigact.[ch]) */
 /* #define USE_FAKE_SIGACT 1 */
+
+/* Define if signals don't interrupt read() */
+/* #undef SIGNALS_DONT_INTERRUPT */
 
 /* Define if you have bsd versions of the setpgrp() and getpgrp() routines */
 /* #undef BSD_PGRP */
@@ -145,14 +148,8 @@
 /* Define if sys_siglist[] is in the C library */
 /* #undef HAVE_SYS_SIGLIST */
 
-/* Define if sys_siglist[] are defined in <signal.h> or <unistd.h> */
-/* #undef SYS_SIGLIST_DECLARED */
-
-/* Define if you have a sane <unistd.h> header file */
-#define HAVE_UNISTD_H 1
-
 /* Define if you have a sane <termios.h> header file */
-/* #undef HAVE_TERMIOS_H 1 */
+/* #define HAVE_TERMIOS_H 1 */
 
 /* Define if you have a memset() function in your C library */
 #define HAVE_MEMSET 1
@@ -162,6 +159,9 @@
 
 /* Define if you have a bcopy() function in your C library */
 /* #undef HAVE_BCOPY */
+
+/* Define if you have a lstat() function in your C library */
+/* #undef HAVE_LSTAT */
 
 /* Define if you have a sane <termio.h> header file */
 #define HAVE_TERMIO_H 1
@@ -187,14 +187,62 @@
 /* Define if you have a POSIX.1 compatiable <sys/wait.h> */
 #define POSIX_SYS_WAIT 1
 
+/* Define if your OS maps references to /dev/fd/n to file descriptor n */
+/* #undef HAVE_DEV_FD */
+
+/* Default PATH (see comments in configure.in for more details) */
+#define DEFAULT_PATH "c:/usr/bin;c:/os2;/os2"
+
+/* Include ksh features? (see comments in configure.in for more details) */
+#define KSH 1
+
+/* Include emacs editing? (see comments in configure.in for more details) */
+#define EMACS 1
+
+/* Include vi editing? (see comments in configure.in for more details) */
+#define VI 1
+
+/* Include job control? (see comments in configure.in for more details) */
+#define JOBS 1
+
+/* Include brace-expansion? (see comments in configure.in for more details) */
+#define BRACE_EXPAND 1
+
+/* Include any history? (see comments in configure.in for more details) */
+#define HISTORY 1
+
+/* Include complex history? (see comments in configure.in for more details) */
+/* #undef COMPLEX_HISTORY */
+
+/* Strict POSIX behaviour? (see comments in configure.in for more details) */
+/* #undef POSIXLY_CORRECT */
+
+/* Specify default $ENV? (see comments in configure.in for more details) */
+/* #undef DEFAULT_ENV */
+
+/* Include shl(1) support? (see comments in configure.in for more details) */
+/* #undef SWTCH */
+
+/* Include game-of-life? (see comments in configure.in for more details) */
+/* #undef SILLY */
+
 /* The number of bytes in a int.  */
 #define SIZEOF_INT 4
 
 /* The number of bytes in a long.  */
 #define SIZEOF_LONG 4
 
+/* Define if you have the _setjmp function.  */
+/* #undef HAVE__SETJMP */
+
 /* Define if you have the confstr function.  */
 /* #undef HAVE_CONFSTR */
+
+/* Define if you have the flock function.  */
+#define HAVE_FLOCK 1
+
+/* Define if you have the getgroups function.  */
+/* #undef HAVE_GETGROUPS */
 
 /* Define if you have the getrusage function.  */
 /* #undef HAVE_GETRUSAGE */
@@ -205,14 +253,14 @@
 /* Define if you have the killpg function.  */
 /* #undef HAVE_KILLPG */
 
-/* Define if you have the lstat function.  */
-/* #undef HAVE_LSTAT */
-
 /* Define if you have the nice function.  */
 /* #undef HAVE_NICE */
 
 /* Define if you have the setrlimit function.  */
 /* #undef HAVE_SETRLIMIT */
+
+/* Define if you have the sigsetjmp function.  */
+#define HAVE_SIGSETJMP 1
 
 /* Define if you have the strcasecmp function.  */
 /* #undef HAVE_STRCASECMP */
@@ -230,7 +278,7 @@
 #define HAVE_TCSETPGRP 1
 
 /* Define if you have the ulimit function.  */
-/* #undef HAVE_ULIMIT */
+#define HAVE_ULIMIT 1
 
 /* Define if you have the wait3 function.  */
 /* #undef HAVE_WAIT3 */

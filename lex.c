@@ -7,14 +7,20 @@
 
 static void	readhere ARGS((struct ioword *iop));
 static int	getsc_ ARGS((void));
+static void	getsc_line ARGS((Source *s));
 static char	*get_brace_var ARGS((XString *wsp, char *wp));
 static int	arraysub ARGS((char **strp));
+static const char *ungetsc_ ARGS((int c));
+static int	getsc_bn_ ARGS((void));
 
 static void gethere ARGS((void));
 
 /* optimized getsc_() */
-#define	getsc()	((*source->str != 0) ? *source->str++ : getsc_())
-#define	ungetsc() (source->str != null ? source->str-- : source->str)
+#define	getsc()	((*source->str != '\0') ? *source->str++ : getsc_())
+#define getsc_bn() (*source->str != '\0' && *source->str != '\\' \
+			? *source->str++ : getsc_bn_())
+#define	ungetsc(c) (source->str > source->start ? source->str-- : ungetsc_(c))
+
 
 /*
  * Lexical analyzer
@@ -29,7 +35,7 @@ yylex(cf)
 	int cf;
 {
 	register int c, state;
-	char states [64], *statep = states;
+	char states [64], *statep = states; /* XXX overflow check */
 	XString ws;		/* expandable output word */
 	register char *wp;	/* output word pointer */
 	register char *sp, *dp;
@@ -57,7 +63,7 @@ yylex(cf)
 		if (c == '#')
 			while ((c = getsc()) != '\0' && c != '\n')
 				;
-		ungetsc();
+		ungetsc(c);
 	}
 	if (source->flags & SF_ALIAS) {	/* trailing ' ' in alias definition */
 		source->flags &= ~SF_ALIAS;
@@ -76,7 +82,55 @@ yylex(cf)
 		Xcheck(ws, wp);
 		switch (state) {
 		  case SBASE:
-		  Sbase:
+			if (c == '[' && (cf & (VARASN|ARRAYVAR))) {
+				*wp = EOS; /* temporary */
+				if (is_wdvarname(Xstring(ws, wp), FALSE))
+				{
+					char *p, *tmp;
+
+					if (arraysub(&tmp)) {
+						*wp++ = CHAR;
+						*wp++ = c;
+						for (p = tmp; *p; ) {
+							Xcheck(ws, wp);
+							*wp++ = CHAR;
+							*wp++ = *p++;
+						}
+						afree(tmp, ATEMP);
+						break;
+					} else {
+						Source *s;
+
+						s = pushs(SREREAD,
+							  source->areap);
+						s->start = s->str
+							= s->u.freeme = tmp;
+						s->next = source;
+						source = s;
+					}
+				}
+				*wp++ = CHAR;
+				*wp++ = c;
+				break;
+			}
+			/* fall through.. */
+		  Sbase1:	/* includes *(...|...) pattern (*+?@!) */
+#ifdef KSH
+			if (c == '*' || c == '@' || c == '+' || c == '?'
+			    || c == '!')
+			{
+				c2 = getsc();
+				if (c2 == '(' /*)*/ ) {
+					*wp++ = OPAT;
+					*wp++ = c;
+					*++statep = state = SPATTERN;
+					break;
+				}
+				ungetsc(c2);
+			}
+#endif /* KSH */
+			/* fall through.. */
+		  Sbase2:	/* doesn't include *(...|...) pattern (*+?@!) */
 			switch (c) {
 			  case '\\':
 				c = getsc();
@@ -135,16 +189,32 @@ yylex(cf)
 						ddparen_start = wp;
 						*wp++ = EXPRSUB;
 					} else {
-						ungetsc();
+						ungetsc(c);
 						*++statep = state = SPAREN;
 						nparen = 1;
 						csstate = 0;
 						*wp++ = COMSUB;
 					}
 				} else if (c == '{') /*}*/ {
-					*++statep = state = SBRACE;
 					*wp++ = OSUBST;
 					wp = get_brace_var(&ws, wp);
+					/* If this is a trim operation,
+					 * wrap @(...) around the pattern
+					 * (allows easy handling of ${a#b|c})
+					 */
+					c = getsc_bn();
+					if (c == '#' || c == '%') {
+						*wp++ = CHAR, *wp++ = c;
+						if ((c2 = getsc_bn()) == c)
+							*wp++ = CHAR, *wp++ = c;
+						else
+							ungetsc(c2);
+						*wp++ = OPAT, *wp++ = '@';
+						*++statep = state = STBRACE;
+					} else {
+						ungetsc(c);
+						*++statep = state = SBRACE;
+					}
 				} else if (ctype(c, C_ALPHA)) {
 					*wp++ = OSUBST;
 					do {
@@ -154,7 +224,7 @@ yylex(cf)
 					} while (ctype(c, C_ALPHA|C_DIGIT));
 					*wp++ = '\0';
 					*wp++ = CSUBST;
-					ungetsc();
+					ungetsc(c);
 				} else if (ctype(c, C_DIGIT|C_VAR1)) {
 					Xcheck(ws, wp);
 					*wp++ = OSUBST;
@@ -163,7 +233,7 @@ yylex(cf)
 					*wp++ = CSUBST;
 				} else {
 					*wp++ = CHAR, *wp++ = '$';
-					ungetsc();
+					ungetsc(c);
 				}
 				break;
 			  case '`':
@@ -178,38 +248,6 @@ yylex(cf)
 					for (sp = statep; sp > states; --sp)
 						if (*sp == SDQUOTE)
 							indquotes = 1;
-				break;
-			  case '[': 
-				*wp = EOS; /* temporary */
-				if (state == SBASE && (cf & (VARASN|ARRAYVAR))
-				    && is_wdvarname(Xstring(ws, wp), FALSE))
-				{
-					char *p, *tmp;
-
-					ungetsc();
-					if (arraysub(&tmp)) {
-						for (p = tmp; *p; ) {
-							Xcheck(ws, wp);
-							*wp++ = CHAR;
-							*wp++ = *p++;
-						}
-						afree(tmp, ATEMP);
-						break;
-					} else {
-						Source *s;
-
-						s = pushs(SREREAD,
-							  source->areap);
-						s->str = tmp;
-						s->u.start = tmp;
-						s->next = source;
-						source = s;
-
-						getsc(); /* '[' */
-					}
-				}
-				*wp++ = CHAR;
-				*wp++ = c;
 				break;
 			  default:
 				*wp++ = CHAR, *wp++ = c;
@@ -285,18 +323,20 @@ yylex(cf)
 
 		  case SDDPAREN: /* $(( .. )) */
 			/* todo: deal with $((...); (...)) properly */
+			/* XXX should nest using existing state machine
+			 *     (embed "..", $(...), etc.) */
 			if (c == '(')
 				nparen++;
 			else if (c == ')') {
 				nparen--;
 				if (nparen == 1) {
 					/*(*/
-					if (getsc() == ')') {
+					if ((c2 = getsc()) == ')') {
 						state = *--statep;
 						*wp++ = 0; /* end of EXPRSUB */
 						break;
 					} else {
-						ungetsc();
+						ungetsc(c2);
 						/* mismatched parenthesis -
 						 * assume we were really
 						 * parsing a $(..) expression
@@ -321,7 +361,22 @@ yylex(cf)
 				state = *--statep;
 				*wp++ = CSUBST;
 			} else
-				goto Sbase;
+				goto Sbase1;
+			break;
+
+		  case STBRACE:
+			/* same as SBRACE, except | is saved as SPAT and
+			 * CPAT is added at the end.
+			 */
+			/*{*/
+			if (c == '}') {
+				state = *--statep;
+				*wp++ = CPAT;
+				*wp++ = CSUBST;
+			} else if (c == '|') {
+				*wp++ = SPAT;
+			} else
+				goto Sbase1;
 			break;
 
 		  case SBQUOTE:
@@ -360,27 +415,35 @@ yylex(cf)
 				if (ndparen > 0)
 				    --ndparen;
 				/*(*/
-				else if (getsc() == ')') {
+				else if ((c2 = getsc()) == ')') {
 					c = 0;
 					*wp++ = CQUOTE;
 					goto Done;
 				} else
-					ungetsc();
+					ungetsc(c2);
 			} else if (c == '(')
 				/* parenthesis inside quotes and backslashes
 				 * are lost, but at&t ksh doesn't count them
 				 * either
 				 */
 				++ndparen;
-			goto Sbase;
+			goto Sbase2;
 
 		  case SHEREDELIM:	/* <<,<<- delimiter */
+			/* XXX chuck this state (and the next) - use
+			 * the existing states ($ and \`..` should be
+			 * stripped of their specialness after the
+			 * fact).
+			 */
 			/* here delimiters need a special case since
 			 * $ and `..` are not to be treated specially
 			 */
 			if (c == '\\') {
-				*wp++ = QCHAR;
-				*wp++ = getsc();
+				c = getsc();
+				if (c != '\n') {
+					*wp++ = QCHAR;
+					*wp++ = c;
+				}
 			} else if (c == '\'') {
 				*++statep = state = SSQUOTE;
 				*wp++ = OQUOTE;
@@ -398,9 +461,21 @@ yylex(cf)
 				*wp++ = CQUOTE;
 				state = SHEREDELIM;
 			} else {
+				if (c == '\\' && (c = getsc()) == '\n')
+					break;
 				*wp++ = CHAR;
-				*wp++ = c == '\\' ? getsc() : c;
+				*wp++ = c;
 			}
+			break;
+
+		  case SPATTERN:	/* in *(...|...) pattern (*+?@!) */
+			if ( /*(*/ c == ')') {
+				*wp++ = CPAT;
+				state = *--statep;
+			} else if (c == '|')
+				*wp++ = SPAT;
+			else
+				goto Sbase1;
 			break;
 		}
 	}
@@ -437,10 +512,12 @@ Done:
 				    (c == '|') ? LOGOR :
 				    (c == '&') ? LOGAND :
 				    YYERRCODE;
+#ifdef KSH
 			else if (c == '|' && c2 == '&')
 				c = COPROC;
+#endif /* KSH */
 			else
-				ungetsc();
+				ungetsc(c2);
 			return c;
 
 		  case '>':
@@ -459,7 +536,7 @@ Done:
 					if (getsc() == '-')
 						iop->flag |= IOSKIP;
 					else
-						ungetsc();
+						ungetsc(c2);
 			} else if (c2 == '&')
 				iop->flag = IODUP | (c == '<' ? IORDUP : 0);
 			else {
@@ -467,7 +544,7 @@ Done:
 				if (c == '>' && c2 == '|')
 					iop->flag |= IOCLOB;
 				else
-					ungetsc();
+					ungetsc(c2);
 			}
 
 			iop->name = (char *) 0;
@@ -482,10 +559,10 @@ Done:
 			return c;
 
 		  case '(':  /*)*/
-			if (getsc() == '(') /*)*/
+			if ((c2 = getsc()) == '(') /*)*/
 				c = MDPAREN;
 			else
-				ungetsc();
+				ungetsc(c2);
 			return c;
 		  /*(*/
 		  case ')':
@@ -497,7 +574,7 @@ Done:
 	yylval.cp = Xclose(ws, wp);
 	if (state == SWORD || state == SDPAREN)	/* ONEWORD? */
 		return LWORD;
-	ungetsc();		/* unget terminator */
+	ungetsc(c);		/* unget terminator */
 
 	/* copy word to unprefixed string ident */
 	for (sp = yylval.cp, dp = ident; dp < ident+IDENT && (c = *sp++) == CHAR; )
@@ -511,8 +588,9 @@ Done:
 		struct tbl *p;
 		int h = hash(ident);
 
+		/* { */
 		if ((cf & KEYWORD) && (p = tsearch(&keywords, ident, h))
-		    && (!(cf & ESACONLY) || p->val.i == ESAC))
+		    && (!(cf & ESACONLY) || p->val.i == ESAC || p->val.i == '}'))
 		{
 			afree(yylval.cp, ATEMP);
 			return p->val.i;
@@ -527,7 +605,7 @@ Done:
 					return LWORD;
 			/* push alias expansion */
 			s = pushs(SALIAS, source->areap);
-			s->str = p->val.s;
+			s->start = s->str = p->val.s;
 			s->u.tblp = p;
 			s->next = source;
 			source = s;
@@ -562,7 +640,7 @@ readhere(iop)
 	register int c;
 	char *volatile eof;
 	char *eofp;
-	int skiptabs;
+	int skiptabs, bn;
 	int i;
 
 	eof = evalstr(iop->delim, 0);
@@ -577,21 +655,23 @@ readhere(iop)
 		e->temps = h;
 	}
 	iop->name = h->name;
-	shf = shf_open(h->name, O_WRONLY|O_CREAT|O_TRUNC, 0666, 0);
-	if (shf == NULL)
-		yyerror("cannot create temporary file\n");
+	if (!(shf = h->shf))
+		yyerror("cannot create temporary file %s - %s\n",
+			h->name, strerror(errno));
 
 	newenv(E_ERRH);
-	if ((i = setjmp(e->jbuf))) {
+	i = ksh_sigsetjmp(e->jbuf, 0);
+	if (i) {
 		quitenv();
 		shf_close(shf);
 		unwind(i);
 	}
 
+	bn = iop->flag & IOEVAL;
 	for (;;) {
 		eofp = eof;
 		skiptabs = iop->flag & IOSKIP;
-		while ((c = getsc()) != 0) {
+		while ((c = (bn ? getsc_bn() : getsc())) != 0) {
 			if (skiptabs) {
 				if (c == '\t')
 					continue;
@@ -602,13 +682,13 @@ readhere(iop)
 			eofp++;
 		}
 		/* Allow EOF here so commands with out trailing newlines
-		 * (eg, ksh -c '...', $(...), etc) will work
+		 * will work (eg, ksh -c '...', $(...), etc).
 		 */
 		if (*eofp == '\0' && (c == 0 || c == '\n'))
 			break;
-		ungetsc();
+		ungetsc(c);
 		shf_write(eof, eofp - eof, shf);
-		while ((c = getsc()) != '\n') {
+		while ((c = (bn ? getsc_bn() : getsc())) != '\n') {
 			if (c == 0)
 				yyerror("here document `%s' unclosed\n", eof);
 			shf_putc(c, shf);
@@ -645,7 +725,7 @@ yyerror(fmt, va_alist)
 	SH_VA_START(va, fmt);
 	shf_vfprintf(shl_out, fmt, va);
 	va_end(va);
-	errorf((char *) 0);
+	errorf(null);
 }
 
 /*
@@ -662,6 +742,7 @@ pushs(type, areap)
 	s = (Source *) alloc(sizeof(Source), areap);
 	s->type = type;
 	s->str = null;
+	s->start = NULL;
 	s->line = 0;
 	s->errline = 0;
 	s->file = NULL;
@@ -681,7 +762,6 @@ getsc_()
 {
 	register Source *s = source;
 	register int c;
-	static char line[LINE + 1];
 
 	while ((c = *s->str++) == 0) {
 		s->str = NULL;		/* return 0 for EOF by default */
@@ -690,111 +770,10 @@ getsc_()
 			s->str = null;
 			return 0;
 
-		  case STTY:
-			s->str = line;
-			line[0] = '\0';
-			mprint(); /* print mail messages */
-#ifdef KSH
-			if (ksh_tmout) {
-				ksh_tmout_state = TMOUT_READING;
-				alarm(ksh_tmout);
-			}
-#endif /* KSH */
-#ifdef EDIT
-			if (0
-# ifdef VI
-			    || Flag(FVI)
-# endif /* VI */
-# ifdef EMACS
-			    || Flag(FEMACS) || Flag(FGMACS)
-# endif /* EMACS */
-			    )
-				c = x_read(line, LINE);
-			else
-#endif
-			{
-				pprompt(prompt, 0);
-				/*
-				 * This allows the arrival of a SIGCHLD 
-				 * to not disturb us until we are ready. 
-				 */
-				while ((c = blocking_read(0, line, LINE)) < 0
-					&& errno == EINTR)
-					if (trap)
-						runtraps(0);
-			}
-
-			/* XXX: temporary kludge to restore source after a
-			 * trap may have been executed.
-			 */
-			source = s;
-
-#ifdef KSH
-			if (ksh_tmout) {
-				ksh_tmout_state = TMOUT_EXECUTING;
-				alarm(0);
-			}
-#endif /* KSH */
-			if (c < 0)	/* read error */
-				c = 0;
-			strip_nuls(line, c);
-			line[c] = '\0';
-			if (c == 0) /* EOF */
-				s->str = NULL;
-			else {
-				c = 0;
-				while (line[c] && ctype(line[c], C_IFS)
-					       && ctype(line[c], C_IFSWS))
-					c++;
-#ifdef HISTORY
-				if (line[c]) {
-# ifdef EASY_HISTORY
-					if (cur_prompt == PS2)
-						histappend(line, 1);
-					else
-# endif /* EASY_HISTORY */
-					    {
-						s->line++;
-						histsave(s->line, s->str, 1);
-					    }
-				}
-#endif /* HISTORY */
-			}
-			set_prompt(PS2, (Source *) 0);
-			break;
-
-		  case SFILE:
 		  case SSTDIN:
-		  {
-			char *xp = Xstring(s->xs, xp), *p;
-
-			s->line++;
-			while (1) {
-				p = shf_getse(xp, Xnleft(s->xs, xp), s->u.shf);
-				if (!p || (xp = p, xp[-1] == '\n')) {
-					s->str = Xlength(s->xs, xp) ?
-						    Xstring(s->xs, xp) : NULL;
-					strip_nuls(Xstring(s->xs, xp),
-						Xlength(s->xs, xp));
-					break;
-				}
-				/* double buffer size */
-				xp++; /* move past null so doubling works... */
-				XcheckN(s->xs, xp, Xlength(s->xs, xp));
-				xp--; /* ...and move back again */
-			}
-			/* flush any unwanted input so other programs/builtins
-			 * can read it.  Not very optimal, but less error prone
-			 * than flushing else where, dealing with redirections,
-			 * etc..
-			 * todo: reduce size of shf buffer (~128?) if SSTDIN
-			 */
-			if (s->type == SSTDIN)
-				shf_flush(s->u.shf);
-			else if (s->str == NULL)
-				shf_fdclose(s->u.shf);
+		  case SFILE:
+			getsc_line(s);
 			break;
-		  }
 
 		  case SWSTR:
 			break;
@@ -803,16 +782,16 @@ getsc_()
 			break;
 
 		  case SWORDS:
-			s->str = *s->u.strv++;
+			s->start = s->str = *s->u.strv++;
 			s->type = SWORDSEP;
 			break;
 
 		  case SWORDSEP:
 			if (*s->u.strv == NULL) {
-				s->str = newline;
+				s->start = s->str = newline;
 				s->type = SEOF;
 			} else {
-				s->str = space;
+				s->start = s->str = space;
 				s->type = SWORDS;
 			}
 			break;
@@ -836,19 +815,20 @@ getsc_()
 				 * never affects anything (I think).
 				 */
 				s->flags |= SF_ALIASEND;
-				s->str = space;
+				s->start = s->str = space;
 			}
 			continue;
 
 		  case SREREAD:
-			afree(s->u.start, ATEMP);
+			if (s->start != s->u.ugbuf) /* yuck */
+				afree(s->u.freeme, ATEMP);
 			source = s = s->next;
 			continue;
 		}
 		if (s->str == NULL) {
 			s->type = SEOF;
-			s->str = null;
-			return 0;
+			s->start = s->str = null;
+			return '\0';
 		}
 		if (s->flags & SF_ECHO) {
 			shf_puts(s->str, shl_out);
@@ -856,6 +836,125 @@ getsc_()
 		}
 	}
 	return c;
+}
+
+static void
+getsc_line(s)
+	Source *s;
+{
+	char *xp = Xstring(s->xs, xp);
+	int interactive = Flag(FTALKING) && s->type == SSTDIN;
+	int have_tty = interactive && (s->flags & SF_TTY);
+
+	/* Done here to ensure nothing odd happens when a timeout occurs */
+	XcheckN(s->xs, xp, LINE);
+	*xp = '\0';
+	s->start = s->str = xp;
+
+#ifdef KSH
+	if (have_tty && ksh_tmout) {
+		ksh_tmout_state = TMOUT_READING;
+		alarm(ksh_tmout);
+	}
+#endif /* KSH */
+#ifdef EDIT
+	if (have_tty && (0
+# ifdef VI
+			 || Flag(FVI)
+# endif /* VI */
+# ifdef EMACS
+			 || Flag(FEMACS) || Flag(FGMACS)
+# endif /* EMACS */
+		))
+	{
+		int nread;
+
+		nread = x_read(xp, LINE);
+		if (nread < 0)	/* read error */
+			nread = 0;
+		xp[nread] = '\0';
+		xp += nread;
+	}
+	else
+#endif /* EDIT */
+	{
+		if (interactive) {
+			pprompt(prompt, 0);
+#ifdef OS2
+			setmode (0, O_TEXT);
+#endif /* OS2 */
+		} else
+			s->line++;
+
+		while (1) {
+			char *p = shf_getse(xp, Xnleft(s->xs, xp), s->u.shf);
+
+			if (!p && shf_error(s->u.shf)
+			    && shf_errno(s->u.shf) == EINTR)
+			{
+				shf_clearerr(s->u.shf);
+				if (trap)
+					runtraps(0);
+				continue;
+			}
+			if (!p || (xp = p, xp[-1] == '\n'))
+				break;
+			/* double buffer size */
+			xp++; /* move past null so doubling works... */
+			XcheckN(s->xs, xp, Xlength(s->xs, xp));
+			xp--; /* ...and move back again */
+		}
+#ifdef OS2
+		setmode(0, O_BINARY);
+#endif /* OS2 */
+		/* flush any unwanted input so other programs/builtins
+		 * can read it.  Not very optimal, but less error prone
+		 * than flushing else where, dealing with redirections,
+		 * etc..
+		 * todo: reduce size of shf buffer (~128?) if SSTDIN
+		 */
+		if (s->type == SSTDIN)
+			shf_flush(s->u.shf);
+	}
+	/* XXX: temporary kludge to restore source after a
+	 * trap may have been executed.
+	 */
+	source = s;
+#ifdef KSH
+	if (have_tty && ksh_tmout)
+	{
+		ksh_tmout_state = TMOUT_EXECUTING;
+		alarm(0);
+	}
+#endif /* KSH */
+	s->start = s->str = Xstring(s->xs, xp);
+	strip_nuls(Xstring(s->xs, xp), Xlength(s->xs, xp));
+	/* Note: if input is all nulls, this is not eof */
+	if (Xlength(s->xs, xp) == 0) { /* EOF */
+		if (s->type == SFILE)
+			shf_fdclose(s->u.shf);
+		s->str = NULL;
+	} else if (interactive) {
+#ifdef HISTORY
+		char *p = Xstring(s->xs, xp);
+		if (cur_prompt == PS1)
+			while (*p && ctype(*p, C_IFS) && ctype(*p, C_IFSWS))
+				p++;
+		if (*p) {
+# ifdef EASY_HISTORY
+			if (cur_prompt == PS2)
+				histappend(Xstring(s->xs, xp), 1);
+			else
+# endif /* EASY_HISTORY */
+			{
+				s->line++;
+				histsave(s->line, s->str, 1);
+			}
+		}
+#endif /* HISTORY */
+	}
+	if (interactive)
+		set_prompt(PS2, (Source *) 0);
 }
 
 void
@@ -867,6 +966,7 @@ set_prompt(to, s)
 
 	switch (to) {
 	case PS1: /* command */
+#ifdef KSH
 		/* Substitute ! and !! here, before substitutions are done
 		 * so ! in expanded variables are not expanded.
 		 * NOTE: this is not what at&t ksh does (it does it after
@@ -877,8 +977,8 @@ set_prompt(to, s)
 			char *ps1;
 			Area *saved_atemp;
 
-			ps1 = strval(global("PS1"));
-			shf = shf_sopen((char *) 0, strlen(ps1),
+			ps1 = str_val(global("PS1"));
+			shf = shf_sopen((char *) 0, strlen(ps1) * 2,
 				SHF_WR | SHF_DYNAMIC, (struct shf *) 0);
 			while (*ps1) {
 				if (*ps1 != '!' || *++ps1 == '!')
@@ -890,18 +990,26 @@ set_prompt(to, s)
 			ps1 = shf_sclose(shf);
 			saved_atemp = ATEMP;
 			newenv(E_ERRH);
-			if (setjmp(e->jbuf)) {
+			if (ksh_sigsetjmp(e->jbuf, 0)) {
 				prompt = safe_prompt;
-				warningf(TRUE, "error during expansion of PS1");
+				/* Don't print an error - assume it has already
+				 * been printed.  Reason is we may have forked
+				 * to run a command and the child may be
+				 * unwinding its stack through this code as it
+				 * exits.
+				 */
 			} else
-				prompt = strsave(substitute(ps1, 0),
+				prompt = str_save(substitute(ps1, 0),
 						 saved_atemp);
 			quitenv();
 		}
+#else /* KSH */
+		prompt = str_val(global("PS1"));
+#endif /* KSH */
 		break;
 
 	case PS2: /* command continuation */
-		prompt = strval(global("PS2"));
+		prompt = str_val(global("PS2"));
 		break;
 	}
 }
@@ -909,7 +1017,7 @@ set_prompt(to, s)
 /* See also related routine, promptlen() in edit.c */
 void
 pprompt(cp, ntruncate)
-	register char *cp;
+	const char *cp;
 	int ntruncate;
 {
 #if 0
@@ -971,7 +1079,7 @@ get_brace_var(wsp, wp)
 
 	state = PS_INITIAL;
 	while (1) {
-		c = getsc();
+		c = getsc_bn();
 		/* State machine to figure out where the variable part ends. */
 		switch (state) {
 		  case PS_INITIAL:
@@ -996,9 +1104,9 @@ get_brace_var(wsp, wp)
 				if (c == '[') {
 					char *tmp, *p;
 
-					ungetsc();
 					if (!arraysub(&tmp))
 						yyerror("missing ]\n");
+					*wp++ = c;
 					for (p = tmp; *p; ) {
 						Xcheck(*wsp, wp);
 						*wp++ = *p++;
@@ -1020,7 +1128,7 @@ get_brace_var(wsp, wp)
 		}
 		if (state == PS_END) {
 			*wp++ = '\0';	/* end of variable part */
-			ungetsc();
+			ungetsc(c);
 			break;
 		}
 		Xcheck(*wsp, wp);
@@ -1041,12 +1149,12 @@ arraysub(strp)
 	XString ws;
 	char	*wp;
 	char	c;
-	int 	depth = 0;
+	int 	depth = 1;	/* we are just past the initial [ */
 
 	Xinit(ws, wp, 32, ATEMP);
 
 	do {
-		c = getsc();
+		c = getsc_bn();
 		Xcheck(ws, wp);
 		*wp++ = c;
 		if (c == '[')
@@ -1059,4 +1167,45 @@ arraysub(strp)
 	*strp = Xclose(ws, wp);
 
 	return depth == 0 ? 1 : 0;
+}
+
+/* Unget a char: handles case when we are already at the start of the buffer */
+static const char *
+ungetsc_(c)
+	int c;
+{
+	/* Don't unget eof... */
+	if (source->str == null && c == '\0')
+		return source->str;
+	if (source->str > source->start)
+		source->str--;
+	else {
+		Source *s;
+
+		s = pushs(SREREAD, source->areap);
+		s->u.ugbuf[0] = c; s->u.ugbuf[1] = '\0';
+		s->start = s->str = s->u.ugbuf;
+		s->next = source;
+		source = s;
+	}
+	return source->str;
+}
+
+/* Called to get a char that isn't a \newline sequence. */
+static int
+getsc_bn_ ARGS((void))
+{
+	int c;
+
+	while (1) {
+		c = getsc_();
+		if (c != '\\')
+			return c;
+		c = getsc();
+		if (c != '\n') {
+			ungetsc(c);
+			return '\\';
+		}
+		/* ignore the \newline; get the next char... */
+	}
 }
