@@ -363,8 +363,8 @@ test_eval(te, op, opnd1, opnd2, do_eval)
 		{
 			long v1, v2;
 
-			if (!evaluate(opnd1, &v1, TRUE)
-			    || !evaluate(opnd2, &v2, TRUE))
+			if (!evaluate(opnd1, &v1, KSH_RETURN_ERROR)
+			    || !evaluate(opnd2, &v2, KSH_RETURN_ERROR))
 			{
 				/* error already printed.. */
 				te->flags |= TEF_ERROR;
@@ -386,11 +386,25 @@ test_eval(te, op, opnd1, opnd2, do_eval)
 			}
 		}
 	  case TO_FILNT: /* -nt */
-		return stat (opnd1, &b1) == 0 && stat (opnd2, &b2) == 0
-		       && b1.st_mtime > b2.st_mtime;
+		{
+			int s2;
+			/* ksh88/ksh93 succeed if file2 can't be stated
+			 * (subtly different from `does not exist').
+			 */
+			return stat(opnd1, &b1) == 0
+				&& (((s2 = stat(opnd2, &b2)) == 0
+				      && b1.st_mtime > b2.st_mtime) || s2 < 0);
+		}
 	  case TO_FILOT: /* -ot */
-		return stat (opnd1, &b1) == 0 && stat (opnd2, &b2) == 0
-		       && b1.st_mtime < b2.st_mtime;
+		{
+			int s1;
+			/* ksh88/ksh93 succeed if file1 can't be stated
+			 * (subtly different from `does not exist').
+			 */
+			return stat(opnd2, &b2) == 0
+				&& (((s1 = stat(opnd1, &b1)) == 0
+				      && b1.st_mtime < b2.st_mtime) || s1 < 0);
+		}
 	  case TO_FILEQ: /* -ef */
 		return stat (opnd1, &b1) == 0 && stat (opnd2, &b2) == 0
 		       && b1.st_dev == b2.st_dev

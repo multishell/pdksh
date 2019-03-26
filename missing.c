@@ -267,3 +267,27 @@ ksh_opendir(d)
 	return opendir(d);
 }
 #endif /* OPENDIR_DOES_NONDIR */
+
+#ifndef HAVE_DUP2
+int
+dup2(oldd, newd)
+	int oldd;
+	int newd;
+{
+	int old_errno;
+
+	if (fcntl(oldd, F_GETFL, 0) == -1)
+		return -1;	/* errno == EBADF */
+
+	if (oldd == newd)
+		return newd;
+
+	old_errno = errno;
+
+	close(newd);	/* in case its open */
+
+	errno = old_errno;
+
+	return fcntl(oldd, F_DUPFD, newd);
+}
+#endif /* !HAVE_MEMSET */

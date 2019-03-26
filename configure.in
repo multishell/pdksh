@@ -220,8 +220,6 @@ AC_SUBST(ac_exe_suffix)dnl
 dnl this incorperates AC_AIX, AC_ISC_POSIX and AC_MINIX tests and does others
 KSH_OS_TYPE
 dnl
-AC_C_CROSS
-dnl
 dnl Program name munging stuff (prefix, suffix, transform)
 AC_ARG_PROGRAM
 dnl
@@ -276,8 +274,9 @@ dnl Library functions
 dnl
 KSH_MEMMOVE
 KSH_MEMSET
-AC_CHECK_FUNCS(confstr flock getwd killpg nice setrlimit strerror \
-	strcasecmp strstr sysconf tcsetpgrp ulimit waitpid wait3)
+AC_CHECK_FUNCS(confstr dup2 flock getcwd getwd killpg nice \
+	setrlimit strerror strcasecmp strstr sysconf tcsetpgrp \
+	ulimit waitpid wait3)
 AC_CHECK_FUNCS(sigsetjmp _setjmp, break)
 AC_FUNC_MMAP
 KSH_FUNC_LSTAT

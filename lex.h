@@ -10,7 +10,7 @@ typedef struct source Source;
 struct source {
 	const char *str;	/* input pointer */
 	int	type;		/* input type */
-	char const *start;	/* start of current buffer */
+	const char *start;	/* start of current buffer */
 	union {
 		char **strv;	/* string [] */
 		struct shf *shf; /* shell file */

@@ -149,7 +149,7 @@
 /* #undef HAVE_SYS_SIGLIST */
 
 /* Define if you have a sane <termios.h> header file */
-/* #define HAVE_TERMIOS_H 1 */
+#define HAVE_TERMIOS_H 1
 
 /* Define if you have a memset() function in your C library */
 #define HAVE_MEMSET 1

@@ -5,7 +5,7 @@ problems believed to be fixed marked by x.
 * pdksh 5.0.3, MIPS RISC/os 5.0 (bsd universe) (noted by Michael Rendell):
   for interactive, job controlled shells, the kernel's tty state gets twisted
   in such a way that all output is lost (eg, if ttyXX is wedged then
-  "echo hi > /dev/ttyXX" from a seperate login appears to succeed but produces
+  "echo hi > /dev/ttyXX" from a separate login appears to succeed but produces
   no output on ttyXX).
   Work around is to run a program and hit ^C.
 
@@ -23,6 +23,7 @@ problems believed to be fixed marked by x.
   on a word with a single backquote causes a "no closing quote" error and
   loses the partially entered command (vi mode).
   [see Mail.2:48]
+  [partly fixed in 5.2.14: backquote ok, but happens for the likes of ${.]
 
 * pdksh 5.0.10, - (reported by Andrew Moore): no overflow checking is done
   in integer parsing code.
@@ -84,7 +85,21 @@ problems believed to be fixed marked by x.
   detected (if the shell exits before reading the whole file).
   [see Mail.XXX]
 
-* pdksh 5.2.12, - : MAILCHECK isn't preserved from the envirnment on startup.
+* pdksh 5.2.12, (reported by Michael Staats): emacs: file completion does
+  not complete as much as possible when file is ~/something (will list
+  possible completions but won't fill in to the first difference).
+  Happens since code doesn't distinguish between globbing and ~ (needs
+  special case to strip & replace a leading ~ during the completion
+  process).
+
+* pdksh 5.2.13, (reported by Martin Dalecki): shell dumps core when set -x
+  is used on some scripts
+  [awaiting more info...]
+
+* pdksh 5.2.13, (reported by Arthor Pool): interactive shells can't be
+  interrupted when processing ${foo#bar} expressions.
+  [same goes for globbing - fixing this means checking for interrupts in
+  the `tight' loops - could slow things down quite a bit]
 
 --------------------- put fixed problems below this line ---------------------
 
@@ -1221,3 +1236,161 @@ x pdksh 5.2.12, - (reported by Mike Kelly <tfsmiles@ecst.csuchico.edu>):
   doting a directory (or a empty path) is allowed.
   [see Mail.XXX]
   [fixed in 5.2.13: exec.c(search_access): don't do non-regular files for R_OK]
+
+x pdksh 5.2.13, - (reported by Mike Kelly <tfsmiles@ecst.csuchico.edu>):
+  typeset -f FUNC doesn't print follows command (and expression) substitutions.
+  [see Mail.XXX]
+  [fixed in 5.2.14: tree.c(tputS): add wp++]
+
+x pdksh 5.2.13, - (reported by Thomas Gellekum):
+  make check fails on freebsd with "chmod 644 abcx failed - Inappropriate ...".
+  [see Mail.XXX]
+  [fixed in 5.2.14: make test/th convert permissions to octal]
+
+x pdksh 5.2.13, - (reported with fix by David E. Wexelblat):
+  when re-allocating memory, too much may be copied from old memory.
+  [see Mail.XXX]
+  [fixed in 5.2.14: use min old old size and new size]
+
+x pdksh 5.2.13, - (reported with fix by David E. Wexelblat):
+  set -o printed some options sans names.
+  [see Mail.XXX]
+  [fixed in 5.2.14: use 0 instead of null in options[] table]
+
+x pdksh 5.2.13, - (reported by Gabor Zahemszky):
+  emacs mode: <esc>. in very fist command causes core dump.
+  [see Mail.XXX]
+  [fixed in 5.2.14: ring bell if no history in emacs.c(x_prev_histword)]
+
+x pdksh 5.2.13, - (reported by Keith S McCabe): pdksh dumps core
+  after a cd command.
+  [see Mail.XXX]
+  [fixed in 5.2.14: exec.c(flushcom) was setting bits in table entry, instead
+   of clearing a single bit]
+
+x pdksh 5.2.12, - (reported by Jaime A. Urquidi): typeset -i reports
+  on array elements that have no value (at&t ksh reports on array
+  base name - no index).
+  [see Mail.XXX]
+  [fixed in 5.2.14: hack to c_ksh.c(c_typeset) to generate the ksh88 style
+   output]
+
+x pdksh 5.2.13, - (reported with fix by Todd C. Miller):
+  ulimit -ctn unlimittttted kills shell (resource exceeded).
+  [see Mail.XXX]
+  [fixed in 5.2.14: hacked c_ulimit to generate error val is 0 and expr doesn't
+   start with a digit]
+
+x pdksh 5.2.13, - (reported with fix by Theo de Raadt):
+  ". /dev/null" says access denied.
+  [see Mail.XXX]
+  [fixed in 5.2.14: exec.c(search_access): allow non-regular file if reading]
+
+x pdksh 5.2.13, - (reported with fix by Eric Youngdale): flag field in aliases
+  incorrectly changed (all flags set instead of clearing ISSET) in
+  exec.c(flushcom).
+  [see Mail.XXX]
+  [fixed in 5.2.14: exec.c(flushcom): change = ~ISSET to &= ~ISSET]
+
+x pdksh 5.2.13, - (reported by Andre Delafontaine): ${#array[*]} prints
+  largest index instead of number of (set) elements in an array (ksh88 does
+  the former).
+  [see Mail.XXX]
+  [fixed in 5.2.14: eval.c(varsub): count number of elements]
+
+x pdksh 5.2.13, - (reported by Clifford Wolf): sys_siglist[] doesn't
+  always have NSIG non-null entries...
+  [see Mail.XXX]
+  [fixed in 5.2.14: trap.c(inittrap): check for null sys_siglist entries.]
+
+x pdksh 5.2.13, - (reported with fix by Todd C. Miller): waitfor in jobs.c
+  can cause core dump if j_lookup fails.
+  [fixed in 5.2.14: jobs.c(waitfor): return if j_lookup fails]
+
+x pdksh 5.2.13, - (reported by Martin Bond): if shell is started several
+  times in quick succession, echo $RANDOM produces the same results.
+  [fixed in 5.2.14: main.c(main): seed RANDOM using time, pid, ppid]
+
+x pdksh 5.2.13, - (reported by Martin Bond): repeating "echo `echo $RANDOM`"
+  will always produce the same number.
+  [fixed in 5.2.14: call var.c(change_random) from jobs.c(exchild)]
+
+x pdksh 5.2.13, hpux 10.x (reported by Mike Kelly): pwd will dump core if
+  current directory is not readable.
+  [fixed in 5.2.14: config test & code to work around hpux C library bug]
+
+x pdksh 5.2.13, linux (reported by Mike Jetzer): getwd warning from linker
+  [fixed in 5.2.14: configure.in/misc.c: check for getcwd, use it over getwd]
+
+x pdksh 5.2.13, (reported by Dmitri Kulginov): "trap exit 1" does not set a
+  trap for HUP (exit is mistaken as a signal name, not a command).
+  [fixed in 5.2.14: c_sh.c(c_trap): use case sensitive lookup for first arg]
+
+x pdksh 5.2.13, (reported by Mark Funkenhauser): eval "$(false)" does not
+  result in $? being set to 1 (is 0).
+  [fixed in 5.2.14: c_sh.c(c_eval): set exstat to subst_exstat before shell()]
+
+x pdksh 5.2.13, (reported with fix by Kevin Schoedel): word boardaries in
+  file completion are only spaces - at&t ksh uses ()<>&| and spaces.
+  [fixed in 5.2.14: edit.c(IS_WORDC): changed macro to be LEX1 + quotes]
+
+x pdksh 5.2.13.5, (reported with fix by Martin Lucina <mato@kotelna.sk>):
+  exit status parsing in exit command incorrect (sets status to random
+  value if no argument given).
+  [fixed in 5.2.14: c_sh.c(c_exitreturn): only set exstat if arg given]
+
+x pdksh 5.2.13.5, (reported with fix by Martin Lucina <mato@kotelna.sk>):
+  KSH_CHECK_H_TYPE in aclocal.m4 has too many [] around the patterns.
+  [fixed in 5.2.14: aclocal.m4(KSH_CHECK_H_TYPE): remove two pairs on []]
+
+x pdksh 5.2.13.5, (reported by Charles M. Hannum <root@ihack.net>): An exit
+  trap set in a subshell is not executed (unless explicit exit used).
+  [fixed in 5.2.14: exec.c(execute): changed exit(rv) to unwind(LEXIT).]
+
+x pdksh 5.2.12, - : MAILCHECK isn't preserved from the envirnment on startup.
+  [fixed in 5.2.14: changed main's initcoms[].]
+
+x pdksh 5.2.13, (reported by Marc Olzheim): time at the end of a pipeline
+  doesn't print anything.
+  [fixed in 5.2.14: exec.c(execute): clear XEXEC when calling timex().]
+
+x pdksh 5.2.13, (reported by David J. McMahon): here documents in subshells
+  don't work if the parent exits before the subshell.
+  [fixed in 5.2.14: heredocs now saved in memory, written to temp when needed.]
+
+x pdksh 5.2.13, (reported by Seiichi Namba): emacs: keys bound in .profile/$ENV
+  are overridden by stty settings (eg, binding ^U in .profile has no effect).
+  [fixed in 5.2.14: emacs.c: added x_bound array to track what user has set.]
+
+x pdksh 5.2.13: vi: failed redo (.) commands caused line to be returned to the
+  shell (eg, "echo hi/there^[Bdf/.").
+  [fixed in 5.2.14: vi.c(vi_hook): removed !=0 from VREDO switch expression]
+
+x pdksh 5.2.13, (reported by Arthor Pool): man page: (a) the time reserved
+  word is not described; (b) description of command line wrapping is in vi
+  section only (not in emacs); (c) limit on array indicies not mentioned;
+  (d) ignoreeof ignored if eof read 13 times.
+  [fixed in 5.2.14: man page updated]
+
+x pdksh 5.2.13, (reported by Arthor Pool): set -u causes loss of stdout
+  when command substitution with undefined parameter reference is run
+  in an interactive shell.
+  [fixed in 5.2.14: jobs.c(fill_command): don't eval TCOM arguments]
+
+  XXX fd 1 lost (general fd pool handler?, error handler for comsub?)
+
+  AP messages:
+      time not descr
+      vi/emacs <+>
+      trap
+      typeset -f ... "$(jasdsjh)" ...
+      array
+      os2 interrupts + pattern 
+      ignoreeof
+      set -A --
+      set -u -> comsub errors & fill_command eval
+
+x pdksh 5.2.13, (reported by Dave Hillman): test -nt
+  and test -ot do not succeed if file2 (file2) does not exist.
+  [fixed in 5.2.14: c_test.c(test_eval): return true if appropriate stat fails]
+

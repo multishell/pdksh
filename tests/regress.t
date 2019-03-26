@@ -411,7 +411,7 @@ script:
 	while [ "$a" != xxx ] ; do
 	    last=$x
 	    read x
-	    /bin/cat /dev/null | sed 's/x/y/'
+	    cat /dev/null | sed 's/x/y/'
 	    a=x$a
 	done
 	echo $last
@@ -729,11 +729,13 @@ stdin:
 			E_O_F
 			echo "done ($?)"
 		}
-		exec /bin/echo subtest-1 hi
+		echo=echo; [ -x /bin/echo ] && echo=/bin/echo
+		exec $echo subtest-1 hi
 	EOF
 	echo subtest-1 foo/*
 	TMPDIR=$PWD/foo $0 <<- 'EOF'
-		sed 's/^/X /' << E_O_F; exec /bin/echo subtest-2 hi
+		echo=echo; [ -x /bin/echo ] && echo=/bin/echo
+		sed 's/^/X /' << E_O_F; exec $echo subtest-2 hi
 		a
 		few
 		lines
@@ -961,4 +963,129 @@ expected-stdout:
 	8 blah
 ---
 
+
+name: regression-56
+description:
+	Check eval vs substitution exit codes
+	(this is what ksh88 does)
+stdin:
+	eval $(false)
+	echo A $?
+	eval ' $(false)'
+	echo B $?
+	eval " $(false)"
+	echo C $?
+	eval "eval $(false)"
+	echo D $?
+	eval 'eval '"$(false)"
+	echo E $?
+	IFS="$IFS:"
+	eval $(echo :; false)
+	echo F $?
+expected-stdout: 
+	A 1
+	B 1
+	C 1
+	D 0
+	E 0
+	F 1
+---
+
+name: regression-57
+description:
+	Check if typeset output is correct for
+	uninitialized array elements.
+stdin:
+	typeset -i xxx[4]
+	echo A
+	typeset -i | grep xxx | sed 's/^/    /'
+	echo B
+	typeset | grep xxx | sed 's/^/    /'
+	
+	xxx[1]=2+5
+	echo M
+	typeset -i | grep xxx | sed 's/^/    /'
+	echo N
+	typeset | grep xxx | sed 's/^/    /'
+expected-stdout: 
+	A
+	    xxx
+	B
+	    typeset -i xxx
+	M
+	    xxx[1]=7
+	N
+	    typeset -i xxx
+---
+
+name: regression-58
+description:
+	Check if trap exit is ok (exit not mistaken for signal name)
+stdin:
+	trap 'echo hi' exit
+	trap exit 1
+expected-stdout: 
+	hi
+---
+
+name: regression-59
+description:
+	Check if ${#array[*]} is calculated correctly.
+stdin:
+	a[12]=hi
+	a[8]=there
+	echo ${#a[*]}
+expected-stdout: 
+	2
+---
+
+name: regression-60
+description:
+	Check if default exit status is previous command
+stdin:
+	(true; exit)
+	echo A $?
+	(false; exit)
+	echo B $?
+	( (exit 103) ; exit)
+	echo C $?
+expected-stdout: 
+	A 0
+	B 1
+	C 103
+---
+
+name: regression-61
+description:
+	Check if EXIT trap is executed for sub shells.
+stdin:
+	trap 'echo parent exit' EXIT
+	echo start
+	(echo A; echo A last)
+	echo B
+	(echo C; trap 'echo sub exit' EXIT; echo C last)
+	echo parent last
+expected-stdout: 
+	start
+	A
+	A last
+	B
+	C
+	C last
+	sub exit
+	parent last
+	parent exit
+---
+
+name: regression-62
+description:
+	Check if test -nt/-ot succeeds if second(first) file is missing.
+stdin:
+	touch a
+	test a -nt b && echo nt OK || echo nt BAD
+	test b -ot a && echo ot OK || echo ot BAD
+expected-stdout: 
+	nt OK
+	ot OK
+---
 

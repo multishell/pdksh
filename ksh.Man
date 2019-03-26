@@ -391,6 +391,10 @@ definition is executed.
 Mostly the same as \fBfunction\fP.
 See Functions below.
 .\"}}}
+.\"{{{  time [-p] [ pipeline ]
+.IP "\fBtime\fP [ \fB-p\fP ] [ \fIpipeline\fP ]"
+The \fBtime\fP reserved word is described in the Command Execution section.
+.\"}}}
 .\"{{{  (( expression ))
 .ksh(
 .IP "\fB((\fP \fIexpression\fP \fB))\fP"
@@ -594,9 +598,16 @@ their values can be accessed using a parameter substitution.
 A parameter name is either one of the special single punctuation or digit
 character parameters described below, or a letter followed by zero or more
 letters or digits (`_' counts as a letter).
-Parameter substitutions take the form \fB$\fP\fIname\fP or
-\fB${\fP\fIname\fP\fB}\fP, where \fIname\fP is a parameter name.
-If substitution is performed on a parameter that is not set, a null
+The later form can be treated as arrays by appending an array
+index of the form: \fB[\fP\fIexpr\fP\fB]\fP where \fIexpr\fP is
+an arithmetic expression.
+Array indicies are currently limited to the range 0 through 1023, inclusive.
+Parameter substitutions take the form \fB$\fP\fIname\fP,
+\fB${\fP\fIname\fP\fB}\fP or
+\fB${\fP\fIname\fP\fB[\fP\fIexpr\fP\fB]}\fP, where \fIname\fP is a
+parameter name.
+If substitution is performed on a parameter (or an array parameter element)
+that is not set, a null
 string is substituted unless the \fBnounset\fP option (\fBset \-o nounset\fP
 or \fBset \-u\fP) is set, in which case an error occurs.
 .PP
@@ -856,8 +867,8 @@ when the shell is started.
 .ksh(
 .IP \fBKSH_VERSION\fP
 The version of shell and the date the version was created (readonly).
-See also the version commands in Emacs Interactive Input Line Editing
-and Vi Interactive Input Line Editing, below.
+See also the version commands in Emacs Editing Mode
+and Vi Editing Mode sections, below.
 .ksh)
 .\"}}}
 .\"{{{  SH_VERSION
@@ -870,9 +881,6 @@ The version of shell and the date the version was created (readonly).
 .IP \fBLINENO\fP
 The line number of the function or shell script that is currently being
 executed.
-.\" todo: LINENO variable
-.sp
-Not implemented yet.
 .\"}}}
 .\"{{{  LINES
 .IP \fBLINES\fP
@@ -1210,8 +1218,8 @@ In any of the above redirections, the file descriptor that is redirected
 (\fIi.e.\fP, standard input or standard output) can be explicitly given by
 preceding the redirection with a single digit.
 Parameter, command and arithmetic substitutions, tilde substitutions and
-file name generation are all performed on the \fIfile\fP, \fImarker\fP and
-\fIfd\fP arguments of redirections.
+(if the shell is interactive) file name generation are all performed
+on the \fIfile\fP, \fImarker\fP and \fIfd\fP arguments of redirections.
 Note however, that the results of any file name generation are only used
 if a single file is matched; if multiple files match, the word with the
 unexpanded file name generation characters is used.
@@ -1300,7 +1308,7 @@ original value of the parameter.
 .IP "\fB++\fP"
 similar to \fB++\fP, except the paramter is decremented by 1.
 .IP "\fB,\fP"
-seperates two arithmetic expressions; the left hand side is evaluated first,
+separates two arithmetic expressions; the left hand side is evaluated first,
 then the right.  The result is value of the expression on the right hand side.
 .IP "\fB=\fP"
 assignment; variable on the left is set to the value on the right.
@@ -1503,6 +1511,12 @@ the two behaviours.
 \fBfg\fP exit status: in posix mode, the exit status is 0 if no errors occur;
 in non-posix mode, the exit status is that of the last foregrounded job.
 .IP \ \ \(bu
+\fBeval\fP exit status: if eval gets to see an empty command (\fIe.g.\fP,
+\fBeval "`false`"\fP), its exit status in posix mode will be 0.
+In non-posix mode, it will be the exit status of the last
+command substitution that was done in the processing of the arguments to eval
+(or 0 if there were no command substitutions).
+.IP \ \ \(bu
 \fBgetopts\fP: in posix mode, options must start with a \fB\-\fP; in non-posix
 mode, options can start with either \fB\-\fP or \fB+\fP.
 .IP \ \ \(bu
@@ -1659,7 +1673,7 @@ See Job Control below for more information.
 .\"{{{  bind [-l] [-m] [key[=editing-command] ...]
 .IP "\fBbind\fP [\fB\-m\fP] [\fIkey\fP[\fB=\fP\fIediting-command\fP] ...]"
 Set or view the current emacs command editing key bindings/macros.
-See Emacs Interactive Input Line Editing below for a complete description.
+See Emacs Editing Mode below for a complete description.
 .\"}}}
 .\"{{{  break [level]
 .IP "\fBbreak\fP [\fIlevel\fP]"
@@ -1674,8 +1688,12 @@ Execute the built-in command \fIcommand\fP.
 .\"{{{  cd [-LP] [dir]
 .IP "\fBcd\fP [\fB\-LP\fP] [\fIdir\fP]"
 Set the working directory to \fIdir\fP.  If the parameter \fBCDPATH\fP
-is set, it lists the search path for the directory containing
-\fIdir\fP.  A null path means the current directory.  If \fIdir\fP is
+is set, it lists directories to search in for \fIdir\fP.
+\fIdir\fP.  An empty entry in the \fBCDPATH\fP entry means the current
+directory.
+If a non-empty directory from \fBCDPATH\fP is used, the resulting full
+path is printed to standard output.
+If \fIdir\fP is
 missing, the home directory \fB$HOME\fP is used.  If \fIdir\fP is
 \fB\-\fP, the previous working directory is used (see OLDPWD parameter).
 If \fB\-L\fP option (logical path) is used or if the \fBphysical\fP option
@@ -2092,7 +2110,7 @@ T}
 .ksh(
 	emacs	T{
 Enable BRL emacs-like command line editing (interactive shells only);
-see Emacs Interactive Input Line Editing.
+see Emacs Editing Mode.
 T}
 	gmacs	T{
 Enable gmacs-like (Gosling emacs) command line editing (interactive shells
@@ -2102,7 +2120,10 @@ slightly differently.
 T}
 .ksh)
 	ignoreeof	T{
-The shell will not exit on when end-of-file is read, \fBexit\fP must be used.
+The shell will not (easily) exit on when end-of-file is read, \fBexit\fP must
+be used.
+To avoid infinite loops, the shell will exit if eof is read 13 times in
+a row.
 T}
 	nohup	T{
 Do not kill running jobs with a \fBHUP\fP signal when a login shell exists.
@@ -2194,64 +2215,64 @@ instead (double quotes are used in case \fIstr\fP contains spaces or file
 globing characters).
 T}
 \-r \fIfile\fP	T{
-\fIfile\fP exists and is readable
+\fIfile\fP exists and is readable.
 T}
 \-w \fIfile\fP	T{
-\fIfile\fP exists and is writable
+\fIfile\fP exists and is writable.
 T}
 \-x \fIfile\fP	T{
-\fIfile\fP exists and is executable
+\fIfile\fP exists and is executable.
 T}
 \-a \fIfile\fP	T{
-\fIfile\fP exists
+\fIfile\fP exists.
 T}
 \-e \fIfile\fP	T{
-\fIfile\fP exists
+\fIfile\fP exists.
 T}
 \-f \fIfile\fP	T{
-\fIfile\fP is a regular file
+\fIfile\fP is a regular file.
 T}
 \-d \fIfile\fP	T{
-\fIfile\fP is a directory
+\fIfile\fP is a directory.
 T}
 \-c \fIfile\fP	T{
-\fIfile\fP is a character special device
+\fIfile\fP is a character special device.
 T}
 \-b \fIfile\fP	T{
-\fIfile\fP is a block special device
+\fIfile\fP is a block special device.
 T}
 \-p \fIfile\fP	T{
-\fIfile\fP is a named pipe
+\fIfile\fP is a named pipe.
 T}
 \-u \fIfile\fP	T{
-\fIfile\fP's mode has setuid bit set
+\fIfile\fP's mode has setuid bit set.
 T}
 \-g \fIfile\fP	T{
-\fIfile\fP's mode has setgid bit set
+\fIfile\fP's mode has setgid bit set.
 T}
 \-k \fIfile\fP	T{
-\fIfile\fP's mode has sticky bit set
+\fIfile\fP's mode has sticky bit set.
 T}
 \-s \fIfile\fP	T{
-\fIfile\fP is not empty
+\fIfile\fP is not empty.
 T}
 \-O \fIfile\fP	T{
-\fIfile\fP's owner is the shell's effective user-ID
+\fIfile\fP's owner is the shell's effective user-ID.
 T}
 \-G \fIfile\fP	T{
-\fIfile\fP's group is the shell's effective group-ID
+\fIfile\fP's group is the shell's effective group-ID.
 T}
 \-h \fIfile\fP	T{
-\fIfile\fP is a symbolic link
+\fIfile\fP is a symbolic link.
 T}
 \-H \fIfile\fP	T{
-\fIfile\fP is a context dependent directory (only useful on HP-UX)
+\fIfile\fP is a context dependent directory (only useful on HP-UX).
 T}
 \-L \fIfile\fP	T{
-\fIfile\fP is a symbolic link
+\fIfile\fP is a symbolic link.
 T}
 \-S \fIfile\fP	T{
-\fIfile\fP is a socket
+\fIfile\fP is a socket.
 T}
 \-o \fIoption\fP	T{
 shell \fIoption\fP is set (see \fBset\fP command above for list of options).
@@ -2263,13 +2284,15 @@ is negated; the test always fails if option doesn't exist (thus
 returns true if and only if option \fIfoo\fP exists).
 T}
 \fIfile\fP \-nt \fIfile\fP	T{
-first \fIfile\fP is newer than second \fIfile\fP
+first \fIfile\fP is newer than second \fIfile\fP or first 
+\fIfile\fP exists and the second \fIfile\fP does not.
 T}
 \fIfile\fP \-ot \fIfile\fP	T{
-first \fIfile\fP is older than second \fIfile\fP
+first \fIfile\fP is older than second \fIfile\fP or second \fIfile\fP 
+exists and the first \fIfile\fP does not.
 T}
 \fIfile\fP \-ef \fIfile\fP	T{
-first \fIfile\fP is the same file as second \fIfile\fP
+first \fIfile\fP is the same file as second \fIfile\fP.
 T}
 \-t\ [\fIfd\fP]	T{
 file descriptor is a tty device.
@@ -2278,42 +2301,42 @@ set, \fIfd\fP may be left out, in which case it is taken to be 1
 (the behaviour differs due to the special POSIX rules described below).
 T}
 \fIstring\fP	T{
-\fIstring\fP is not empty
+\fIstring\fP is not empty.
 T}
 \-z\ \fIstring\fP	T{
-\fIstring\fP is empty
+\fIstring\fP is empty.
 T}
 \-n\ \fIstring\fP	T{
-\fIstring\fP is not empty
+\fIstring\fP is not empty.
 T}
 \fIstring\fP\ =\ \fIstring\fP	T{
-strings are equal
+strings are equal.
 T}
 .ksh(
 \fIstring\fP\ ==\ \fIstring\fP	T{
-strings are equal
+strings are equal.
 T}
 .ksh)
 \fIstring\fP\ !=\ \fIstring\fP	T{
-strings are not equal
+strings are not equal.
 T}
 \fInumber\fP\ \-eq\ \fInumber\fP	T{
-numbers compare equal
+numbers compare equal.
 T}
 \fInumber\fP\ \-ne\ \fInumber\fP	T{
-numbers compare not equal
+numbers compare not equal.
 T}
 \fInumber\fP\ \-ge\ \fInumber\fP	T{
-numbers compare greater than or equal
+numbers compare greater than or equal.
 T}
 \fInumber\fP\ \-gt\ \fInumber\fP	T{
-numbers compare greater than
+numbers compare greater than.
 T}
 \fInumber\fP\ \-le\ \fInumber\fP	T{
-numbers compare less than or equal
+numbers compare less than or equal.
 T}
 \fInumber\fP\ \-lt\ \fInumber\fP	T{
-numbers compare less than
+numbers compare less than.
 T}
 .TE
 .sp
@@ -2350,6 +2373,36 @@ fails if parameter \fBfoo\fP is null or unset, if it has embedded spaces
 (\fIi.e.\fP, \fBIFS\fP characters), or if it is a unary operator like \fB!\fP or
 \fB\-n\fP.  Use tests like \fBif [ "X$foo" = Xbar ]\fP instead.
 .\"}}}
+.\"{{{  time [-p] [pipeline]
+.IP "\fBtime\fP [\fB-p\fP] [ \fIpipeline\fP ]"
+If a pipeline is given, the times used to execute the pipeline are reported.
+If no pipeline is given, then the user and system time used by the shell
+itself, and all the commands it has run since it was started, are reported.
+The times reported are
+the real time (elapsed time from start to finish),
+the user cpu time (time spent running in user mode)
+and the system cpu time (time spent running in kernel mode).
+Times are reported to standard error; the format of the output is:
+.nf
+    0.00s real     0.00s user     0.00s system
+.fi
+unless the -p option is given (only possible if \fIpipeline\fP is a simple
+command), in which case the output is slightly longer:
+.nf
+    real   0.00
+    user   0.00
+    sys    0.00
+.fi
+(the number of digits after the decimal may vary from system to system).
+Note that simple redirections of standard error do not effect the output
+of the time command:
+.ce
+\fBtime sleep 1 2> \fP\fIafile\fP
+.ce
+\fB{ time sleep 1; } 2> \fP\fIafile\fP
+times for the first command do not go to \fIafile\fP, but those of the
+second command do.
+.\"}}}
 .\"{{{  times
 .IP \fBtimes\fP
 Print the accumulated user and system times used by the shell and by
@@ -2379,6 +2432,9 @@ signals that were ignored when the shell started.
 .sp
 With no arguments, \fBtrap\fP lists, as a series of \fBtrap\fP commands,
 the current state of the traps that have been set since the shell started.
+Note that the output of \fBtrap\fP can not be usefully piped to another process
+(an artifact of the fact that traps are cleared when subprocesses are
+created).
 .sp
 .\" todo: add these features (trap DEBUG, trap ERR/EXIT in function)
 The original Korn shell's \fBDEBUG\fP trap and the handling of \fBERR\fP and
@@ -2739,9 +2795,32 @@ user and does not exit.
 If another attempt is immediately made to exit the shell, the running
 jobs are sent a \fBHUP\fP signal and the shell exits.
 .\"}}}
-.\"{{{  Emacs Interactive Input Line Editing
+.\"{{{  Interactive Input Line Editing
 .ksh(
-.SS "Emacs Interactive Input Line Editing"
+.\"{{{  introduction
+.SS "Interactive Input Line Editing"
+The shell supports three modes of reading command lines from a tty
+in an interactive session.
+Which is used is controlled by the \fBemacs\fP, \fBgmacs\fP and \fBvi\fP 
+\fBset\fP options (at most one of these can be set at once).
+If none of these options is enabled, the shell simply reads lines
+using the normal tty driver.
+If the \fBemacs\fP or \fBgmacs\fP option is set, the shell allows
+emacs like editing of the command; similarly, if the \fBvi\fP option
+is set, the shell allows vi like editing of the command.
+These modes are described in detail in the following sections.
+.\"}}}
+.\"{{{  display
+.PP
+In these editing modes, if a line is longer that the screen width
+(see \fBCOLUMNS\fP parameter),
+a \fB>\fP, \fB+\fP or \fB<\fP character is displayed in the last column
+indicating that there are more characters after, before and after, or
+before the current position, respectively.
+The line is scrolled horizontally as necessary.
+.\"}}}
+.\"{{{  Emacs Editing Mode
+.SS "Emacs Editing Mode"
 When the \fBemacs\fP option is set, interactive input line editing is
 enabled.  \fBWarning\fP: This mode is slightly different from the emacs
 mode in the original Korn shell and the 8th bit is stripped in emacs mode.
@@ -3069,12 +3148,10 @@ Inserts the most recently killed text string at the current cursor position.
 Immediately after a \fByank\fP, replaces the inserted text string with
 the next previous killed text string.
 .\"}}}
-.ksh)
 .\"}}}
-.\"{{{  Vi Interactive Input Line Editing
-.ksh(
+.\"{{{  Vi Editing Mode
 .\"{{{  introduction
-.SS "Vi Interactive Input Line Editing"
+.SS "Vi Editing Mode"
 The vi command line editor in ksh has basically the same commands as the
 vi editor (see \fIvi\fP(1)), with the following exceptions:
 .nr P2 \n(PD
@@ -3143,14 +3220,6 @@ optional file name and command completion (see \fB^F\fP above), enabled with
 \fBset \-o vi-tabcomplete\fP
 T}
 .TE
-.\"}}}
-.\"{{{  display
-.PP
-If a line is longer that the screen width (see \fBCOLUMNS\fP parameter),
-a \fB>\fP, \fB+\fP or \fB<\fP character is displayed in the last column
-indicating that there are more characters after, before and after, or
-before the current position, respectively.
-The line is scrolled horizontally as necessary.
 .\"}}}
 .\"{{{  command mode
 .PP
@@ -3388,6 +3457,7 @@ be deleted and a new prompt to be printed.
 .\"    status command: ^G
 .\"}}}
 .\"}}}
+.\"}}}
 .ksh)
 .\"}}}
 .\"}}}
@@ -3409,7 +3479,20 @@ best).  The following, if relevant (if you are not sure, include them),
 can also helpful: options you are using (both options.h options and set
 \-o options) and a copy of your config.h (the file generated by the
 configure script).  New versions of pdksh can be obtained from
-ftp.cs.mun.ca:pub/pdksh/.
+ftp://ftp.cs.mun.ca/pub/pdksh/.
+.PP
+BTW, the most frequently reported bug is
+.RS
+\fB echo hi | read a; echo $a\fP\ \ \ # Does not print hi
+.RE
+I'm aware of this and there is no need to report it.
+.\"}}}
+.\"{{{  Version
+.SH VERSION
+This page documents version
+.ce
+ @(#)PD KSH v5.2.14 99/07/13.2
+of the public domain korn shell.
 .\"}}}
 .\"{{{  Authors
 .SH AUTHORS

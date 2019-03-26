@@ -91,8 +91,8 @@ Other contributors:
     * Stefan Dalibor (<Stefan.Dalibor@informatik.uni-erlangen.de>): fix for
       COLUMNS never being set in x_init().
     * Arnon Kanfi (<arnon@gilly.datatools.com>): fix for prompt.
-    * Marc Olzheim (<marcolz@stack.urc.tue.nl>): patches to ifdef KSH the
-      mail check code and aliases.
+    * Marc Olzheim (<marcolz@stack.nl>): patches to ifdef KSH the mail check
+      code and aliases; enum patches for old K&R compilers; handle missing dup2.
     * Lars Hecking (<lhecking@nmrc.ucc.ie>): fixes so shell compiles as sh
       again.
     * Bill Kish (<kish@browncow.com>): added prompt delimiter hack for
@@ -107,3 +107,21 @@ Other contributors:
       keep exec'd file descriptors open.
     * George White <gwhite@bodnext.bio.dfo.ca>: fix here-doc problem under OS/2
       (memory allocated incorrectly).
+    * David E. Wexelblat <dwex@DataFocus.com>: fix to avoid memory overrun
+      in aresize(); fix to not print un-named options.
+    * Clifford Wolf (<clifford@clifford.at>): fix memory overrun in aresize();
+      fixed sys_siglist[] problem.
+    * Theo de Raadt (<deraadt@cvs.openbsd.org>): allow ". /dev/null".
+    * Eric Youngdale (<ericy@datafocus.com>): flag field incorrectly changed
+      in exec.c(flushcom).
+    * Todd. C Miller (Todd C. Miller <Todd.Miller@courtesan.com>): fix
+      for coredump in jobs.
+    * Kevin Schoedel <schoedel@kw.igs.net>: fix for word location in file
+      completion.
+    * Martin Lucina <mato@kotelna.sk>: fix for argument parsing in exit command,
+      fix for KSH_CHECK_H_TYPE.
+    * Mark Funkenhauser <mark@interix.com>: added $LINENO support.
+    * Corinna Vinschen <Corinna@Vinschen.de> and Steven Hein <ssh@sgi.com>:
+      port to cyngin environment on win95/winnt.
+    * Martin Dalecki <dalecki@cs.net.pl>: changes for 8 bit emacs mode.
+    * Dave Hillman <daveh@gte.net>: patch for bug in test -nt.

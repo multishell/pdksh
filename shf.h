@@ -1,3 +1,6 @@
+#ifndef SHF_H
+# define SHF_H
+
 /*
  * Shell file I/O routines
  */
@@ -78,3 +81,5 @@ int	    shf_fprintf ARGS((struct shf *shf, const char *fmt, ...));
 int	    shf_snprintf ARGS((char *buf, int bsize, const char *fmt, ...));
 char	    *shf_smprintf ARGS((const char *fmt, ...));
 int	    shf_vfprintf ARGS((struct shf *, const char *fmt, va_list args));
+
+#endif /* SHF_H */

@@ -4,16 +4,22 @@
 # Update the date in the version file (version.c).  If the existing
 # date is todays date, a .number is apprended (or incremented) to
 # make them distinct.
+# Also update the version number and date in tests/version.t and ksh.Man.
 #
 
 # pattern that matches the date in the version string in version.c
-# \1 is preamble, \2 is the date, \3 is postamble (use ? pattern delimiters).
-DATEPAT='\(@(#).* \)\([0-9]*/[0-9]*/[.0-9]*\)\(.*\)'
+#	\1 is preamble (@(#)PD KSH ),
+#	\2 is the version (v1.2.3 ),
+#	\3 is the date (99/03/21.3),
+#	\4 is postamble (...)
+# (use ? pattern delimiters).
+DATEPAT='\(.*@(#).* \)\(v[.0-9]* \)\([0-9]*/[0-9]*/[.0-9]*\)\(.*\)'
 
 vfile=version.c
-vfiles="version.c tests/version.t"
+vfiles="version.c tests/version.t ksh.Man"
 
-odatev=`sed -n "s?$DATEPAT?\2?p" < $vfile`
+version=`sed -n "s?$DATEPAT?\2?p" < $vfile`
+odatev=`sed -n "s?$DATEPAT?\3?p" < $vfile`
 odate=`echo "$odatev" | sed 's?\..*??'`
 ov=`echo "$odatev" | sed 's?[^.]*\.*??'`
 
@@ -51,7 +57,7 @@ for i in $vfiles; do
     tfile=$i.new
     # try to save permissions/ownership/group
     cp -p $i $tfile 2> /dev/null
-    if sed "s?$DATEPAT?\1$date\3?" < $i > $tfile; then
+    if sed "s?$DATEPAT?\1$version$date\4?" < $i > $tfile; then
 	    if cmp -s $i $tfile; then
 		echo "$i not changed, not updating"
 		rm -f $tfile

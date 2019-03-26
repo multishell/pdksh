@@ -169,7 +169,7 @@ alloc(size, ap)
 	ACHECK(ap);
 	if (size <= 0)
 		aerror(ap, "allocate bad size");
-	cells = (unsigned)(size - 1) / sizeof(Cell) + 1;
+	cells = (unsigned)(size + sizeof(Cell) - 1) / sizeof(Cell);
 
 	/* allocate at least this many cells */
 	acells = cells + NOBJECT_FIELDS;
@@ -388,7 +388,7 @@ aresize(ptr, size, ap)
 		size_t s = (dp-1)->size * sizeof(Cell);
 		if (s > size)
 			s = size;
-		memcpy(ptr, dp, size);
+		memcpy(ptr, dp, s);
 		afree((void *) dp, ap);
 	}
 	/* ACHECK() done in alloc()/afree() */

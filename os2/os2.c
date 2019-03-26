@@ -4,7 +4,7 @@
 #define INCL_WINPROGRAMLIST
 #include <os2.h>
 #include "config.h"
-#include <sys/emx.h>
+#include "sh.h"				/* To get inDOS(). */
 #include <sys/ioctl.h>
 #include <fcntl.h>
 #include <io.h>
@@ -13,11 +13,6 @@
 #include <malloc.h>
 #include <string.h>
 
-void noinherit(int fd)
-{
-  DosSetFHState(fd, OPEN_FLAGS_NOINHERIT);
-}
-
 static int isfullscreen(void)
 {
   PTIB ptib;
@@ -25,6 +20,55 @@ static int isfullscreen(void)
 
   DosGetInfoBlocks(&ptib, &ppib);
   return (ppib -> pib_ultype != SSF_TYPE_WINDOWABLEVIO);
+}
+
+static int
+quoted_strlen(char *s)
+{
+    int ret = 0;
+    int seen_space = 0;
+    while (*s) {
+	if (seen_space == 0 && *s == ' ') {
+	    ret += 2;
+	    seen_space = 1;
+	} else if (*s == '\"') {
+	    if (seen_space == 0) {
+		seen_space = 1;
+		ret += 4;
+	    } else ret += 2;
+	} else ret++;
+	s++;
+    }
+    return ret;
+}
+
+static char *
+quoted_strcpy(char *targ, char* src)
+{
+    int seen_space = 0;
+    char *s = src, *t = targ;
+    
+    while (*s) {
+	if ((*s == ' ') || (*s == '\"')) {
+	    seen_space = 1;
+	    break;
+	}
+	s++;
+    }
+    if (seen_space) {
+	*targ++ = '\"';
+    }
+    while (*src) {
+	if (*src == '\"') {
+	    *targ++ = '\\';
+	} 
+	*targ++ = *src++;
+    }
+    if (seen_space) {
+	*targ++ = '\"';
+    }
+    *targ = '\0';
+    return t;
 }
 
 static int 
@@ -39,17 +83,17 @@ newsession(int type, int mode, char *cmd, char **args, char **env)
   static char queue[18];
   static HQUEUE qid = -1;
   char *ap, *ep, *p;
-
+  char object[256] = {0};
 
   for ( cnt = 1, len = 0; args[cnt] != NULL; cnt++ )
-    len += strlen(args[cnt]) + 1;
+    len += quoted_strlen(args[cnt]) + 1;
   p = ap = alloca(len + 2);
   *p = 0;
   for ( cnt = 1, len = 0; args[cnt] != NULL; cnt++ )
   {
     if ( cnt > 1 )
       *p++ = ' ';
-    strcpy(p, args[cnt]);
+    quoted_strcpy(p, args[cnt]);
     p += strlen(p);
   }
   for ( cnt = 0, len = 0; env[cnt] != NULL; cnt++ )
@@ -84,6 +128,9 @@ newsession(int type, int mode, char *cmd, char **args, char **env)
   sd.IconFile = NULL;
   sd.PgmHandle = 0;
   sd.PgmControl = 0;
+  sd.Reserved = 0;
+  sd.ObjectBuffer = object;
+  sd.ObjectBuffLen = sizeof(object);
 
   if ( DosStartSession(&sd, &sid, &pid) )
     return errno = ENOEXEC, -1;
@@ -104,7 +151,7 @@ newsession(int type, int mode, char *cmd, char **args, char **env)
     exit(0);
 }
 
-int ksh_execve(char *cmd, char **args, char **env)
+int ksh_execve(char *cmd, char **args, char **env, int flags)
 {
   ULONG apptype;
   char path[256], *p;
@@ -115,33 +162,78 @@ int ksh_execve(char *cmd, char **args, char **env)
     if ( *p == '/' )
       *p = '\\';
 
+  if (_emx_env & 0x1000) {		/* RSX, do best we can do. */
+      int len = strlen(cmd);
+
+      if (len > 4 && stricmp(cmd + len - 4, ".bat") == 0) {
+	  /* execve would fail anyway, but most probably segfault. */
+	  errno = ENOEXEC;
+	  return -1;
+      }
+      goto do_execve;
+  }
+
+  if ( inDOS() ) {
+    fprintf(stderr, "ksh_execve requires OS/2 or RSX!\n");
+    exit(255);
+  }
+
   if ( DosQueryAppType(path, &apptype) == 0 )
   {
     if (apptype & FAPPTYP_DOS)
       return newsession(isfullscreen() ? SSF_TYPE_VDM :
                                          SSF_TYPE_WINDOWEDVDM, 
-			P_NOWAIT, path, args, env);
+			P_WAIT, path, args, env);
 
     if ((apptype & FAPPTYP_WINDOWSREAL) ||
         (apptype & FAPPTYP_WINDOWSPROT) ||
         (apptype & FAPPTYP_WINDOWSPROT31))
       return newsession(isfullscreen() ? PROG_WINDOW_AUTO :
                                          PROG_SEAMLESSCOMMON,
-			P_NOWAIT, path, args, env);
+			P_WAIT, path, args, env);
 
     if ( (apptype & FAPPTYP_EXETYPE) == FAPPTYP_WINDOWAPI ) {
       printf(""); /* kludge to prevent PM apps from core dumping */
-      return newsession(SSF_TYPE_PM, P_NOWAIT, path, args, env);
+      /* Start new session if interactive and not a part of a pipe. */
+      return newsession(SSF_TYPE_PM, 
+			( (flags & XINTACT) && (flags & XPIPE)
+				 /* _isterm(0) && _isterm(1) && _isterm(2) */
+			  ? P_NOWAIT 
+			  : P_WAIT),
+			path, args, env);
     }
 
     if ( (apptype & FAPPTYP_EXETYPE) == FAPPTYP_NOTWINDOWCOMPAT ||
          (apptype & FAPPTYP_EXETYPE) == FAPPTYP_NOTSPEC )
       if ( !isfullscreen() )
-        return newsession(SSF_TYPE_FULLSCREEN, P_NOWAIT, path, args, env);
+        return newsession(SSF_TYPE_FULLSCREEN, 
+			( (flags & XINTACT) && (flags & XPIPE)
+				 /* _isterm(0) && _isterm(1) && _isterm(2) */
+			  ? P_NOWAIT 
+			  : P_WAIT),
+			path, args, env);
   }
-  if ( (rc = execve(path, args, env)) != -1 )
-    exit(rc);
-
+  do_execve:
+  {
+      /* P_QUOTE is too agressive, it quotes `@args_from_file' too,
+	 which breaks emxomfld calling LINK386 when EMXSHELL=ksh.
+	 Thus we check whether we need to quote, and delegate the hard
+	 work to P_QUOTE if needed.  */
+      char **pp = args;
+      int do_quote = 0;
+      for (; !do_quote && *pp; pp++) {
+	  for (p = *pp; *p; p++) {
+	      if (*p == '*' || *p == '?') {
+		  do_quote = 1;
+		  break;
+	      }
+	  }
+      }
+      
+      if ( (rc = spawnve(P_OVERLAY | (do_quote ? P_QUOTE : 0),
+			 path, args, env)) != -1 )
+	  exit(rc);
+  }
   return -1;
 }
 

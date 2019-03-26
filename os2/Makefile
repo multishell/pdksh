@@ -59,11 +59,12 @@ MISCFILES = misc/ChangeLog.sjg misc/Changes.jrm misc/Changes.mlj \
 	misc/Changes.pc misc/README.sjg misc/ReadMe.eg misc/ReadMe.emacs \
 	misc/ReadMe.jrm misc/Bugs 
 # TESTFILES also disted, but handled differently
-TESTFILES = tests/th tests/th-sh tests/alias.t tests/arith.t tests/bksl-nl.t \
-	tests/brkcont.t tests/cdhist.t tests/eglob.t tests/glob.t \
-	tests/heredoc.t tests/history.t tests/ifs.t tests/integer.t \
-	tests/read.t tests/regress.t tests/syntax.t tests/unclass1.t \
-	tests/unclass2.t tests/version.t 
+TESTFILES = tests/README tests/th tests/th-sh tests/alias.t tests/arith.t \
+	tests/bksl-nl.t tests/brkcont.t tests/cdhist.t tests/eglob.t \
+	tests/glob.t tests/heredoc.t tests/history.t tests/ifs.t \
+	tests/integer.t tests/lineno.t tests/read.t tests/regress.t \
+	tests/syntax.t tests/unclass1.t tests/unclass2.t \
+	tests/version.t 
 # OS2FILES also disted, but handled differently
 OS2FILES = os2/Makefile os2/config.h os2/config.status os2/configure.cmd \
 	os2/emacs.out os2/kshrc.ksh os2/make.sed os2/os2.c os2/os2siglist.out \
@@ -96,7 +97,7 @@ uninstall:
 	rm -f $(mandir)/$(SHELL_PROG).$(manext)
 
 check test:
-	th.cmd $(srcdir)/tests/th -s $(srcdir)/tests -p ./$(SHELL_PROG)$(exe_suffix)
+	th.cmd $(srcdir)/tests/th -s $(srcdir)/tests -p ./$(SHELL_PROG)$(exe_suffix) -C pdksh,sh,ksh,posix,posix-upu $(TESTARGS)
 
 $(SHELL_PROG)$(exe_suffix): $(OBJS)
 	$(CC) $(LDFLAGS) -o $@ $(OBJS) $(LIBS)
@@ -120,23 +121,19 @@ $(srcdir)/stamp-h.in: configure.in aclocal.m4 acconfig.h
 	date > $(srcdir)/stamp-h.in
 
 config.h:
-	cmd /c copy $(srcdir)\os2\config.h config.h > nul
-	touch config.h
-
+cmd /c copy $(srcdir)\os2\config.h config.h > nul
+touch config.h
 Makefile:
-	cmd /c copy $(srcdir)\os2\Makefile Makefile > nul
-	touch Makefile
-
+cmd /c copy $(srcdir)\os2\Makefile Makefile > nul
+touch Makefile
 # two steps to prevent the creation of a bogus siglist.out
 siglist.out:
-	cmd /c copy $(srcdir)\os2\os2siglist.out siglist.out > nul
-	touch siglist.out
-
+cmd /c copy $(srcdir)\os2\os2siglist.out siglist.out > nul
+touch siglist.out
 # two steps to prevent the creation of a bogus emacs.out
 emacs.out:
-	cmd /c copy $(srcdir)\os2\emacs.out emacs.out > nul
-	touch emacs.out
-
+cmd /c copy $(srcdir)\os2\emacs.out emacs.out > nul
+touch emacs.out
 debugtools: check-fd$(exe_suffix) check-sigs$(exe_suffix) \
 	check-pgrp$(exe_suffix)
 
@@ -176,6 +173,10 @@ dist: $(DISTFILES) $(ETCFILES) $(MISCFILES) $(TESTFILES) $(OS2FILES)
 	    ./new-version.sh; \
 	    FNAME=pdksh-`sed -e '/"@(.)/!d' \
 		    -e 's/[^0-9]*\([0-9.]*\).*/\1/' -e q version.c`; \
+	    if test `echo $$FNAME|tr . ' '|wc -w|sed 's/[       ]*//g'` -gt 3; \
+	    then \
+		FNAME=`echo $$FNAME | sed 's/pdksh-/pdksh-unstable-/'`; \
+	    fi; \
 	    echo Creating version $$FNAME; \
 	    rm -rf $$FNAME; \
 	    mkdir $$FNAME $$FNAME/etc $$FNAME/misc $$FNAME/tests $$FNAME/os2; \

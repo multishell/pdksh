@@ -128,7 +128,7 @@ const struct option options[] = {
 	{ "braceexpand",  0,		OF_ANY }, /* non-standard */
 #endif
 	{ "bgnice",	  0,		OF_ANY },
-	{ null,	 	'c',	    OF_CMDLINE },
+	{ (char *) 0, 	'c',	    OF_CMDLINE },
 #ifdef EMACS
 	{ "emacs",	  0,		OF_ANY },
 #endif
@@ -144,7 +144,7 @@ const struct option options[] = {
 #ifdef JOBS
 	{ "monitor",	'm',		OF_ANY },
 #else /* JOBS */
-	{ null,		'm',		     0 }, /* so FMONITOR not ifdef'd */
+	{ (char *) 0,	'm',		     0 }, /* so FMONITOR not ifdef'd */
 #endif /* JOBS */
 	{ "noclobber",	'C',		OF_ANY },
 	{ "noexec",	'n',		OF_ANY },
@@ -256,7 +256,7 @@ char *
 getoptions()
 {
 	int i;
-	char m[FNFLAGS + 1];
+	char m[(int) FNFLAGS + 1];
 	register char *cp = m;
 
 	for (i = 0; i < NELEM(options); i++)
@@ -1260,16 +1260,62 @@ reset_nonblock(fd)
 # define MAXPATHLEN PATH
 #endif /* MAXPATHLEN */
 
+#ifdef HPUX_GETWD_BUG
+# include "ksh_dir.h"
+
+/*
+ * Work around bug in hpux 10.x C library - getwd/getcwd dump core
+ * if current directory is not readable.  Done in macro 'cause code
+ * is needed in GETWD and GETCWD cases.
+ */
+# define HPUX_GETWD_BUG_CODE \
+	{ \
+	    DIR *d = ksh_opendir("."); \
+	    if (!d) \
+		return (char *) 0; \
+	    closedir(d); \
+	}
+#else /* HPUX_GETWD_BUG */
+# define HPUX_GETWD_BUG_CODE
+#endif /* HPUX_GETWD_BUG */
+
 /* Like getcwd(), except bsize is ignored if buf is 0 (MAXPATHLEN is used) */
 char *
 ksh_get_wd(buf, bsize)
 	char *buf;
 	int bsize;
 {
-#ifdef HAVE_GETWD
+#ifdef HAVE_GETCWD
+	char *b;
+	char *ret;
+
+	/* Before memory allocated */
+	HPUX_GETWD_BUG_CODE
+
+	/* Assume getcwd() available */
+	if (!buf) {
+		bsize = MAXPATHLEN;
+		b = alloc(MAXPATHLEN + 1, ATEMP);
+	} else
+		b = buf;
+
+	ret = getcwd(b, bsize);
+
+	if (!buf) {
+		if (ret)
+			ret = aresize(b, strlen(b) + 1, ATEMP);
+		else
+			afree(b, ATEMP);
+	}
+
+	return ret;
+#else /* HAVE_GETCWD */
 	extern char *getwd ARGS((char *));
 	char *b;
 	int len;
+
+	/* Before memory allocated */
+	HPUX_GETWD_BUG_CODE
 
 	if (buf && bsize > MAXPATHLEN)
 		b = buf;
@@ -1295,26 +1341,5 @@ ksh_get_wd(buf, bsize)
 	}
 
 	return b;
-#else /* HAVE_GETWD */
-	char *b;
-	char *ret;
-
-	/* Assume getcwd() available */
-	if (!buf) {
-		bsize = MAXPATHLEN;
-		b = alloc(MAXPATHLEN + 1, ATEMP);
-	} else
-		b = buf;
-
-	ret = getcwd(b, bsize);
-
-	if (!buf) {
-		if (ret)
-			ret = aresize(b, strlen(b) + 1, ATEMP);
-		else
-			afree(b, ATEMP);
-	}
-
-	return ret;
-#endif /* HAVE_GETWD */
+#endif /* HAVE_GETCWD */
 }

@@ -132,6 +132,10 @@
 /* Define if your OS maps references to /dev/fd/n to file descriptor n */
 #undef HAVE_DEV_FD
 
+/* Define if your C library's getwd/getcwd function dumps core in unreadable
+ * directories.  */
+#undef HPUX_GETWD_BUG
+
 /*   ------- ------ ----- ---- --- -- - - -- --- ---- ----- ------ -------   */
 /*   Defines from here on down are enable/disable options to configure */
 

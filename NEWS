@@ -1,3 +1,36 @@
+Version 5.2.14
+
+* bug fixes
+    * test: -nt(-ot) now succeed if second (first) file doesn't exist and the
+      other does.
+    * time: now accepts the -p (posix) option.
+    * vi: failed redo (.) commands no longer return the line to the shell.
+    * emacs: bind commands in .profile/$ENV no longer overridden by tty
+      settings.
+    * heredocs: now saved in memory to avoid temp files disappear too soon.
+    * time: commands at the end of a pipeline can now be timed.
+    * on startup: MAILCHECK,TMOUT,SECONDS values from environment are honoured.
+    * trap: exit traps now executed in subshells (without explicit exit call).
+    * eval: if given empty command while in non-posix mode, exit status is
+      that of last command substitution (if any).
+    * trap: if first argument is "exit", it is taken as a command not a signal.
+    * pwd: config test & code to work around bug in hpux 10.x getcwd().
+    * RANDOM: seed based on both time and pid; different sequence in sub shells.
+    * typeset -f: now pretty-prints $(..) and $((..)) correctly.
+    * fixed bug in memory allocation which can lead to core dumps.
+    * set -o: no longer prints options that have no names.
+    * emacs: <esc>. in very fist command no longer dumps core.
+    * .: can now dot non-regular files (eg, /dev/null).
+    * parsing: bar(); no longer dumps core when function bar is run.
+    * variable substitution: ${#array[*]} now prints number of set elements
+      in the array (used to print largest index, not what ksh88 did).
+    * job control: resuming suspended gnu su no longer hoses su'd shell.
+    * job control: fixed possible core dump when waiting for jobs.
+
+* LINENO variable now supported.
+* port to cygwin environment on win95/winnt.
+
+
 Version 5.2.13
 
 * bug fixes

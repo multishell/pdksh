@@ -25,9 +25,10 @@ typedef struct mbox {
  * same list is used for both since they are exclusive.
  */
 
-static mbox_t  *mplist;
-static mbox_t  mbox;
+static mbox_t	*mplist;
+static mbox_t	mbox;
 static time_t	mlastchkd;	/* when mail was last checked */
+static time_t	mailcheck_interval;
 
 static void     munset      ARGS((mbox_t *mlist)); /* free mlist and mval */
 static mbox_t * mballoc     ARGS((char *p, char *m)); /* allocate a new mbox */
@@ -38,21 +39,16 @@ mcheck()
 {
 	register mbox_t	*mbp;
 	time_t		 now;
-	long		 mailcheck;
 	struct tbl	*vp;
 	struct stat	 stbuf;
-
-	if (getint(global("MAILCHECK"), &mailcheck) < 0)
-		return;
 
 	now = time((time_t *) 0);
 	if (mlastchkd == 0)
 		mlastchkd = now;
-	if (now - mlastchkd >= mailcheck) {
+	if (now - mlastchkd >= mailcheck_interval) {
 		mlastchkd = now;
 
-		vp = global("MAILPATH");
-		if (vp && (vp->flag & ISSET))
+		if (mplist)
 			mbp = mplist;
 		else if ((vp = global("MAIL")) && (vp->flag & ISSET))
 			mbp = &mbox;
@@ -80,6 +76,13 @@ mcheck()
 			mbp = mbp->mb_next;
 		}
 	}
+}
+
+void
+mcset(interval)
+	long interval;
+{
+	mailcheck_interval = interval;
 }
 
 void
@@ -181,7 +184,8 @@ mbox_t	*mbp;
 {
 	struct tbl	*vp;
 
-	setstr((vp = local("_", FALSE)), mbp->mb_path);
+	/* Ignore setstr errors here (arbitrary) */
+	setstr((vp = local("_", FALSE)), mbp->mb_path, KSH_RETURN_ERROR);
 
 	shellf("%s\n", substitute(mbp->mb_msg ? mbp->mb_msg : MBMESSAGE, 0));
 

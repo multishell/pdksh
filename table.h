@@ -167,6 +167,7 @@ extern const struct builtin shbuiltins [], kshbuiltins [];
 #define V_POSIXLY_CORRECT	14
 #define V_TMOUT			15
 #define V_TMPDIR		16
+#define V_LINENO		17
 
 /* values for set_prompt() */
 #define PS1	0		/* command */
@@ -177,3 +178,4 @@ EXTERN const char *def_path;	/* path to use if PATH not set */
 EXTERN char *tmpdir;		/* TMPDIR value */
 EXTERN const char *prompt;
 EXTERN int cur_prompt;		/* PS1 or PS2 */
+EXTERN int current_lineno;	/* LINENO value */

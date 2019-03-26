@@ -19,7 +19,7 @@ dnl uses ac_cv_type_X 'cause this is used in other autoconf macros...
 dnl KSH_CHECK_H_TYPE(type, message, header files, default)
 AC_DEFUN(KSH_CHECK_H_TYPE,
  [AC_CACHE_CHECK($2, ac_cv_type_$1,
-    [AC_EGREP_CPP([[(^|[^a-zA-Z0-9_])]]$1[[([^a-zA-Z0-9_]|\$)]],
+    [AC_EGREP_CPP([(^|[^a-zA-Z0-9_])]$1[([^a-zA-Z0-9_]|\$)],
       [#include <sys/types.h>
 #if STDC_HEADERS
 #include <stdlib.h>
@@ -818,7 +818,7 @@ AC_DEFUN(KSH_OS_TYPE,
     [ ksh_cv_os_type=no
       # Some tests below add -C to CPPFLAGS
       saveCPPFLAGS="$CPPFLAGS"
-      for i in AIX ISC MINIX SCO OS2_EMX TITANOS NEXT; do
+      for i in AIX ISC MINIX SCO OS2_EMX TITANOS NEXT HPUX; do
 	case $i in	#((
 	  AIX)
 	    AC_EGREP_CPP(yes,
@@ -885,6 +885,14 @@ YesTitan
 		    this is NOT a NeXT box and the compile should fail
 		  #endif
 		], ksh_cv_os_type=$i))dnl
+	    ;;	#(
+	  HPUX)
+	    AC_EGREP_CPP(yes,
+	      [
+#ifdef __hpux
+yes
+#endif
+	       ], ksh_cv_os_type=$i)
 	    ;;	#(
 	esac		#))
 	test $ksh_cv_os_type != no && break
@@ -953,6 +961,53 @@ in many configuration tests not working correctly.
 
 You appear to have this problem - see the comments on NeXT in the pdksh
 README file for work arounds.]))dnl
+      ;;			#(
+    HPUX)
+      #
+      # In some versions of hpux (eg, 10.2), getwd & getcwd will dump core
+      # if directory is not readble.
+      #
+      # name is used in test program
+      AC_CACHE_CHECK(for bug in getwd, ksh_cv_hpux_getwd_bug,
+	[ tmpdir=conftest.dir
+	  if mkdir $tmpdir ; then
+	    AC_TRY_RUN([
+		int
+		main()
+		{
+		  char buf[8 * 1024];
+		  char *dirname = "conftest.dir";
+		  int ok = 0;
+		  if (chdir(dirname) < 0)
+		    exit(2);
+		  if (chmod(".", 0) < 0)
+		    exit(3);
+		  /* Test won't work if run as root - so don't be root */
+		  if (getuid() == 0 || geteuid() == 0)
+		    setresuid(1, 1, 1);	/* hpux has this */
+#ifdef HAVE_GETWD /* silly since HAVE_* tests haven't been done yet */
+		  {
+		      extern char *getwd();
+		      ok = getwd(buf) == 0;
+		  }
+#else
+		  {
+		      extern char *getcwd();
+		      ok = getcwd(buf, sizeof(buf)) == 0;
+		  }
+#endif
+		  exit(ok ? 0 : 10);
+		  return ok ? 0 : 10;
+		}],
+	       ksh_cv_hpux_getwd_bug=no, ksh_cv_hpux_getwd_bug=yes,
+	       AC_MSG_WARN(assuming getwd broken); ksh_cv_hpux_getwd_bug=yes)
+	       test -d $tmpdir && rmdir $tmpdir
+	  else
+	     AC_MSG_ERROR(could not make temp directory for test); ksh_cv_hpux_getwd_bug=yes
+	  fi])
+      if test $ksh_cv_hpux_getwd_bug = yes; then
+	AC_DEFINE(HPUX_GETWD_BUG)
+      fi
       ;;			#(
   esac				#))
  ])dnl
@@ -1151,7 +1206,7 @@ ${CXX-g++} -o conftest$ac_exe_suffix $CXXFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_e
 dnl AC_TRY_RUN(PROGRAM, [ACTION-IF-TRUE [, ACTION-IF-FALSE
 dnl            [, ACTION-IF-CROSS-COMPILING]]])
 AC_DEFUN(AC_TRY_RUN,
-[AC_REQUIRE([AC_C_CROSS])dnl
+[AC_REQUIRE([AC_PROG_CC])dnl
 if test "$cross_compiling" = yes; then
   ifelse([$4], ,
     [errprint(__file__:__line__: warning: [AC_TRY_RUN] called without default to allow cross compiling
@@ -1292,3 +1347,19 @@ else
   test "${CFLAGS+set}" = set || CFLAGS="-g"
 fi
 ])
+dnl
+dnl
+dnl Need to change to check for ndir
+dnl
+undefine([AC_HEADER_DIRENT])dnl
+AC_DEFUN(AC_HEADER_DIRENT,
+[ac_header_dirent=no
+AC_CHECK_HEADERS_DIRENT(dirent.h sys/ndir.h sys/dir.h ndir.h,
+  [ac_header_dirent=$ac_hdr; break])
+# Two versions of opendir et al. are in -ldir and -lx on SCO Xenix.
+if test $ac_header_dirent = dirent.h; then
+AC_CHECK_LIB(dir, opendir, LIBS="$LIBS -ldir", AC_CHECK_LIB(ndir, opendir, LIBS="$LIBS -lndir"))
+else
+AC_CHECK_LIB(x, opendir, LIBS="$LIBS -lx")
+fi
+])      

@@ -3,7 +3,7 @@ General features of at&t ksh88 that are not (yet) in pdksh:
     - set -t.
     - signals/traps not cleared during functions.
     - trap DEBUG, local ERR and EXIT traps in functions.
-    - ERRNO, LINENO parameters.
+    - ERRNO parameter.
     - doesn't have posix file globbing (eg, [[:alpha:]], etc.).
     - use of an `agent' to execute unreadable/setuid/setgid shell scripts
       (don't ask).
@@ -16,7 +16,7 @@ Known bugs (see also BUG-REPORTS and PROJECTS files):
 	  " \t\n") others lose their special meaning.  IFS/PATH taken care of,
 	  still need to sort out some others (eg, TMOUT).
     Parsing,Lexing:
-	- line numbers in errors are wrong for nested construct.  Need to
+	- line numbers in errors are wrong for nested constructs.  Need to
 	  keep track of the line a command started on (can use for LINENO
 	  parameter as well).
 	- a $(..) expression nested inside double quotes inside another $(..)
@@ -31,8 +31,15 @@ Known bugs (see also BUG-REPORTS and PROJECTS files):
 	  does not.  pdksh exits for neither.  Don't think POSIX requires
 	  an exit, but not sure.
 	- `echo foo | read bar; echo $bar' prints foo in at&t ksh, nothing
-	  in pdksh (ie, the read is done in a seperate process in pdksh).
+	  in pdksh (ie, the read is done in a separate process in pdksh).
     Misc:
+
+Known problems not caused by ksh:
+    - after stoping a job, emacs/vi is not re-entered.  Hitting return
+      prints the prompt and everything is fine again.  Problem (often
+      involving a pager like less) is related to order of process
+      scheduling (shell runs before `stop'ed (sub) processes have had a chance
+      to clean up the screen/terminal).
 
 Known differences between pdksh & at&t ksh (that may change)
     - vi:
@@ -66,6 +73,11 @@ Known differences between pdksh & at&t ksh (that may change)
     - if the command 'sleep 5 && /bin/echo blah' is run interactively and
       is the sleep is stopped (^Z), the echo is run immediately in pdksh.
       In at&t ksh, the whole thing is stopped.
+    - LINENO:
+	- in ksh88 variable is always 1 (can't be changed) in interac mode;
+	  in pdksh it changes.
+	- Value of LINENO after it has been set by the script in one file
+	  is bizarre when used in another file.
 
 Known differences between pdksh & at&t ksh (that are not likely to change)
     - at&t ksh seems to catch or ignore SIGALRM - pdksh dies upon receipt
@@ -135,7 +147,7 @@ Known differences between pdksh & at&t ksh (that are not likely to change)
       and tracked aliases and normal aliases live in the same name space
       (eg, "alias" will list both tracked and normal aliases).
       in pdksh, -t does not imply -x (since -x doesn't do anything yet), and
-      tracked/normal aliases live in seperate name spaces.
+      tracked/normal aliases live in separate name spaces.
       in at&t ksh, alias accepts + options (eg, +x, +t) - pdksh does not.
       in pdksh, alias has a -d option to allow examination/changing of
       cached ~ entries, also unalias has -d and -t options (unalias -d
@@ -185,6 +197,17 @@ Known differences between pdksh & at&t ksh (that are not likely to change)
     - co-processes: if ksh93, the write portion of the co-process output is
       closed when the most recently started co-process exits. pdksh closes
       it when all the co-processes using it have exited.
+    - pdksh accepts empty command lists for while and for statements, while
+      at&t ksh (and sh) don't.  Eg., pdksh likes
+	while false ; do done
+      but ksh88 doesn't like it.
+    - pdksh bumps RANDOM in parent after a fork, at&t ksh bumps it in both
+      parent and child:
+	RANDOM=1
+	echo child: `echo $RANDOM`
+	echo parent: $RANDOM
+      will produce "child: 16838 parent: 5758" in pdksh, while at&t ksh
+      will produce "child: 5758 parent: 5758".
 
 Oddities in ksh (pd & at&t):
     - array references inside (())/$(()) are strange:

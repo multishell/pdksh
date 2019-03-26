@@ -1,26 +1,19 @@
 	Bugs and Limitations
-	6/96
+	1/99
 
 1. Some of the makefile targets are not yet working.  Those known to
    work include all, uninstall,ksh, config.h, makefile,
-   debugtools (only check-fd and check-sigs.), clean, & distclean.
-   make check does not work because of a bug in os2 port of ksh. You
-   need to run ksh Bugs ksh, or sh Bugs sh as appropriate.
+   debugtools (only check-fd and check-sigs.), test, clean, & distclean.
+   You need to run ksh Bugs ksh, or sh Bugs sh as appropriate.
 
 2. You cannot start a full screen session from the windowed ksh command line.
 
 3. Job control is not working and may never work in os/2 (no sigstp,
    sigcont, etc).
 
-4. make check does not work even after you get all of the perl issues
-   taken care of.  See bug 5 for the reason.  Use 'ksh Bugs ksh' with
-   the supplied Bugs file to check a build.
-
-5. The command 'ksh < filename' does not work properly on this release.
-   This is the cause of the make check failure.  Extra \r (carriage returns)
-   appear in the input data.
-
-6. ls [B]* fails even when a file Bozo exists.  ls [b]* will work
+4. ls [B]* fails even when a file Bozo exists.  ls [b]* will work
    due to case folding.  The bug is in the way case folding is managed.
    ls b* or ls B* will work as expected.
 
+5. regress.t:regression-13 test fails.  I do not understand why it can
+   work on *nix.  In fact cat does not get SIGPIPE, but gets write failure.

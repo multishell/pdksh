@@ -1,3 +1,354 @@
+Tue Jul 13 14:32:57 NDT 1999 Michael Rendell (michael@lyman.cs.mun.ca)
+
+	* made pdksh-5.2.14 distribution
+
+Wed Jun 30 17:42:54 NDT 1999 Michael Rendell (michael@lyman.cs.mun.ca)
+
+	* c_test.c(test_eval): changed -nt/-ot tests so they succeed
+	  if file2 (file2) `does not exist' (ie, the stat fails).
+	  (based on fix from Dave Hillman).
+
+Tue May 25 17:23:39 NDT 1999 Michael Rendell (michael@lyman.cs.mun.ca)
+
+	* jobs.c(fill_command): do not eval() TCOM arguments - can cause
+	  problems.
+
+Tue May 25 15:26:31 NDT 1999 Michael Rendell (michael@lyman.cs.mun.ca)
+
+	* new-version.sh,ksh.Man: added version number to man page; update
+	  version as well as date when updating tests/version.t and ksh.Man.
+
+Mon May 24 20:57:21 NDT 1999 Michael Rendell (michael@lyman.cs.mun.ca)
+
+	* c_sh.c(c_eval): only set exstat to substs_exstat if in non-posix mode.
+
+Mon May 24 15:44:10 NDT 1999 Michael Rendell (michael@lyman.cs.mun.ca)
+
+	* tree.h(FTIME): new define.
+	* c_sh.c(timex): stuff to get info to/from timex_hook.
+	* c_sh.c(timex_hook): new function (handles option processing).
+	* exec.c(execute): call timex_hook() after TCOM eval().
+
+Tue May 18 12:23:27 NDT 1999 Michael Rendell (michael@deimos.cs.mun.ca)
+
+	* vi.c(vi_hook): case VREDO: removed != 0 from switch expression.
+
+Tue May 18 11:24:12 NDT 1999 Michael Rendell (michael@deimos.cs.mun.ca)
+
+	* emacs.c(CHARMASK,X_TABSZ): changed from 128 to 256.
+	* emacs.c(x_size,x_zotc,x_mapout): use iscntl() vs range test.
+	  (Based on changes from Martin Dalecki)
+
+Thu May 13 17:23:17 NDT 1999 Michael Rendell (michael@deimos.cs.mun.ca)
+
+	* emacs.c(x_bound,bind_if_not_bound): new variable/fucntion.
+	* emacs.c(x_bind): set bit in x_bound[].
+	* emacs.c(x_emacs_keys): call bind_if_not_bound.
+
+Thu May 13 14:23:12 NDT 1999 Michael Rendell (michael@deimos.cs.mun.ca)
+
+	* sh.h: ifdefs for __CYGWIN__ for path defines.
+	* path.c(simplify_path): ifdefs for __CYGWIN__; preserve leading
+	  double-slash on pathnames.
+	* c_ksh.c(c_cd): use cygwin_conv_to_full_posix_path().
+	* edit.c(x_mode): default eof char to ^D.
+
+	[fixes from Corinna Vinschen and Steven Hein, obtained from
+	 ftp://ftp.franken.de/pub/win32/develop/gnuwin32/cygwin/
+	    porters/Vinschen_Corinna/B20/]
+
+Wed May 12 12:30:09 NDT 1999 Michael Rendell (michael@deimos.cs.mun.ca)
+
+	* exit.c(x_mode): set fields of edchars to -1 if corrisponding char
+	  is unset.
+	* exit.c(x_init): initialize edchars to -2, not -1.
+	* emacs.c(x_emacs_keys): check if char is >= 0 before setting.
+
+Wed May 12 11:31:24 NDT 1999 Michael Rendell (michael@deimos.cs.mun.ca)
+
+	* shf.c(shf_write): don't buffer if buffer is empty and we're
+	  writting a large amount.
+	* shf.c(shf_open): changed to use shf_reopen instead of shf_fdopen
+	  so alloca failing won't lose the fd.
+
+Wed May 12 10:19:43 NDT 1999 Michael Rendell (michael@deimos.cs.mun.ca)
+
+	* sh.h: deleted TT_HEREDOC_RAW define.
+	* tree.h(struct ioword): added heredoc field.
+	* tree.c(iocopy,iofree): copy/free heredoc field; remove special case
+	  for IOHERE and name field.
+	* tree.c(ptree): changed to use heredoc content string (not open temp).
+	* lex.c(yylex): initialize heredoc field.
+	* lex.c(readhere): save to string instead of a temp file.
+	* exec.c(herein): changed first are from file name to heredoc content
+	  string; changed all calls.  Changed to always create a new temp file
+	  and write content to it.
+
+Tue May 11 11:38:22 NDT 1999 Michael Rendell (michael@deimos.cs.mun.ca)
+
+	* tree.c(iofree): free delim field; don't free name of IOHERE iowords.
+
+Tue May 11 10:57:53 NDT 1999 Michael Rendell (michael@deimos.cs.mun.ca)
+
+	* sh.h(func_heredocs): deleted.
+	* sh.h(EF_FAKE_SIGDIE): added.
+	* lex.c(readhere): put function heredocs at bottom of env stack.
+	* main.c(quitenv,cleanup_proc_env): deleted remove_temps(func_heredocs)
+	  calls.
+
+	* main.c(quitenv): moved exit of no oenv to en after reclaim.
+	* main.c(cleanup_parents_env): free ep->savefd and set to 0.
+	* main.c(unwind,quitenv): moved code for E_NONE from unwind()
+	  to quitenv().
+
+Mon May 10 17:04:03 NDT 1999 Michael Rendell (michael@deimos.cs.mun.ca)
+
+	* exec.c(herein): restore source to osource after yylex().
+
+Mon May 10 12:14:40 NDT 1999 Michael Rendell (michael@deimos.cs.mun.ca)
+
+	* tree.c(iocopy): don't copy IOHERE name (it belongs to a struct temp).
+	* tree.c(wdscan): added default case to print internal error.
+
+Mon May 10 10:39:34 NDT 1999 Michael Rendell (michael@deimos.cs.mun.ca)
+
+	* sh.h(Temp_type): new enum (TT_HEREDOC_RAW, TT_HEREDOC_EXP,
+	  TT_HIST_FILE).
+	* sh.h(struct temp): added type field.
+	* io.c(maketemp): added type and tlist arguments; changed
+	  all calls.
+
+Tue Apr 27 11:31:48 NDT 1999 Michael Rendell (michael@lyman.cs.mun.ca)
+
+	* exec.c(execute): clear XEXEC in the call to timex() so time
+	  can be used at the end of a pipeline.
+
+Fri Apr 23 16:29:01 NDT 1999 Michael Rendell (michael@lyman.cs.mun.ca)
+
+	* mail.c(mcheck): don't check if MAILCHECK is set, just check if
+	  mplist is null.
+	* mail.c(mcset): new function.
+	* var.c(setspec): case MAILCHECK: call mcset.
+	* var.c(unspecial): new function.
+	* var.c(unsetspec): call unspecial for LINENO, MAILCHECK, RANDOM,
+	  SECONDS, TMOUT.
+
+Fri Apr 23 15:34:39 NDT 1999 Michael Rendell (michael@lyman.cs.mun.ca)
+
+	* main.c(initcoms): put MAILCHECK, SECONDS, TMOUT in an eval to
+	  preserve previous values.
+	* var.c(getspec): case V_SECONDS: don't do anything special if
+	  variable not set.
+
+Thu Apr 22 15:03:27 NDT 1999 Michael Rendell (michael@lyman.cs.mun.ca)
+
+	* var.c(setstr): error if var is RDONLY.
+	* var.c(global): non-letter params: set RDONLY flag after setstr call.
+	* c_ksh.c(c_getopts), eval.c(expand), exec.c(execute):
+	  removed readonly check.
+
+	* sh.h(KSH_UNWIND_ERROR, KSH_RETURN_ERROR): new defines.
+	* var.c(setstr): added error_ok argument; changed all calls.
+	* c_ksh.c(c_getopts): clear READONLY and INTEGER flags for OPTARG;
+	  return non-zero if variable can't be set.
+	* var.c(typeset): if fake_assign fails, unset the variable's value
+	  and carry on for rest of array, then unwind.
+	* expr.c(expand,v_expand): changed all calls to use KSH_UNWIND_ERROR
+	  or KSH_RETURN_ERROR.
+
+Tue Apr 20 16:52:24 NDT 1999 Michael Rendell (michael@lyman.cs.mun.ca)
+
+	* configure.in: added check dup2.
+	* sh.h: added dup2 prototype.
+	* aclocal.m4: replace AC_HEADER_DIRENT so it checks -lndir.
+
+	* missing.c(dup2): new function.
+	  Based on code from Marc Olzheim.
+
+Fri Apr 16 16:32:27 NDT 1999 Michael Rendell (michael@lyman.cs.mun.ca)
+
+	* syn.c(lineno_offset): removed variable and all references.
+	* tree.c(tcopy): copy lineno field.
+	* var.c(user_lineno): new variable.
+	* var.c(setspec): added case for V_LINENO (sets user_lineno).
+	* var.c(getspec): V_LINENO: add in user_lineno.
+
+Fri Apr 16 15:26:26 NDT 1999 Michael Rendell (michael@lyman.cs.mun.ca)
+
+	* tree.h(struct op): added lineno field.
+	* table.h(V_LINENO, current_lineno): new define/variable.
+	* exec.c(execute): set current_lineno for TCOM.
+	* syn.c(lineno_offset): new variable.
+	* syn.c(get_command): set t->lineno.
+	* syn.c(function_body): save/restore lineno_offset;
+	* syn.c(compile): initialize lineno_offset
+	* var.c(initvar,getspec): added V_LINENO entry.
+
+	Changes from Mark Funkenhauser.
+
+Fri Apr 16 12:18:08 NDT 1999 Michael Rendell (michael@lyman.cs.mun.ca)
+
+	* expr.c,misc.c(getoptions): added int casts to avoid errors from
+	  old K&R compilers.
+	Fixes from Marc Olzheim.
+
+Fri Jan 15 12:51:53 NST 1999 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* expr.c: pass es as first param to all functions; deleted
+	  es global variable.
+
+Tue Jan 12 12:28:41 NST 1999 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* emacs.c(x_defbindings[]): removed #else part of ifdef OS2.
+
+	* shf.c(shf_getse): added code to strip \r for OS2.
+	* lex.c(getsc_line): removed OS2 ifdefs
+
+	* os2/misc.c(ksh_execve),sh.h: added flags argument; changed all calls.
+	* exec.c(scriptexec): OS2: make copy of a0 before calling
+	  search_access(X_OK).
+	* sh.h: OS2: changed EXECSHELL, EXECSHELL_STR.
+	* jobs.c(exchild): set XINTACT.
+	* os2/config.h: added HAVE_TERMIOS_H.
+	* os2/configure.cmd: changed test for existance of sed & gcc.
+
+	Fixes from Ilya Zakharevich.
+
+	* tests/th: added -C option, added "category" field.
+	* tests/th(category_check): new function.
+	* tests/*.t: added "category: !os:os2" to a few tests.
+
+Tue Jan 12 11:17:52 NST 1999 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* exec.c(execute): changed exit(rv) to unwind(LEXIT) to
+	  allow exit traps to be done.
+
+Tue Jan  5 16:45:00 NST 1999 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* aclocal.m4(KSH_CHECK_H_TYPE): remove extra [] from egrep pattern.
+	* c_sh.c(c_exitreturn): fixed logic of exit status parsing
+	  (fixes from Martin Lucina).
+
+Tue Jan  5 16:31:37 NST 1999 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* edit.c(x_locate_word): changed IS_WORDC macro from !isspace
+	  to !lex1/'/"
+	  (based on fix from Kevin Schoedel).
+
+Wed Dec 16 15:02:48 NST 1998 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* io.c(kshdebug_init_,kshdebug_printf_,kshdebug_dump_),
+	  sh.h(kshdebug_init,kshdebug_printf,kshdebug_dump):
+	  new macros/functions.
+
+Wed Dec 16 12:12:23 NST 1998 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* c_sh.c(c_eval): set exstat to substs_exstat to propogate
+	  substition exit status if resulting command is empty
+	  (based on fix from Mark Funkenhauser).
+
+Tue Dec 15 15:50:34 NST 1998 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* main.c(initcom[]): PPID no longer read only.
+
+Mon Dec 14 17:09:52 NST 1998 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* trap.c(gettrap): added igncase argument; changed all calls.
+	* c_sh.c(c_trap): use case sensitive compare for first gettrap().
+	  (fix "trap exit 1").
+
+Thu Dec 10 12:24:53 NST 1998 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* configure.in: added test for getcwd.
+	* aclocal.m4(KSH_OS_TYPE): added case for hpux; added test for
+	  bug in hpux getcwd (dumps core if . is not readable).
+	* config.h.in: added HAVE_HPUX_GETWD_BUG define.
+	* aclocal.m4,configure.in: remove AC_C_CROSS or change to AC_PROG_CC.
+	* misc.c(ksh_get_wd): added code to handle bug in hpux getwd;
+	  changed precedence of getcwd vs getwd (use getcwd if available:
+	  getwd causes warnings under linux).
+
+Tue Dec  8 17:17:47 NST 1998 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* main.c(main): seed RANDOM using time, pid, ppid (was just time).
+
+Tue Nov 24 17:17:12 NST 1998 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* c_ulimit.c(c_ulimit): improve setrlimit error message for EPERM
+	  (fix from Todd C. Miller).
+
+Thu Nov 19 18:09:59 NST 1998 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* jobs.c(waitfor): if j_lookup fails, always return
+	  (fix from Todd C. Miller).
+
+Fri Oct 23 19:59:25 NDT 1998 Michael Rendell (michael@lenny.cs.mun.ca)
+
+	* jobs.c(JF_SAVEDTTYPGRP,j_resume,j_waitj): added save_ttypgrp
+	  stuff to deal with new gnu su which doesn't exec, but forks
+	  then execs.
+
+Thu Sep 24 16:23:48 NDT 1998 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* trap.c(inittrap): Don't assume sys_siglist[] has NSIG non-null
+	  entries (fix from clifford@clifford.at).
+
+Thu Aug  6 14:46:45 NDT 1998 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* eval.c(varsub): ${#array[*]} now prints N elements, not
+	  max index.
+
+Sun Jul 19 11:50:21 NDT 1998 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* syn.c(function_body): fixed bug in handling of empty function
+	  body; if empty, pretend there is a : command.
+
+Mon Jun 29 10:13:02 NDT 1998 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* exec.c(search_access): allow non-regular files to be .'ed
+	  (fix from Theo de Raadt).
+
+Thu Jun 25 17:01:36 NDT 1998 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* c_ulimit.c(c_ulimit): added KSH_RLIM_INFINITY and defined
+	  if system doesn't define RLIM_INFINITY; use when setting limits.
+	  When setting, if expression evaluates to 0 and string was not
+	  a number, generate an error (based on fix from Todd C. Miller).
+
+Wed Mar 11 16:35:37 NST 1998 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* exec.c(flushcom): clear ISSET bit, don't set all the other bits
+	  (fix from Eric Youngdale).
+
+Tue Dec 16 11:07:21 NST 1997 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* shf.c(shf_vfprintf): %e/%f/%g conversion now prints negative
+	  numbers correctly (fix from Larry Bouzane).
+
+Thu Nov 20 15:16:15 NST 1997 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* emacs.c(x_prev_histword): check if histptr is 0.
+
+Sat Nov  8 11:46:32 NST 1997 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* misc.c(options[]): changed null entries to (char *) 0
+	  (based on fix from David E. Wexelblat).
+
+Fri Nov  7 14:45:24 NST 1997 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* alloc.c(aresize): avoid memory overrun when copying old memory
+	  to new memory.
+	  (fix from David E. Wexelblat).
+
+Tue Oct 28 11:26:22 NST 1997 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* tests/th: file-setup code: convert chmod argument to octal.
+
+Tue Oct 28 11:00:45 NST 1997 Michael Rendell (michael@panda.cs.mun.ca)
+
+	* tree.c(tputS): incr wp after COMSUB and EXPRSUB while loop
+	  to get past null.
+
 Mon Oct 27 12:38:05 NST 1997 Michael Rendell (michael@panda.cs.mun.ca)
 
 	* made pdksh-5.2.13 distribution
@@ -1035,7 +1386,7 @@ Mon Jan  8 11:42:46 NST 1996 Michael Rendell (michael@panda.cs.mun.ca)
 
 Fri Jan  5 12:15:58 NST 1996 Michael Rendell (michael@garfield.cs.mun.ca)
 
-	* c_ksh.c(c_typeset): seperate loop for printing functions
+	* c_ksh.c(c_typeset): separate loop for printing functions
 	  (do not traverse array link).
 	* c_ksh.c(c_typeset): list functions: do not ignore unset functions.
 	* exec.c(findfunc): set val.t to 0 when creating new entry.

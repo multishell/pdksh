@@ -225,6 +225,7 @@ get_command(cf)
 		REJECT;
 		syniocf &= ~(KEYWORD|ALIAS);
 		t = newtp(TCOM);
+		t->lineno = source->line;
 		while (1) {
 			cf = (t->u.evalflags ? ARRAYVAR : 0)
 			     | (XPsize(args) == 0 ? ALIAS|VARASN : CMDWORD);
@@ -293,6 +294,7 @@ get_command(cf)
 						CHAR, 't', EOS };
 		/* Leave KEYWORD in syniocf (allow if (( 1 )) then ...) */
 		t = newtp(TCOM);
+		t->lineno = source->line;
 		ACCEPT;
 		XPput(args, wdcopy(let_cmd, ATEMP));
 		musthave(LWORD,LETEXPR);
@@ -549,6 +551,7 @@ function_body(name, ksh_func)
 	t = newtp(TFUNCT);
 	t->str = sname;
 	t->u.ksh_func = ksh_func;
+	t->lineno = source->line;
 
 	/* Note that POSIX allows only compound statements after foo(), sh and
 	 * at&t ksh allow any command, go with the later since it shouldn't
@@ -563,12 +566,22 @@ function_body(name, ksh_func)
 	old_func_parse = e->flags & EF_FUNC_PARSE;
 	e->flags |= EF_FUNC_PARSE;
 	if ((t->left = get_command(CONTIN)) == (struct op *) 0) {
-		/* create empty command so foo(): will work */
+		/*
+		 * Probably something like foo() followed by eof or ;.
+		 * This is accepted by sh and ksh88.
+		 * To make "typset -f foo" work reliably (so its output can
+		 * be used as input), we pretend there is a colon here.
+		 */
 		t->left = newtp(TCOM);
-		t->args = (char **) alloc(sizeof(char *), ATEMP);
-		t->args[0] = (char *) 0;
-		t->vars = (char **) alloc(sizeof(char *), ATEMP);
-		t->vars[0] = (char *) 0;
+		t->left->args = (char **) alloc(sizeof(char *) * 2, ATEMP);
+		t->left->args[0] = alloc(sizeof(char) * 3, ATEMP);
+		t->left->args[0][0] = CHAR;
+		t->left->args[0][1] = ':';
+		t->left->args[0][2] = EOS;
+		t->left->args[1] = (char *) 0;
+		t->left->vars = (char **) alloc(sizeof(char *), ATEMP);
+		t->left->vars[0] = (char *) 0;
+		t->left->lineno = 1;
 	}
 	if (!old_func_parse)
 		e->flags &= ~EF_FUNC_PARSE;

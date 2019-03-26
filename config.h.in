@@ -189,6 +189,10 @@
 /* Define if your OS maps references to /dev/fd/n to file descriptor n */
 #undef HAVE_DEV_FD
 
+/* Define if your C library's getwd/getcwd function dumps core in unreadable
+ * directories.  */
+#undef HPUX_GETWD_BUG
+
 /* Default PATH (see comments in configure.in for more details) */
 #undef DEFAULT_PATH
 
@@ -237,8 +241,14 @@
 /* Define if you have the confstr function.  */
 #undef HAVE_CONFSTR
 
+/* Define if you have the dup2 function.  */
+#undef HAVE_DUP2
+
 /* Define if you have the flock function.  */
 #undef HAVE_FLOCK
+
+/* Define if you have the getcwd function.  */
+#undef HAVE_GETCWD
 
 /* Define if you have the getgroups function.  */
 #undef HAVE_GETGROUPS

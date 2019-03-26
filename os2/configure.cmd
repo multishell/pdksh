@@ -30,7 +30,8 @@ set ushell=sh
 if exist conftest.c erase conftest.c
 if exist confdefs.h erase confdefs.h
 if %verbose% == yes echo Searching for sed
-for %%i in (%path%) do if exist %%i\sed.exe goto s_success
+:::::for %%i in (%path%) do if exist %%i\sed.exe goto s_success
+sed --version && goto s_success
 echo No sed in search path.  Copying Makefile for gcc. You will need
 echo to edit it if you are not using standard defaults.
 copy os2\Makefile Makefile
@@ -45,6 +46,7 @@ goto end
 :s_success
 if %verbose% == yes echo checking for compiler
 for %%i in (%path%) do if exist %%i\gcc.exe goto g_success
+gcc --version && goto g_success
 rem for the future we'll use sed processing
 for %%i in (%path%) do if exist %%i\bcc.exe goto b_success
 for %%i in (%path%) do if exist %%i\icc.exe goto i_success
