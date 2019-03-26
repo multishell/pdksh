@@ -90,9 +90,12 @@ mbset(p)
 
 	if (mbox.mb_msg)
 		afree((void *)mbox.mb_msg, APERM);
-	mbox.mb_path = p;
+	if (mbox.mb_path)
+		afree((void *)mbox.mb_path, APERM);
+	/* Save a copy to protect from export (which munges the string) */
+	mbox.mb_path = str_save(p, APERM);
 	mbox.mb_msg = NULL;
-	if (p && stat(p,&stbuf) == 0 && S_ISREG(stbuf.st_mode))
+	if (p && stat(p, &stbuf) == 0 && S_ISREG(stbuf.st_mode))
 		mbox.mb_mtime = stbuf.st_mtime;
 	else
 		mbox.mb_mtime = 0;

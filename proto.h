@@ -240,6 +240,7 @@ char *	snptreef	ARGS((char *s, int n, const char *fmt, ...));
 struct op *	tcopy	ARGS((struct op *t, Area *ap));
 char *	wdcopy		ARGS((const char *wp, Area *ap));
 char *	wdscan		ARGS((const char *wp, int c));
+char *	wdstrip		ARGS((const char *wp));
 void 	tfree		ARGS((struct op *t, Area *ap));
 /* var.c */
 void 	newblock	ARGS((void));

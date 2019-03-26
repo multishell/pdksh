@@ -97,8 +97,7 @@ Things to be done in pdksh (see also the NOTES file):
 	  care of, but more needs doing.
 
 	* remove static limits created by fixed sized arrays
-	  (eg, getsc_(line[]), ident[], heres[], PATH, states(lex.c),
-	  buffer size in emacs/vi code)
+	  (eg, ident[], heres[], PATH, buffer size in emacs/vi code)
 
 	* merge the emacs and vi code (should reduce the size of the shell and
 	  make maintenance easier); handle SIGWINCH while editing a line.

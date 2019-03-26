@@ -25,7 +25,7 @@
 #   ifdef OS2
 #    define HISTFILE "history.ksh"
 #   else /* OS2 */
-#    define HISTFILE ".pdksh_hist"
+#    define HISTFILE ".pdksh_history"
 #   endif /* OS2 */
 #  endif
 
@@ -483,7 +483,7 @@ histnum(n)
 		current = histptr;
 		curpos = last;
 		return last;
-	}  else {
+	} else {
 		current = &history[n];
 		curpos = n;
 		return n;

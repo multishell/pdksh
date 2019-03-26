@@ -62,7 +62,7 @@ MISCFILES = misc/ChangeLog.sjg misc/Changes.jrm misc/Changes.mlj \
 TESTFILES = tests/th tests/th-sh tests/alias.t tests/arith.t tests/bksl-nl.t \
 	tests/brkcont.t tests/cdhist.t tests/eglob.t tests/glob.t \
 	tests/heredoc.t tests/history.t tests/ifs.t tests/integer.t \
-	tests/read.t tests/regress.t tests/unclass1.t \
+	tests/read.t tests/regress.t tests/syntax.t tests/unclass1.t \
 	tests/unclass2.t tests/version.t 
 # OS2FILES also disted, but handled differently
 OS2FILES = os2/Makefile os2/config.h os2/config.status os2/configure.cmd \
@@ -158,7 +158,7 @@ tags: $(SRCS) $(HDRS)
 
 clean:
 	rm -f ksh$(exe_suffix) sh$(exe_suffix) ksh.1 sh.1 $(OBJS) siglist.out \
-	      emacs.out core mon.out gmon.out \
+	      emacs.out core a.out mon.out gmon.out \
 	      version.c.bak Makefile.bak Makefile.tmp check-fd$(exe_suffix) \
 	      check-pgrp$(exe_suffix) check-sigs$(exe_suffix)
 

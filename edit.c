@@ -722,15 +722,7 @@ x_locate_word(buf, buflen, pos, startp, is_commandp)
 		*is_commandp = 0;
 		return 0;
 	}
-
-	if (pos == buflen) {
-		if (pos == 0) { /* empty buffer? */
-			*startp = pos;
-			*is_commandp = 1;
-			return 0;
-		}
-		pos--;
-	}
+	/* The case where pos == buflen happens to take care of itself... */
 
 	start = pos;
 	/* Keep going backwards to start of word (has effect of allowing

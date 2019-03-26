@@ -51,14 +51,14 @@ struct source {
 #define	SBASE	0		/* outside any lexical constructs */
 #define	SWORD	1		/* implicit quoting for substitute() */
 #ifdef KSH
-#define	SDPAREN	2		/* inside (( )), implicit quoting */
+#define	SLETPAREN 2		/* inside (( )), implicit quoting */
 #endif /* KSH */
 #define	SSQUOTE	3		/* inside '' */
 #define	SDQUOTE	4		/* inside "" */
 #define	SBRACE	5		/* inside ${} */
-#define	SPAREN	6		/* inside $() */
+#define	SCSPAREN 6		/* inside $() */
 #define	SBQUOTE	7		/* inside `` */
-#define	SDDPAREN 8		/* inside $(( )) */
+#define	SASPAREN 8		/* inside $(( )) */
 #define SHEREDELIM 9		/* parsing <<,<<- delimiter */
 #define SHEREDQUOTE 10		/* parsing " in <<,<<- delimiter */
 #define SPATTERN 11		/* parsing *(...|...) pattern (*+?@!) */
@@ -118,7 +118,6 @@ typedef union {
 
 EXTERN	Source *source;		/* yyparse/yylex source */
 EXTERN	YYSTYPE	yylval;		/* result from yylex */
-EXTERN	int	yynerrs;
 EXTERN	struct ioword *heres [HERES], **herep;
 EXTERN	char	ident [IDENT+1];
 

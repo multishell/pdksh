@@ -1,5 +1,5 @@
 Title:		pdksh
-Version:	5.2.12
+Version:	5.2.13
 Description:	A public domain implementation of the Korn shell (ksh88),
 		a UNIX command line interpreter / scripting language; the few
 		missing ksh features are being added and the shell is being

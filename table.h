@@ -110,8 +110,10 @@ struct block {
 	/*struct arg_info argi;*/
 	char	**argv;
 	int	argc;
+	int	flags;		/* see BF_* */
 	struct	table vars;	/* local variables */
 	struct	table funs;	/* local functions */
+	Getopt	getopts_state;
 #if 1
 	char *	error;		/* error handler */
 	char *	exit;		/* exit handler */
@@ -120,6 +122,9 @@ struct block {
 #endif
 	struct	block *next;	/* enclosing block */
 };
+
+/* Values for struct block.flags */
+#define BF_DOGETOPTS	BIT(0)	/* save/restore getopts state */
 
 /*
  * Used by twalk() and tnext() routines.
@@ -167,8 +172,8 @@ extern const struct builtin shbuiltins [], kshbuiltins [];
 #define PS1	0		/* command */
 #define PS2	1		/* command continuation */
 
-EXTERN	const char   *path;	/* PATH value */
-EXTERN	const char   *def_path;	/* path to use if PATH not set */
-EXTERN	char   *tmpdir;		/* TMPDIR value */
-EXTERN	const char   *prompt;
-EXTERN	int	cur_prompt;	/* PS1 or PS2 */
+EXTERN char *path;		/* copy of either PATH or def_path */
+EXTERN const char *def_path;	/* path to use if PATH not set */
+EXTERN char *tmpdir;		/* TMPDIR value */
+EXTERN const char *prompt;
+EXTERN int cur_prompt;		/* PS1 or PS2 */

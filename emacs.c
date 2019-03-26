@@ -1241,12 +1241,12 @@ x_meta_yank(c)
 	len = strlen(killstack[killtp]);
 	x_goto(xcp - len);
 	x_delete(len, FALSE);
-	do  {
+	do {
 		if (killtp == 0)
 			killtp = KILLSIZE - 1;
 		else
 			killtp--;
-	}  while (killstack[killtp] == 0);
+	} while (killstack[killtp] == 0);
 	x_ins(killstack[killtp]);
 	return KSTD;
 }
@@ -2009,15 +2009,8 @@ x_prev_histword(c)
 {
   register char *rcp;
   char *cp;
-  char **hp;
 
-  hp = x_histp-1;
-  if (hp < history || hp > histptr)
-  {
-    x_e_putc(BEL);
-    return KSTD;
-  }
-  cp = *hp;
+  cp = *histptr;
   if (x_arg_defaulted) {
     rcp = &cp[strlen(cp) - 1];
     /*

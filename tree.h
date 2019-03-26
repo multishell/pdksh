@@ -62,8 +62,8 @@ struct op {
 #define EXPRSUB	4		/* $(()) substitution (0 terminated) */
 #define	OQUOTE	5		/* opening " or ' */
 #define	CQUOTE	6		/* closing " or ' */
-#define	OSUBST	7		/* opening ${ substitution */
-#define	CSUBST	8		/* closing } of above */
+#define	OSUBST	7		/* opening ${ subst (followed by { or X) */
+#define	CSUBST	8		/* closing } of above (followed by } or X) */
 #define OPAT	9		/* open pattern: *(, @(, etc. */
 #define SPAT	10		/* seperate pattern: | */
 #define CPAT	11		/* close pattern: ) */

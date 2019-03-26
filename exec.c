@@ -456,16 +456,18 @@ comexec(t, tp, ap, flags)
 	int keepasn_ok;
 	int fcflags = FC_BI|FC_FUNC|FC_PATH;
 
+#ifdef KSH
 	/* snag the last argument for $_ XXX not the same as at&t ksh,
 	 * which only seems to set $_ after a newline (but not in
 	 * functions/dot scripts, but in interactive and scipt) -
 	 * perhaps save last arg here and set it in shell()?.
 	 */
-	if (*(lastp = ap)) {
+	if (Flag(FTALKING) && *(lastp = ap)) {
 		while (*++lastp)
 			;
 		setstr(typeset("_", LOCAL, 0, 0, 0), *--lastp);
 	}
+#endif /* KSH */
 
 	/* Deal with the shell builtins builtin, exec and command since
 	 * they can be followed by other commands.  This must be done before
@@ -625,11 +627,20 @@ comexec(t, tp, ap, flags)
 		old_kshname = kshname;
 		if (tp->flag & FKSH)
 			kshname = ap[0];
+		else
+			ap[0] = (char *) kshname;
 		e->loc->argv = ap;
 		for (i = 0; *ap++ != NULL; i++)
 			;
 		e->loc->argc = i - 1;
-		getopts_reset(1);
+		/* ksh-style functions handle getopts sanely,
+		 * bourne/posix functions are insane...
+		 */
+		if (tp->flag & FKSH) {
+			e->loc->flags |= BF_DOGETOPTS;
+			e->loc->getopts_state = user_opt;
+			getopts_reset(1);
+		}
 
 		old_xflag = Flag(FXTRACE);
 		Flag(FXTRACE) = tp->flag & TRACE ? TRUE : FALSE;
@@ -696,8 +707,10 @@ comexec(t, tp, ap, flags)
 			break;
 		}
 
+#ifdef KSH
 		/* set $_ to program's full path */
 		setstr(typeset("_", LOCAL|EXPORT, 0, 0, 0), tp->val.s);
+#endif /* KSH */
 
 		if (flags&XEXEC) {
 			j_exit();
@@ -1082,14 +1095,15 @@ search_access(path, mode, errnop)
 	ret = eaccess(path, mode);
 	if (ret < 0)
 		err = errno; /* File exists, but we can't access it */
-	else if (mode == X_OK && (!S_ISREG(statb.st_mode)
-		   /* This 'cause access() says root can execute everything */
-		   || !(statb.st_mode & (S_IXUSR|S_IXGRP|S_IXOTH))))
+	else if (!S_ISREG(statb.st_mode)
+		 /* This 'cause access() says root can execute everything */
+		 || (mode == X_OK
+		     && !(statb.st_mode & (S_IXUSR|S_IXGRP|S_IXOTH))))
 	{
 		ret = -1;
 		err = S_ISDIR(statb.st_mode) ? EISDIR : EACCES;
 	}
-	if (err && errnop)
+	if (err && errnop && !*errnop)
 		*errnop = err;
 	return ret;
 #else /* !OS2 */
@@ -1154,7 +1168,7 @@ search_access1(path, mode, errnop)
 		ret = -1;
 		err = S_ISDIR(statb.st_mode) ? EISDIR : EACCES;
 	}
-	if (err && errnop)
+	if (err && errnop && !*errnop)
 		*errnop = err;
 	return ret;
 }
@@ -1269,7 +1283,7 @@ iosetup(iop, tp)
 	struct stat statb;
 
 	if (iotype != IOHERE)
-		cp = evalonestr(cp, DOTILDE|(Flag(FTALKING) ? DOGLOB : 0));
+		cp = evalonestr(cp, DOTILDE|(Flag(FTALKING_I) ? DOGLOB : 0));
 
 	/* Used for tracing and error messages to print expanded cp */
 	iotmp = *iop;
