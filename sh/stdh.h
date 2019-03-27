@@ -23,6 +23,9 @@
  *
  */
 
+// For S_IFMT
+#define _BSD_SOURCE
+
 #ifndef ARGS
 # ifdef __STDC__
 #   define ARGS(args) args

@@ -51,13 +51,14 @@ CC=gcc -pipe
 
 #CONFIG= -D_SYSV
 #CONFIG= -D_BSD -DHAVE_SYS_STDTYPES
-CONFIG= -D_BSD
+#CONFIG= -D_BSD
+CONFIG=-D_POSIX_SOURCE -D_MINIX
 
 
 STD=../std
 INCL=$(STD)/h
-XINCL=-I$(INCL)
-LDOPTS=-L$(STD)
+#XINCL=-I$(INCL)
+#LDOPTS=-L$(STD)
 XOBJS=
 
 # use -O if you trust it :-)
@@ -66,7 +67,7 @@ CFLAGS = $(DBG) $(CONFIG) $(XINCL) $(XOPTS)
 
 LDFLAGS = $(DBG) $(LDOPTS)
 
-COMPATLIBS = -lstdc -lposix
+#COMPATLIBS = -lstdc -lposix
 #XLIBS = -lc_s
 #XLIBS = -ldirent
 LDLIBS = $(COMPATLIBS) $(XLIBS)

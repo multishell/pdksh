@@ -24,7 +24,8 @@ Trap sigtraps [SIGNALS] = {
 #else
 	{SIGIOT, "IOT", "IOT instruction"},
 #endif
-	{SIGEMT, "EMT", "EMT trap"},
+	//{SIGEMT, "EMT", "EMT trap"},
+    {SIGBUS, "BUS", "BUS trap"},
 	{SIGFPE, "FPE", "Floating exception"},
 	{SIGKILL, "KILL", "Killed"},
 #ifdef _MINIX

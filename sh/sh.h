@@ -270,5 +270,5 @@ void	setctypes ARGS((const char*, int type));
 #include "trace.h"
 
 #ifndef fileno
-#define fileno(p)	((p)->_file)
+#define fileno(p)	((p)->_fileno)
 #endif
