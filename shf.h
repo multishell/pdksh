@@ -13,7 +13,7 @@
 					: ((shf)->wnleft--, *(shf)->wp++ = (c)))
 #define shf_eof(shf)		((shf)->flags & SHF_EOF)
 #define shf_error(shf)		((shf)->flags & SHF_ERROR)
-#define shf_errno(shf)		((shf)->errno)
+#define shf_errno(shf)		((shf)->errno_saved)
 #define shf_clearerr(shf)	((shf)->flags &= ~(SHF_EOF | SHF_ERROR))
 
 /* Flags passed to shf_*open() */
@@ -48,7 +48,7 @@ struct shf {
 	int wnleft;		/* write: how much space left in buffer */
 	unsigned char *buf;	/* buffer */
 	int fd;			/* file descriptor */
-	int errno;		/* saved value of errno after error */
+	int errno_saved;		/* saved value of errno after error */
 	int bsize;		/* actual size of buf */
 	Area *areap;		/* area shf/buf were allocated in */
 };

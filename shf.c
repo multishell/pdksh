@@ -102,7 +102,7 @@ shf_fdopen(fd, sflags, shf)
 	shf->wnleft = 0; /* force call to shf_emptybuf() */
 	shf->wbsize = sflags & SHF_UNBUF ? 0 : bsize;
 	shf->flags = sflags;
-	shf->errno = 0;
+	shf->errno_saved = 0;
 	shf->bsize = bsize;
 	if (sflags & SHF_CLEXEC)
 		fd_clexec(fd);
@@ -146,7 +146,7 @@ shf_reopen(fd, sflags, shf)
 	shf->wnleft = 0; /* force call to shf_emptybuf() */
 	shf->wbsize = sflags & SHF_UNBUF ? 0 : bsize;
 	shf->flags = (shf->flags & (SHF_ALLOCS | SHF_ALLOCB)) | sflags;
-	shf->errno = 0;
+	shf->errno_saved = 0;
 	if (sflags & SHF_CLEXEC)
 		fd_clexec(fd);
 	return shf;
@@ -190,7 +190,7 @@ shf_sopen(buf, bsize, sflags, shf)
 	shf->wnleft = bsize - 1;	/* space for a '\0' */
 	shf->wbsize = bsize;
 	shf->flags = sflags | SHF_STRING;
-	shf->errno = 0;
+	shf->errno_saved = 0;
 	shf->bsize = bsize;
 
 	return shf;
@@ -287,7 +287,7 @@ shf_flush(shf)
 		errorf("shf_flush: internal error: no fd\n");
 
 	if (shf->flags & SHF_ERROR) {
-		errno = shf->errno;
+		errno = shf->errno_saved;
 		return EOF;
 	}
 
@@ -319,7 +319,7 @@ shf_emptybuf(shf, flags)
 		errorf("shf_emptybuf: internal error: no fd\n");
 
 	if (shf->flags & SHF_ERROR) {
-		errno = shf->errno;
+		errno = shf->errno_saved;
 		return EOF;
 	}
 
@@ -363,7 +363,7 @@ shf_emptybuf(shf, flags)
 						continue;
 					}
 					shf->flags |= SHF_ERROR;
-					shf->errno = errno;
+					shf->errno_saved = errno;
 					shf->wnleft = 0;
 					if (buf != shf->buf) {
 						/* allow a second flush
@@ -405,7 +405,7 @@ shf_fillbuf(shf)
 
 	if (shf->flags & (SHF_EOF | SHF_ERROR)) {
 		if (shf->flags & SHF_ERROR)
-			errno = shf->errno;
+			errno = shf->errno_saved;
 		return EOF;
 	}
 
@@ -427,7 +427,7 @@ shf_fillbuf(shf)
 	if (shf->rnleft <= 0) {
 		if (shf->rnleft < 0) {
 			shf->flags |= SHF_ERROR;
-			shf->errno = errno;
+			shf->errno_saved = errno;
 			shf->rnleft = 0;
 			shf->rp = shf->buf;
 			return EOF;
@@ -591,7 +591,7 @@ shf_putchar(c, shf)
 		if (shf->fd < 0)
 			errorf("shf_putchar: internal error: no fd\n");
 		if (shf->flags & SHF_ERROR) {
-			errno = shf->errno;
+			errno = shf->errno_saved;
 			return EOF;
 		}
 		while ((n = write(shf->fd, &cc, 1)) != 1)
@@ -602,7 +602,7 @@ shf_putchar(c, shf)
 					continue;
 				}
 				shf->flags |= SHF_ERROR;
-				shf->errno = errno;
+				shf->errno_saved = errno;
 				return EOF;
 			}
 	} else {
@@ -660,7 +660,7 @@ shf_write(buf, nbytes, shf)
 						continue;
 					}
 					shf->flags |= SHF_ERROR;
-					shf->errno = errno;
+					shf->errno_saved = errno;
 					shf->wnleft = 0;
 					/* Note: fwrite(3S) returns 0 for
 					 * errors - this doesn't */
