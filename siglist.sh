@@ -23,7 +23,7 @@ CPP="${1-cc -E}"
 	{ QwErTy SIG\1 , "\1", "\2" },\
 #endif/') > $in
 $CPP $in  > $out
-sed -n 's/{ QwErTy/{/p' < $out | awk '{print NR, $0}' | sort +2n +0n |
+tr '\n' '\r' < $out | sed 's/\r# [^\r]*\r//g' | tr '\r' '\n' | sed -n 's/{ QwErTy/{/p' | awk '{print NR, $0}' | sort +2n +0n |
 	sed 's/^[0-9]* //' |
 	awk 'BEGIN { last=0; nsigs=0; }
 	    {
