@@ -3094,7 +3094,7 @@ EOF
   fi
  
 if test X"$LDSTATIC" != X; then
-  LDFLAGS=`echo -- "$LDFLAGS" | sed -e s/^-- //' -e 's?$LDSTATIC?\$(LDSTATIC)?'`
+  LDFLAGS=`echo -- "$LDFLAGS" | sed -e 's/^-- //' -e 's?$LDSTATIC?\$(LDSTATIC)?'`
 fi
 trap '' 1 2 15
 cat > confcache <<\EOF
